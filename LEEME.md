@@ -20,6 +20,12 @@ acumulado queda en negativo, la app lo muestra como "Plata de tu pareja usada". 
 arrancar con la deuda que ya tenías, usa "Saldo inicial", caja Virtual, y marca
 "Debo esa plata".
 
+## Entrada con Face ID
+
+Cada aparato la activa una vez. Se maneja en Yo, Entrada con Face ID. Si la llave se pierde, en
+"No puedo entrar" se usa la contraseña de Fran en la nube, con internet. Es un candado para
+abrir la app; no cifra lo guardado en el aparato.
+
 ## Temas
 
 En Ajustes, arriba, se elige entre Oscuro, Claro, Noche morada, Verde menta, Rosa y Dorado.
@@ -42,5 +48,5 @@ pueden cargar desde la app, para que nadie borre datos reales por error.
 
 ## Para programadores
 
-`npm test` dentro de `app/` corre las 185 pruebas del motor y de los datos. La
+`npm test` dentro de `app/` corre las pruebas del motor y de los datos. La
 especificación está en `../ESPECIFICACION-MODULO-1.md`.

@@ -7,13 +7,13 @@
 import { leerTexto } from '../texto.js';
 
 export const LIBROS = {
-  personal: { nombre: 'Finanzas personales', corto: 'Finanzas', icono: '💚', color: '#22C55E' },
-  prestamos: { nombre: 'Préstamos', corto: 'Préstamos', icono: '💙', color: '#3B82F6' },
-  pension: { nombre: 'Pensión', corto: 'Pensión', icono: '💜', color: '#A855F7' },
-  productos: { nombre: 'Productos', corto: 'Productos', icono: '🧡', color: '#F97316' },
-  arriendos: { nombre: 'Arriendos', corto: 'Arriendos', icono: '💛', color: '#EAB308' },
-  redes: { nombre: 'Redes y trabajos', corto: 'Redes y trabajos', icono: '🩷', color: '#EC4899' },
-  terceros: { nombre: 'Plata de terceros', corto: 'Plata de terceros', icono: '🤍', color: '#64748B' },
+  personal: { nombre: 'Finanzas personales', corto: 'Finanzas', icono: '👛', color: '#22C55E' },
+  prestamos: { nombre: 'Préstamos', corto: 'Préstamos', icono: '🤝', color: '#3B82F6' },
+  pension: { nombre: 'Pensión', corto: 'Pensión', icono: '🏦', color: '#A855F7' },
+  productos: { nombre: 'Productos', corto: 'Productos', icono: '📦', color: '#F97316' },
+  arriendos: { nombre: 'Arriendos', corto: 'Arriendos', icono: '🏠', color: '#EAB308' },
+  redes: { nombre: 'Redes y trabajos', corto: 'Redes y trabajos', icono: '🎬', color: '#EC4899' },
+  terceros: { nombre: 'Plata de terceros', corto: 'Plata de terceros', icono: '🔐', color: '#64748B' },
 };
 
 // Qué ofrece el botón + de cada libro: [texto, clave, tipo guardado].
@@ -50,7 +50,14 @@ const ICONOS = [
   [/transferencia/, '🔁'], [/total|resto/, '🧾'],
 ];
 
-const vista = { mes: null, tipo: 'gasto', orden: 'cantidad', anio: null };
+const vista = { mes: null, tipo: null, orden: 'cantidad', anio: null };
+
+/** Al volver al inicio se olvida el mes visto: cada libro abre en su último mes con datos. */
+function reiniciarVista() {
+  vista.mes = null;
+  vista.tipo = null;
+  vista.anio = null;
+}
 
 function norm(s) {
   return String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().trim();
@@ -191,6 +198,23 @@ function conectarMes(raiz, mes, ctx, redibujar) {
     vista.mes = moverMes(mes, Number(b.dataset.mes), ctx);
     redibujar();
   }));
+  raiz.querySelectorAll('[data-ir-mes]').forEach((b) => b.addEventListener('click', () => {
+    vista.mes = b.dataset.irMes;
+    redibujar();
+  }));
+}
+
+/** Mes vacío: dice cuál es el último mes con datos y lleva hasta allá. */
+function vacioConSalto(lista, ctx, texto) {
+  const { ui, fechas } = ctx;
+  const ultimo = lista.length ? ultimoMes(ctx, lista) : null;
+  return `<div class="fran-vacio"><p>${ui.esc(texto)}</p>${ultimo ? `<button type="button" class="boton boton--secundario" data-ir-mes="${ui.esc(ultimo)}">Ir a ${ui.esc(fechas.formatearMes(ultimo))}</button>` : ''}</div>`;
+}
+
+/** Explica de dónde sale un número cuando el mes todavía no tiene los movimientos uno por uno. */
+function avisoSinDetalle(lista) {
+  if (!lista.some((a) => a.sinDetalle)) return '';
+  return '<p class="fran-explica">ⓘ Este mes solo tiene el total de cada categoría, tomado de Mis Gastos. Los movimientos uno por uno aparecen cuando se carguen los pantallazos de ese mes.</p>';
 }
 
 function fila({ icono, titulo: t, sub, derecha, clase = '', ruta, ui }) {
@@ -249,6 +273,7 @@ function agendaDeHoy(ctx) {
 }
 
 function renderPrincipal(contenedor, ctx) {
+  reiniciarVista();
   const { ui, dinero, datos, motor, fechas } = ctx;
   const estado = datos.estado;
   const fran = estado.fran;
@@ -283,7 +308,7 @@ function renderPrincipal(contenedor, ctx) {
     ${hoyAgenda.length ? `<a href="#/agenda" class="fran-aviso">⏰ Cobros de hoy: ${hoyAgenda.length}. Toca para ver.</a>` : ''}
     <div class="fran-libros">
       ${grande('personal', dinero.formatear(sumar(deTipo(m, 'ingreso')) - sumar(deTipo(m, 'gasto'))), `Saldo de ${nombreMes}`)}
-      ${grande('prestamos', dinero.formatear(resumen.capitalEnCalle), estados || 'Cartera')}
+      ${grande('prestamos', dinero.formatear(resumen.capitalEnCalle), `Capital anotado${estados ? ` · ${estados}` : ''}`)}
       ${grande('pension', dinero.formatear(totalPension(fran)), `${dinero.formatear(usd)} USD + efectivo + carro`)}
       ${grande('productos', dinero.formatear(invertido), 'Invertido')}
     </div>
@@ -294,6 +319,7 @@ function renderPrincipal(contenedor, ctx) {
 // ---------- Otros libros (boceto 14) ----------
 
 function renderOtros(contenedor, ctx) {
+  reiniciarVista();
   const { ui, dinero, datos, fechas } = ctx;
   const lista = asientos(ctx);
   const tarjeta = (id, valor, detalle) => `<a href="#/libro/${id}" class="fran-libro fran-libro--ancho fran-libro--${id}">
@@ -339,7 +365,8 @@ function renderLibro(contenedor, id, ctx) {
     ${titular(id, ctx, '#/inicio')}
     ${caja3(['Gastos', dinero.formatear(g)], ['Ingresos', dinero.formatear(i)], ['Saldo', dinero.formatear(i - g)], ctx)}
     ${selectorMes(mes, ctx)}
-    <div class="fran-lista">${listaPorDia(m, ctx)}</div>
+    ${avisoSinDetalle(m)}
+    ${m.length ? `<div class="fran-lista">${listaPorDia(m, ctx)}</div>` : vacioConSalto(lista, ctx, 'No hay movimientos en este mes.')}
   </div>`);
   conectarMes(raiz, mes, ctx, redibujar);
   contenedor.append(raiz);
@@ -386,7 +413,8 @@ function renderPrestamos(contenedor, ctx, redibujar) {
       <a href="#/agenda">⏰ Agenda de cobros</a>
     </div>
     <p class="fran-seccion">Movimientos del mes</p>
-    <div class="fran-lista">${movimientos.map((x) => fila({ ui, icono: x.icono, titulo: x.titulo, sub: x.sub, derecha: `${x.valor < 0 ? '−' : '+'}${dinero.formatear(Math.abs(x.valor))}`, clase: x.valor < 0 ? 'fran-menos' : 'fran-mas', ruta: x.ruta })).join('') || '<p class="fran-vacio">No hay movimientos en este mes.</p>'}</div>
+    ${avisoSinDetalle(delMes(lista, mes))}
+    <div class="fran-lista">${movimientos.map((x) => fila({ ui, icono: x.icono, titulo: x.titulo, sub: x.sub, derecha: `${x.valor < 0 ? '−' : '+'}${dinero.formatear(Math.abs(x.valor))}`, clase: x.valor < 0 ? 'fran-menos' : 'fran-mas', ruta: x.ruta })).join('') || vacioConSalto(lista, ctx, 'No hay movimientos en este mes.')}</div>
   </div>`);
   conectarMes(raiz, mes, ctx, redibujar);
   contenedor.append(raiz);
@@ -490,6 +518,7 @@ function renderGraficos(contenedor, id, ctx) {
     </div>`));
     return;
   }
+  if (!vista.tipo) vista.tipo = ['arriendos', 'redes'].includes(id) ? 'ingreso' : 'gasto';
   const lista = delLibro(asientos(ctx), id);
   const mes = mesVisible(ctx, lista);
   const m = deTipo(delMes(lista, mes), vista.tipo);
@@ -512,7 +541,8 @@ function renderGraficos(contenedor, id, ctx) {
       <strong>${ui.esc(fechas.formatearMes(mes))}</strong>
       <button type="button" data-mes="1">${ui.esc(corto(moverMes(mes, 1, ctx)))}</button>
     </div>
-    ${total ? `<div class="fran-grafico">${dona(grupos, total)}</div>` : '<p class="fran-vacio">No hay movimientos en este mes.</p>'}
+    ${avisoSinDetalle(m)}
+    ${total ? `<div class="fran-grafico">${dona(grupos, total)}</div>` : vacioConSalto(deTipo(lista, vista.tipo), ctx, `No hay ${vista.tipo === 'ingreso' ? 'ingresos' : 'gastos'} en este mes.`)}
     <div class="fran-lista">${filas.map(([cat, v], i) => `<a href="#/libro/${id}/categoria/${vista.tipo}/${encodeURIComponent(cat)}" class="fran-barra-fila">
       <span class="fran-ico">${ui.esc(iconoDe(cat))}</span>
       <span class="fran-barra-fila__c">
@@ -536,6 +566,7 @@ function renderDetalle(contenedor, id, tituloDetalle, lista, atras, ctx) {
     const raiz = ui.el(`<div>
       ${titular(id, ctx, atras, tituloDetalle)}
       <p class="fran-total"><strong class="numero">Total: ${dinero.formatear(total)}</strong></p>
+      ${avisoSinDetalle(lista)}
       <div class="fran-segmento">
         <button type="button" data-orden="cantidad" class="${vista.orden === 'cantidad' ? 'activo' : ''}">Por cantidad</button>
         <button type="button" data-orden="fecha" class="${vista.orden === 'fecha' ? 'activo' : ''}">Por fecha</button>
@@ -618,7 +649,7 @@ function renderInformes(contenedor, id, ctx) {
     const g = sumar(deTipo(m, 'gasto')); const i = sumar(deTipo(m, 'ingreso'));
     if (!g && !i) return '';
     const nombre = anio === 'todo' ? k : fechas.nombreMes(Number(k.slice(5)), true);
-    return `<tr><th>${ui.esc(nombre)}</th><td class="numero">${dinero.formatear(g)}</td><td class="numero">${dinero.formatear(i)}</td><td class="numero">${dinero.formatear(i - g)}</td></tr>`;
+    return `<tr data-fila="${ui.esc(k)}"><th>${ui.esc(nombre)} ›</th><td class="numero">${dinero.formatear(g)}</td><td class="numero">${dinero.formatear(i)}</td><td class="numero">${dinero.formatear(i - g)}</td></tr>`;
   }).join('');
   const tg = sumar(deTipo(totalLista, 'gasto')); const ti = sumar(deTipo(totalLista, 'ingreso'));
   const m = delMes(lista, mes);
@@ -635,6 +666,7 @@ function renderInformes(contenedor, id, ctx) {
       ${anios.map((a) => `<button type="button" data-anio="${a}" class="${a === anio ? 'activo' : ''}">${a}</button>`).join('')}
     </div>
     <table class="fran-tabla"><thead><tr><th>${anio === 'todo' ? 'Año' : 'Mes'}</th><th>Gastos</th><th>Ingresos</th><th>Saldo</th></tr></thead><tbody>${filas}</tbody></table>
+    <p class="fran-nota">Toca ${anio === 'todo' ? 'un año' : 'un mes'} para ver su detalle.</p>
     ${id === 'personal' ? `
       <p class="fran-seccion">Presupuesto mensual</p>
       ${selectorMes(mes, ctx)}
@@ -647,6 +679,11 @@ function renderInformes(contenedor, id, ctx) {
     ${id === 'prestamos' ? '<a class="fran-acceso" href="#/libro/prestamos/personas">💵 Quién me pagó</a><a class="fran-acceso" href="#/caja">🧾 Caja efectivo y virtual</a>' : ''}
   </div>`);
   raiz.querySelectorAll('[data-anio]').forEach((b) => b.addEventListener('click', () => { vista.anio = b.dataset.anio; redibujar(); }));
+  raiz.querySelectorAll('[data-fila]').forEach((f) => f.addEventListener('click', () => {
+    if (anio === 'todo') { vista.anio = f.dataset.fila; redibujar(); return; }
+    vista.mes = f.dataset.fila;
+    ctx.navegar(`/libro/${id}`);
+  }));
   conectarMes(raiz, mes, ctx, redibujar);
   const presu = raiz.querySelector('#fran-presu');
   if (presu) presu.addEventListener('submit', async (e) => {

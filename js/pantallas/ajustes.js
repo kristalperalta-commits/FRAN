@@ -540,6 +540,45 @@ function seccionAcerca(ctx) {
 
 /* ---------- Render ---------- */
 
+function seccionCandado(ctx) {
+  const { ui, candado } = ctx;
+  const seccion = ui.el('<section class="tarjeta ajustes-seccion"><div id="candado-cuerpo"></div></section>');
+  const cuerpo = seccion.querySelector('#candado-cuerpo');
+  const opciones = [[0, 'Al salir'], [1, '1 min'], [5, '5 min'], [15, '15 min']];
+
+  async function pintar() {
+    if (!candado) { cuerpo.innerHTML = '<p class="ajustes-texto">No disponible.</p>'; return; }
+    const e = candado.estado();
+    if (e.activo) {
+      cuerpo.innerHTML = `
+        <p class="ajustes-texto">Activo en este aparato. Fran pide Face ID, o el código del aparato si falla, al abrir.</p>
+        <p class="ajustes-ayuda">Volver a pedirlo si sales de la app por:</p>
+        <div class="fran-chips">${opciones.map(([m, t]) => `<button type="button" data-min="${m}" class="${m === e.minutos ? 'activo' : ''}">${t}</button>`).join('')}</div>
+        <div class="ajustes-botones"><button type="button" class="boton boton--secundario boton--grande" id="candado-quitar">Quitar Face ID de este aparato</button></div>`;
+      cuerpo.querySelectorAll('[data-min]').forEach((b) => b.addEventListener('click', () => { candado.fijarMinutos(Number(b.dataset.min)); pintar(); }));
+      cuerpo.querySelector('#candado-quitar').addEventListener('click', async () => {
+        if (await ui.confirmar('¿Quitar Face ID? Fran abrirá sin pedir nada en este aparato.', { aceptar: 'Sí, quitar', peligro: true })) { candado.desactivar(); pintar(); }
+      });
+      return;
+    }
+    if (!(await candado.disponible())) {
+      cuerpo.innerHTML = '<p class="ajustes-texto">Este aparato no tiene Face ID, huella ni Windows Hello disponibles. Fran abre sin pedir nada aquí.</p>';
+      return;
+    }
+    cuerpo.innerHTML = `
+      <p class="ajustes-texto">Sin activar en este aparato: Fran abre sin pedir nada.</p>
+      <div class="ajustes-botones"><button type="button" class="boton boton--primario boton--grande" id="candado-activar-yo">Activar Face ID</button></div>
+      <p class="ajustes-ayuda" id="candado-msg-yo" aria-live="polite"></p>`;
+    cuerpo.querySelector('#candado-activar-yo').addEventListener('click', async () => {
+      try { await candado.activar(); ui.toast('Face ID activado.'); pintar(); } catch (error) {
+        cuerpo.querySelector('#candado-msg-yo').textContent = error && error.name === 'NotAllowedError' ? 'No se confirmó. Inténtalo otra vez.' : textoError(error);
+      }
+    });
+  }
+  pintar();
+  return seccion;
+}
+
 function plegable(icono, texto, seccion, ui) {
   const caja = ui.el(`<details class="fran-ajuste"><summary><span>${icono}</span>${ui.esc(texto)}</summary></details>`);
   caja.append(seccion);
@@ -580,6 +619,7 @@ export async function render(contenedor, params, ctx) {
   contenedor.innerHTML = '';
   contenedor.append(ui.el(`<header class="fran-titulo"><a href="#/inicio" class="fran-titulo__atras" aria-label="Volver">‹</a><h1>Yo</h1></header>`));
   contenedor.append(seccionTemas(ctx));
+  contenedor.append(plegable('🔒', 'Entrada con Face ID', seccionCandado(ctx), ui));
   contenedor.append(plegable('☁️', 'Nube', seccionNube(ctx), ui));
   const respaldo = plegable('💾', 'Respaldo y copias', seccionCopia(ctx), ui);
   respaldo.append(seccionHistoricos(ctx));

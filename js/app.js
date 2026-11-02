@@ -11,7 +11,7 @@
 
 import * as ui from './ui.js';
 
-const VERSION_APP = '3.0.1';
+const VERSION_APP = '3.1.0';
 const contenedor = document.getElementById('pantalla');
 
 // ---------- Rutas (sección 7 de la especificación) ----------
@@ -100,10 +100,18 @@ function navegar(ruta) {
 let libroActual = 'personal';
 const COLOR_LIBRO = { personal: '#22C55E', prestamos: '#3B82F6', pension: '#A855F7', productos: '#F97316', arriendos: '#EAB308', redes: '#EC4899', terceros: '#64748B' };
 
+const DEGRADADO_LIBRO = {
+  personal: ['#15803d', '#14532d'], prestamos: ['#2563eb', '#1e3a8a'], pension: ['#9333ea', '#581c87'], productos: ['#c2410c', '#7c2d12'],
+  arriendos: ['#a16207', '#713f12'], redes: ['#be185d', '#831843'], terceros: ['#475569', '#1e293b'],
+};
+
 function marcarPestana(nombre, resuelta = null) {
   document.body.classList.toggle('sin-barra', !!(resuelta && resuelta.sinBarra));
   if (resuelta && resuelta.libro && COLOR_LIBRO[resuelta.libro]) libroActual = resuelta.libro;
   document.documentElement.style.setProperty('--libro', COLOR_LIBRO[libroActual]);
+  const [g1, g2] = DEGRADADO_LIBRO[libroActual];
+  document.documentElement.style.setProperty('--libro-g1', g1);
+  document.documentElement.style.setProperty('--libro-g2', g2);
   const rutas = { inicio: `#/libro/${libroActual}`, graficos: `#/libro/${libroActual}/graficos`, informes: `#/libro/${libroActual}/informes`, yo: '#/ajustes' };
   document.querySelectorAll('.barra-inferior .pestana').forEach((pestana) => {
     const clave = pestana.dataset.pestana;
@@ -195,6 +203,7 @@ let rutaActual = null;
  * conservarScroll: true cuando se vuelve a dibujar la misma pantalla por un cambio de datos.
  */
 async function renderizar({ conservarScroll = false } = {}) {
+  if (ctx.candado && ctx.candado.cerrado()) return;
   const turno = ++turnoRender;
   const resuelta = resolverRuta(window.location.hash);
 
@@ -309,8 +318,14 @@ async function arrancar() {
     const modulo = await import('./pantallas/fran.js');
     modulo.abrirMas(libroActual, ctx);
   });
-  await renderizar({ conservarScroll: false });
   registrarServiceWorker();
+  try {
+    ctx.candado = await import('./candado.js');
+    await ctx.candado.exigir(ctx);
+  } catch (error) {
+    console.warn('El candado no arrancó:', error);
+  }
+  await renderizar({ conservarScroll: false });
 }
 
 // Errores que nadie atrapó: se avisan, no se esconden.
