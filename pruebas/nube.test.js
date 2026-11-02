@@ -22,8 +22,8 @@ describe('nube.decidir', () => {
 });
 
 describe('nube.configurada', () => {
-  test('sin url ni clave, la nube está apagada', () => {
-    assert.equal(configurada(), false);
+  test('con la conexión llena, la nube está encendida', () => {
+    assert.equal(configurada(), true);
   });
 });
 
