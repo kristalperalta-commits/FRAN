@@ -176,6 +176,108 @@ function seccionNombre(ctx) {
   return seccion;
 }
 
+function textoHace(iso) {
+  if (!iso) return 'todavía no';
+  const ms = Date.now() - new Date(iso).getTime();
+  const min = Math.round(ms / 60000);
+  if (min < 1) return 'hace un momento';
+  if (min < 60) return `hace ${min} min`;
+  const h = Math.round(min / 60);
+  if (h < 24) return `hace ${h} h`;
+  return `hace ${Math.round(h / 24)} días`;
+}
+
+function seccionNube(ctx) {
+  const { ui, nube } = ctx;
+  const seccion = ui.el('<section class="tarjeta ajustes-seccion"><h2 class="ajustes-seccion__titulo">Nube</h2><div id="nube-cuerpo"></div></section>');
+  const cuerpo = seccion.querySelector('#nube-cuerpo');
+
+  function pintar() {
+    if (!nube || !nube.configurada()) {
+      cuerpo.innerHTML = '<p class="ajustes-texto">La nube todavía no está conectada. Cuando esté, lo que anotes en un aparato aparece en los demás.</p>';
+      return;
+    }
+    const e = nube.estado();
+    if (!e.sesion) {
+      cuerpo.innerHTML = `
+        <p class="ajustes-texto">Entra con tu correo para que tus datos se guarden en la nube y se vean igual en el teléfono y en el computador.</p>
+        <form class="formulario" id="nube-form" novalidate>
+          ${ui.campo({ etiqueta: 'Correo', nombre: 'correo', tipo: 'email', requerido: true, atributos: { autocomplete: 'username', inputmode: 'email' } })}
+          ${ui.campo({ etiqueta: 'Contraseña', nombre: 'contrasena', tipo: 'password', requerido: true, atributos: { autocomplete: 'current-password', minlength: 6 } })}
+          <div class="ajustes-botones">
+            <button type="submit" class="boton boton--primario boton--grande" data-accion="entrar">Entrar</button>
+            <button type="submit" class="boton boton--secundario boton--grande" data-accion="registrar">Crear cuenta</button>
+          </div>
+          <p class="ajustes-ayuda" id="nube-mensaje" aria-live="polite"></p>
+        </form>`;
+      const form = cuerpo.querySelector('#nube-form');
+      let accion = 'entrar';
+      form.querySelectorAll('[data-accion]').forEach((b) => b.addEventListener('click', () => { accion = b.dataset.accion; }));
+      form.addEventListener('submit', async (evento) => {
+        evento.preventDefault();
+        const v = ui.leerFormulario(form);
+        const mensaje = form.querySelector('#nube-mensaje');
+        if (!v.correo || !v.contrasena) { mensaje.textContent = 'Escribe el correo y la contraseña.'; return; }
+        form.querySelectorAll('button').forEach((b) => { b.disabled = true; });
+        mensaje.textContent = accion === 'entrar' ? 'Entrando…' : 'Creando la cuenta…';
+        try {
+          if (accion === 'entrar') await nube.entrar(v.correo.trim(), v.contrasena);
+          else await nube.registrar(v.correo.trim(), v.contrasena);
+          ui.toast('Conectada a la nube.');
+          pintar();
+        } catch (error) {
+          mensaje.textContent = textoError(error);
+          form.querySelectorAll('button').forEach((b) => { b.disabled = false; });
+        }
+      });
+      return;
+    }
+    const r = nube.respaldo();
+    let estadoTexto;
+    if (e.sincronizando) estadoTexto = 'Sincronizando…';
+    else if (!e.enLinea) estadoTexto = `Sin conexión. Se sube cuando vuelva la señal${e.pendiente ? ' (hay cambios pendientes)' : ''}.`;
+    else if (e.error) estadoTexto = `Problema: ${e.error}`;
+    else if (e.pendiente) estadoTexto = 'Hay cambios por subir.';
+    else estadoTexto = `Al día. Última sincronización ${textoHace(e.ultimaVez)}.`;
+    cuerpo.innerHTML = `
+      <p class="ajustes-texto">Conectada como <span class="negrita">${ui.esc(e.sesion.correo || '')}</span>.</p>
+      <p class="ajustes-texto" id="nube-estado">${ui.esc(estadoTexto)}</p>
+      <div class="ajustes-botones">
+        <button type="button" class="boton boton--primario boton--grande" id="nube-sync">Sincronizar ahora</button>
+        <button type="button" class="boton boton--secundario boton--grande" id="nube-salir">Salir de la nube en este aparato</button>
+      </div>
+      ${r ? `<p class="ajustes-ayuda">Hay una copia previa de la nube guardada (${ui.esc(textoHace(r.guardadoEn))}), de cuando dos aparatos cambiaron a la vez.</p>
+      <div class="ajustes-botones">
+        <button type="button" class="boton boton--secundario boton--grande" id="nube-restaurar">Volver a esa copia</button>
+        <button type="button" class="boton boton--secundario boton--grande" id="nube-olvidar">Borrar esa copia</button>
+      </div>` : ''}`;
+    cuerpo.querySelector('#nube-sync').addEventListener('click', async () => {
+      const resultado = await nube.sincronizar('manual');
+      ui.toast(resultado === 'error' ? 'No se pudo sincronizar.' : 'Sincronizado.');
+      pintar();
+    });
+    cuerpo.querySelector('#nube-salir').addEventListener('click', async () => {
+      if (!(await ui.confirmar('¿Salir de la nube en este aparato? Los datos siguen aquí y en la nube.', { aceptar: 'Sí, salir' }))) return;
+      nube.salir();
+      pintar();
+    });
+    const restaurar = cuerpo.querySelector('#nube-restaurar');
+    if (restaurar) restaurar.addEventListener('click', async () => {
+      if (!(await ui.confirmar('¿Reemplazar lo de ahora por la copia previa de la nube?', { aceptar: 'Sí, volver', peligro: true }))) return;
+      try { await nube.restaurarRespaldo(); ui.toast('Copia previa restaurada.'); } catch (error) { ui.toast(textoError(error)); }
+      pintar();
+    });
+    const olvidar = cuerpo.querySelector('#nube-olvidar');
+    if (olvidar) olvidar.addEventListener('click', () => { nube.borrarRespaldo(); pintar(); });
+  }
+
+  pintar();
+  if (nube && nube.configurada()) {
+    const baja = nube.suscribir(() => { if (document.body.contains(seccion)) pintar(); else baja(); });
+  }
+  return seccion;
+}
+
 function seccionCopia(ctx) {
   const { ui, datos } = ctx;
   const hoy = ctx.hoy();
@@ -193,7 +295,7 @@ function seccionCopia(ctx) {
     <section class="tarjeta ajustes-seccion">
       <h2 class="ajustes-seccion__titulo">Copia de seguridad</h2>
       <p class="ajustes-texto">
-        Todo se guarda solo en este aparato. Saca una copia cada tanto y guárdala en
+        Saca una copia cada tanto y guárdala en
         tus archivos, en tu correo o en WhatsApp. Si cambias de teléfono, la importas y recuperas todo.
       </p>
       <ul class="ajustes-cuentas" aria-label="Lo que hay guardado">
@@ -444,6 +546,7 @@ export async function render(contenedor, params, ctx) {
   contenedor.append(ui.el(ui.encabezado('Yo', { atras: '#/inicio' })));
   contenedor.append(seccionTemas(ctx));
   contenedor.append(seccionNombre(ctx));
+  contenedor.append(seccionNube(ctx));
   contenedor.append(seccionCopia(ctx));
   contenedor.append(seccionCaja(ctx));
   contenedor.append(seccionCasos(ctx));

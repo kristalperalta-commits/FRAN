@@ -11,7 +11,7 @@
 
 import * as ui from './ui.js';
 
-const VERSION_APP = '2.0.0';
+const VERSION_APP = '2.1.0';
 const contenedor = document.getElementById('pantalla');
 
 // ---------- Rutas (sección 7 de la especificación) ----------
@@ -292,6 +292,14 @@ async function arrancar() {
   // Cada guardado vuelve a dibujar la pantalla actual conservando la posición.
   if (typeof ctx.datos.suscribir === 'function') {
     ctx.datos.suscribir(() => renderizar({ conservarScroll: true }));
+  }
+
+  try {
+    const nube = await import('./nube.js');
+    ctx.nube = nube;
+    nube.iniciar(ctx.datos, { avisar: ui.toast });
+  } catch (error) {
+    console.warn('La nube no arrancó:', error);
   }
 
   window.addEventListener('hashchange', () => renderizar({ conservarScroll: false }));

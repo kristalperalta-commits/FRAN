@@ -141,7 +141,7 @@ function renderPrincipal(contenedor, ctx) {
       <p class="fran-plata__detalle">Efectivo ${dinero.formatear(plata.efectivo)} · Virtual ${fran.virtualPorDefinir ? 'por confirmar' : dinero.formatear(plata.virtual)} · Tarjetas −${dinero.formatear(plata.tarjetas)}</p>
       ${fran.virtualPorDefinir ? '<p class="fran-plata__detalle">Este total todavía no cuenta lo virtual.</p>' : ''}
     </div>
-    ${sinDatos ? `<div class="fran-aviso"><p class="negrita">Todavía no están tus datos en este teléfono.</p><p>En Yo toca "Importar copia" y elige el archivo mi-copia-fran.json.</p><a href="#/ajustes" class="boton boton--primario">Ir a importar</a></div>` : ''}
+    ${sinDatos ? `<div class="fran-aviso"><p class="negrita">Todavía no están tus datos en este teléfono.</p><p>En Yo entra a la nube con tu correo; si ya los cargaste en otro aparato, aparecen solos. Si es la primera vez, importa el archivo mi-copia-fran.json.</p><a href="#/ajustes" class="boton boton--primario">Ir a Yo</a></div>` : ''}
     <div class="fran-libros">
       ${tarjetaLibro('personal', saldoMes('personal'), 'Saldo del mes', ctx, 'fran-libro--ancho')}
       ${tarjetaLibro('prestamos', resumen.capitalEnCalle, `Por confirmar ${c.por_confirmar} · Al día ${c.al_dia} · Atrasados ${c.atrasado} · Congelados ${c.congelado} · Legal ${c.legal}`, ctx, 'fran-libro--ancho')}
