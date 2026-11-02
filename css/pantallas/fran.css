@@ -1,93 +1,200 @@
-/* Estilos de los libros de Fran (js/pantallas/fran.js). */
-.fran-cabeza { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
-.fran-cabeza h1 { margin: 0; font-size: 1.9rem; }
-.fran-yo { padding: 8px 16px; border-radius: 999px; background: var(--fondo-suave); color: var(--texto); font-weight: 600; text-decoration: none; }
+/* Pantallas de Fran, siguiendo los bocetos del plan maestro. */
 
-.fran-plata { --libro: var(--primario); padding: 18px; margin-bottom: 14px; border-radius: 18px; background: var(--fondo-tarjeta); border-left: 5px solid var(--libro); box-shadow: var(--sombra); }
-.fran-plata__titulo { margin: 0; color: var(--texto-suave); }
-.fran-plata__valor { margin: 2px 0 4px; font-size: 2.3rem; font-weight: 700; word-break: break-word; }
-.fran-plata__detalle { margin: 0; color: var(--texto-suave); font-size: 0.95rem; }
+/* Títulos */
+.fran-titulo { position: relative; display: flex; justify-content: center; align-items: center; min-height: 44px; margin-bottom: 12px; }
+.fran-titulo h1 { margin: 0; padding: 0 44px; font-size: 1.35rem; font-weight: 800; text-align: center; overflow-wrap: anywhere; }
+.fran-titulo--principal h1 { font-size: 1.5rem; }
+.fran-titulo__atras { position: absolute; left: 0; top: 0; width: 44px; height: 44px; display: grid; place-items: center; color: var(--texto); font-size: 2rem; line-height: 1; text-decoration: none; }
+.fran-titulo__der { position: absolute; right: 0; top: 0; width: 44px; height: 44px; display: grid; place-items: center; font-size: 1.4rem; text-decoration: none; }
+.fran-yo { position: absolute; right: 0; top: 4px; padding: 7px 14px; border-radius: 999px; background: var(--fondo-suave); color: var(--texto); font-weight: 700; text-decoration: none; }
 
-.fran-aviso { padding: 14px; margin-bottom: 14px; border-radius: 14px; background: var(--fondo-suave); }
-.fran-aviso p { margin: 0 0 8px; }
+/* Mi plata propia */
+.fran-plata { display: flex; flex-direction: column; gap: 3px; padding: 14px 16px; margin-bottom: 12px; border-radius: 18px; background: var(--fondo-tarjeta); box-shadow: var(--sombra); }
+.fran-plata small { color: var(--texto-suave); font-size: 0.86rem; }
+.fran-plata strong { font-size: 2.2rem; line-height: 1.15; font-weight: 800; }
+.fran-aviso { display: block; padding: 12px 14px; margin-bottom: 12px; border-radius: 14px; background: var(--fondo-suave); color: var(--texto); font-weight: 600; text-decoration: none; }
 
+/* Tarjetas de libros */
 .fran-libros { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
-.fran-libro { display: flex; flex-direction: column; gap: 3px; min-height: 104px; padding: 14px; border-radius: 16px; background: var(--fondo-tarjeta); color: var(--texto); text-decoration: none; border-top: 5px solid var(--libro); box-shadow: var(--sombra); min-width: 0; }
-.fran-libro--ancho { grid-column: 1 / -1; }
-.fran-libro__nombre { font-weight: 700; }
-.fran-libro__valor { font-size: 1.45rem; font-weight: 700; word-break: break-word; }
-.fran-libro__detalle { color: var(--texto-suave); font-size: 0.9rem; }
+.fran-libro { display: flex; flex-direction: column; justify-content: space-between; gap: 4px; min-height: 124px; padding: 14px; border-radius: 20px; color: #fff; text-decoration: none; min-width: 0; box-shadow: 0 3px 10px rgba(0, 0, 0, 0.22); }
+.fran-libro--ancho { grid-column: 1 / -1; min-height: 104px; }
+.fran-libro__nombre { display: flex; align-items: center; gap: 6px; font-weight: 800; font-size: 0.98rem; line-height: 1.15; }
+.fran-libro__nombre i { font-style: normal; font-size: 1.15rem; }
+.fran-libro__valor { font-size: 1.32rem; font-weight: 800; word-break: break-word; }
+.fran-libro__detalle { font-size: 0.82rem; opacity: 0.92; line-height: 1.25; }
+.fran-libro--personal { background: linear-gradient(145deg, #22c55e, #15803d); }
+.fran-libro--prestamos { background: linear-gradient(145deg, #3b82f6, #1d4ed8); }
+.fran-libro--pension { background: linear-gradient(145deg, #a855f7, #6d28d9); }
+.fran-libro--productos { background: linear-gradient(145deg, #f97316, #c2410c); }
+.fran-libro--arriendos { background: linear-gradient(145deg, #eab308, #a16207); }
+.fran-libro--redes { background: linear-gradient(145deg, #ec4899, #be185d); }
+.fran-libro--terceros { background: linear-gradient(145deg, #64748b, #334155); }
+.fran-libros-chicos { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; margin-top: 10px; }
+.fran-libro-chico { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; min-height: 86px; padding: 8px 4px; border-radius: 16px; color: #fff; font-weight: 700; font-size: 0.86rem; line-height: 1.15; text-align: center; text-decoration: none; box-shadow: 0 3px 10px rgba(0, 0, 0, 0.22); }
+.fran-libro-chico i { font-style: normal; }
 
-.fran-franja { display: flex; align-items: center; gap: 10px; margin: calc(var(--espacio) * -1) calc(var(--espacio) * -1) 12px; padding: 14px var(--espacio); background: var(--libro); color: #0d0f12; }
-.fran-franja h1 { margin: 0; font-size: 1.3rem; color: inherit; min-width: 0; overflow-wrap: anywhere; }
-.fran-franja__atras { font-size: 2rem; line-height: 1; color: inherit; text-decoration: none; padding: 0 8px 4px 0; }
+/* Caja de tres cifras */
+.fran-caja3 { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 4px; padding: 9px 6px; margin-bottom: 10px; border: 1.5px solid var(--libro); border-radius: 14px; text-align: center; }
+.fran-caja3 small { display: block; color: var(--texto-suave); font-size: 0.78rem; }
+.fran-caja3 strong { font-size: 0.95rem; font-weight: 800; overflow-wrap: anywhere; }
 
-.fran-mes { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
-.fran-mes button { width: 48px; height: 44px; border: 1px solid var(--borde); border-radius: 12px; background: var(--fondo-tarjeta); color: var(--texto); font-size: 1.4rem; cursor: pointer; }
-.fran-mes strong { text-transform: capitalize; }
+/* Mes */
+.fran-mes { display: flex; justify-content: center; align-items: center; gap: 10px; margin-bottom: 8px; color: var(--texto-suave); }
+.fran-mes button { min-width: 40px; min-height: 40px; border: 0; background: none; color: var(--texto); font: inherit; font-size: 0.9rem; cursor: pointer; }
+.fran-mes span { min-width: 130px; text-align: center; }
+.fran-mes--tres { justify-content: space-between; }
+.fran-mes--tres button { color: var(--texto-suave); text-transform: lowercase; }
+.fran-mes--tres strong { color: var(--texto); }
 
-.fran-cifras { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; margin-bottom: 12px; }
-.fran-cifras div { padding: 10px; border-radius: 12px; background: var(--fondo-tarjeta); box-shadow: var(--sombra); min-width: 0; }
-.fran-cifras small { display: block; color: var(--texto-suave); font-size: 0.85rem; }
-.fran-cifras strong { font-size: 1rem; overflow-wrap: anywhere; }
-
-.fran-estados { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 12px; }
-.fran-estados span { padding: 6px 10px; border-radius: 999px; background: var(--fondo-suave); font-size: 0.92rem; }
-.fran-accesos { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 14px; }
-.fran-accesos .boton { width: 100%; }
-
+/* Listas */
 .fran-lista { margin-bottom: 14px; }
-.fran-dia { display: flex; justify-content: space-between; gap: 8px; padding: 10px 2px 4px; font-weight: 600; font-size: 0.92rem; flex-wrap: wrap; }
-.fran-mov { display: flex; align-items: center; gap: 10px; padding: 10px; border-bottom: 1px solid var(--borde); background: var(--fondo-tarjeta); }
-.fran-mov__icono { flex: none; width: 36px; height: 36px; display: grid; place-items: center; border-radius: 50%; background: var(--fondo-suave); font-weight: 700; }
-.fran-mov__texto { flex: 1; min-width: 0; display: flex; flex-direction: column; }
-.fran-mov__texto small { color: var(--texto-suave); overflow-wrap: anywhere; }
-.fran-nota { margin: 0 0 10px; }
+.fran-dia { display: flex; justify-content: space-between; gap: 8px; padding: 10px 0 5px; border-bottom: 1px solid var(--borde); color: var(--texto-suave); font-size: 0.84rem; }
+.fran-fila { display: flex; align-items: center; gap: 10px; min-height: 58px; padding: 8px 0; border-bottom: 1px solid var(--borde); color: var(--texto); text-decoration: none; }
+.fran-ico { flex: none; width: 38px; height: 38px; display: grid; place-items: center; border-radius: 50%; background: var(--libro); font-size: 1.05rem; font-weight: 800; color: #fff; }
+.fran-fila__texto { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.fran-fila__texto strong { font-weight: 700; overflow-wrap: anywhere; }
+.fran-fila__texto small { color: var(--texto-suave); font-size: 0.82rem; overflow-wrap: anywhere; }
+.fran-fila__valor { flex: none; max-width: 48%; text-align: right; font-weight: 800; }
+.fran-mas { color: var(--entra); }
+.fran-menos { color: var(--sale); }
+.fran-vacio { padding: 18px 8px; color: var(--texto-suave); text-align: center; }
+.fran-nota { margin: 0 0 12px; color: var(--texto-suave); font-size: 0.9rem; }
+.fran-seccion { margin: 12px 0 2px; padding-bottom: 5px; border-bottom: 1px solid var(--borde); color: var(--texto-suave); font-size: 0.88rem; }
+.fran-seccion--centro { border: 0; text-align: center; }
 
-.fran-barra-fila { display: flex; flex-direction: column; gap: 5px; padding: 12px 10px; border-bottom: 1px solid var(--borde); background: var(--fondo-tarjeta); color: var(--texto); text-decoration: none; }
-.fran-barra-fila__fila { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+/* Tarjetas pequeñas */
+.fran-dos { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; margin-bottom: 10px; }
+.fran-tarjeta { display: flex; flex-direction: column; gap: 2px; padding: 11px 12px; border-radius: 14px; background: var(--fondo-tarjeta); box-shadow: var(--sombra); min-width: 0; margin-bottom: 10px; }
+.fran-dos .fran-tarjeta { margin-bottom: 0; }
+.fran-tarjeta small { color: var(--texto-suave); font-size: 0.84rem; }
+.fran-tarjeta strong { font-size: 1.22rem; font-weight: 800; overflow-wrap: anywhere; }
+
+/* Estados */
+.fran-pastillas { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 10px; }
+.fran-pastilla { display: inline-flex; align-items: center; gap: 5px; padding: 5px 10px; border-radius: 999px; background: var(--fondo-suave); color: var(--texto); font-size: 0.84rem; font-weight: 700; text-decoration: none; }
+.fran-pastilla i { width: 9px; height: 9px; border-radius: 50%; background: #94a3b8; }
+.fran-pastilla.verde i { background: #22c55e; }
+.fran-pastilla.amarillo i { background: #eab308; }
+.fran-pastilla.rojo i { background: #ef4444; }
+.fran-accesos { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 8px; }
+.fran-accesos a, .fran-acceso { display: flex; align-items: center; justify-content: center; min-height: 46px; padding: 6px; border-radius: 12px; background: var(--fondo-tarjeta); box-shadow: var(--sombra); color: var(--texto); font-weight: 700; font-size: 0.92rem; text-align: center; text-decoration: none; }
+.fran-acceso { margin-bottom: 8px; }
+
+/* Hero: pensión y otros */
+.fran-hero { display: flex; flex-direction: column; gap: 3px; padding: 14px 16px; margin-bottom: 10px; border-radius: 16px; background: color-mix(in srgb, var(--libro) 22%, var(--fondo-tarjeta)); }
+.fran-hero small { color: var(--texto-suave); }
+.fran-hero strong { font-size: 2rem; font-weight: 800; overflow-wrap: anywhere; }
+.fran-hero button { align-self: flex-start; padding: 4px 0; border: 0; background: none; color: var(--texto-suave); font: inherit; font-size: 0.86rem; cursor: pointer; }
+.fran-hero--centro { text-align: center; }
+.fran-hero__par { display: grid; grid-template-columns: 1fr 1fr; margin-top: 4px; }
+.fran-hero__par span { display: flex; flex-direction: column; min-width: 0; }
+.fran-hero__par b { overflow-wrap: anywhere; }
+.fran-tasa { display: flex; gap: 8px; align-items: center; margin-top: 6px; }
+.fran-tasa input { flex: 1; min-width: 0; min-height: 44px; padding: 8px 10px; font-size: 16px; border-radius: 10px; border: 1px solid var(--borde); background: var(--fondo); color: var(--texto); }
+
+/* Segmentos */
+.fran-segmento { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); margin-bottom: 10px; border: 1.5px solid var(--libro); border-radius: 12px; overflow: hidden; }
+.fran-segmento button, .fran-segmento a { display: grid; place-items: center; min-height: 42px; padding: 2px 4px; border: 0; background: transparent; color: var(--texto); font: inherit; font-weight: 700; font-size: 0.92rem; line-height: 1.1; text-align: center; text-decoration: none; cursor: pointer; }
+.fran-segmento .activo { background: var(--libro); color: #0d0f12; }
+.fran-anios { display: flex; gap: 6px; margin-bottom: 10px; overflow-x: auto; }
+.fran-anios button { flex: none; min-height: 40px; padding: 0 14px; border: 0; border-radius: 10px; background: var(--fondo-suave); color: var(--texto); font: inherit; font-weight: 700; cursor: pointer; }
+.fran-anios .activo { background: var(--libro); color: #0d0f12; }
+
+/* Gráficos */
+.fran-grafico { display: flex; justify-content: center; margin: 2px 0 8px; }
+.fran-dona { width: 62%; max-width: 230px; }
+.fran-dona__n { font-size: 15px; font-weight: 800; fill: var(--texto); }
+.fran-dona__t { font-size: 9px; font-weight: 700; fill: var(--texto); }
+.fran-barra-fila { display: flex; align-items: center; gap: 10px; padding: 9px 0; border-bottom: 1px solid var(--borde); color: var(--texto); text-decoration: none; }
+.fran-barra-fila__c { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4px; }
+.fran-barra-fila__l { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
 .fran-barra-fila strong { min-width: 0; overflow-wrap: anywhere; }
-.fran-barra { display: block; height: 9px; border-radius: 6px; background: var(--libro); flex: none; }
-.fran-barra-fila small { color: var(--texto-suave); }
+.fran-barra-fila .numero { flex: none; font-weight: 800; }
+.fran-barra-fila small { flex: none; color: var(--texto-suave); font-size: 0.8rem; }
+.fran-barra { display: block; height: 7px; margin-right: auto; border-radius: 5px; background: var(--libro); }
+.fran-total { margin: 0 0 10px; text-align: center; font-size: 1.1rem; }
+.fran-borrar { padding: 3px 10px; border: 1px solid var(--borde); border-radius: 8px; background: none; color: var(--peligro); font: inherit; font-size: 0.82rem; cursor: pointer; }
 
-.fran-total { margin: 0 0 10px; }
-.fran-orden { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; padding: 4px; margin-bottom: 12px; border-radius: 14px; background: var(--fondo-suave); }
-.fran-orden button, .fran-anios button { min-height: 44px; border: 0; border-radius: 10px; background: transparent; color: var(--texto); font: inherit; font-weight: 600; cursor: pointer; }
-.fran-orden button.activo, .fran-anios button.activo { background: var(--fondo-tarjeta); box-shadow: var(--sombra); }
-.fran-anios { display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 12px; }
-.fran-anios button { padding: 0 14px; background: var(--fondo-suave); }
-
-.fran-grafico { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 10px; align-items: center; margin-bottom: 12px; }
-.fran-dona { width: 100%; max-width: 170px; }
-.fran-dona__texto { font-size: 13px; font-weight: 700; fill: var(--texto); }
-.fran-leyenda { list-style: none; margin: 0; padding: 0; font-size: 0.92rem; }
-.fran-leyenda li { display: grid; grid-template-columns: 12px 1fr auto; gap: 6px; align-items: center; padding: 3px 0; }
-.fran-leyenda i { width: 12px; height: 12px; border-radius: 50%; }
-
-.fran-tabla { width: 100%; border-collapse: collapse; font-size: 0.86rem; }
-.fran-tabla th, .fran-tabla td { padding: 7px 3px; text-align: right; border-bottom: 1px solid var(--borde); }
+/* Tablas */
+.fran-tabla { width: 100%; border-collapse: collapse; font-size: 0.84rem; margin-bottom: 12px; }
+.fran-tabla th, .fran-tabla td { padding: 8px 2px; text-align: right; border-bottom: 1px solid var(--borde); white-space: nowrap; }
 .fran-tabla th:first-child { text-align: left; }
-.fran-tabla tfoot th, .fran-tabla tfoot td { font-weight: 700; border-bottom: 0; }
+.fran-tabla thead th { color: var(--texto-suave); font-weight: 600; }
 
-.fran-cal { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; text-align: center; margin: 6px 0; }
-.fran-cal span, .fran-cal b { padding: 7px 0; border-radius: 8px; }
-.fran-cal .rojo { background: #c62828; color: #fff; }
-.fran-cal .verde { background: #2e7d32; color: #fff; }
+/* Calendario */
+.fran-cal { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 5px; margin-bottom: 10px; text-align: center; }
+.fran-cal b { padding: 4px 0; color: var(--texto-suave); font-size: 0.85rem; }
+.fran-cal span { padding: 11px 0; border-radius: 9px; background: var(--fondo-suave); font-size: 0.92rem; }
+.fran-cal span.vacia { background: none; }
+.fran-cal span.rojo { background: #7f1d1d; color: #fff; }
+.fran-cal span.verde { background: #14532d; color: #fff; }
+.fran-leyenda { margin: 0 0 6px; color: var(--texto-suave); font-size: 0.86rem; }
+.fran-leyenda i { display: inline-block; width: 10px; height: 10px; margin: 0 3px 0 6px; border-radius: 50%; }
+.fran-leyenda i.rojo { background: #b91c1c; }
+.fran-leyenda i.verde { background: #15803d; }
 
-.fran-tasa { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-bottom: 12px; }
-.fran-tasa label { width: 100%; color: var(--texto-suave); }
-.fran-tasa input { flex: 1; min-width: 0; min-height: 44px; padding: 8px 10px; font-size: 16px; border-radius: 10px; border: 1px solid var(--borde); background: var(--fondo-tarjeta); color: var(--texto); }
+/* Agregar */
+.fran-agregar__cabeza { display: grid; grid-template-columns: 76px 1fr 136px; align-items: center; min-height: 44px; margin-bottom: 8px; }
+.fran-agregar__cabeza a { color: var(--texto); text-decoration: none; }
+.fran-agregar__cabeza strong { font-size: 1.05rem; text-align: center; }
+.fran-fecha { justify-self: end; display: flex; align-items: center; gap: 4px; font-size: 0.9rem; }
+.fran-fecha input { width: 132px; min-height: 36px; padding: 2px 4px; border: 1px solid var(--borde); border-radius: 8px; background: var(--fondo-tarjeta); color: var(--texto); font-size: 16px; }
+.fran-iconos { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px 4px; margin: 4px 0 12px; }
+.fran-iconos button { display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 0; border: 0; background: none; color: var(--texto); font: inherit; cursor: pointer; min-width: 0; }
+.fran-iconos span { width: 50px; height: 50px; display: grid; place-items: center; border: 1.5px solid var(--borde); border-radius: 50%; font-size: 1.45rem; }
+.fran-iconos small { font-size: 0.76rem; line-height: 1.1; overflow-wrap: anywhere; }
+.fran-iconos .activo span { border-color: var(--libro); background: color-mix(in srgb, var(--libro) 28%, transparent); box-shadow: 0 0 0 2px var(--libro); }
+.fran-iconos .activo small { font-weight: 800; }
+.fran-entrada { width: 100%; min-height: 46px; padding: 8px 12px; margin-bottom: 10px; border: 1px solid var(--borde); border-radius: 12px; background: var(--fondo-tarjeta); color: var(--texto); font-size: 16px; }
+.fran-escribir { display: flex; align-items: center; gap: 6px; padding: 4px 6px 4px 14px; margin-bottom: 8px; border: 1.5px solid var(--libro); border-radius: 24px; background: var(--fondo-tarjeta); }
+.fran-escribir input { flex: 1; min-width: 0; min-height: 44px; border: 0; background: none; color: var(--texto); font-size: 16px; outline: none; }
+.fran-mic { width: 40px; height: 40px; border: 0; background: none; font-size: 1.2rem; cursor: pointer; }
+.fran-pagado { margin: 4px 0 4px; color: var(--texto-suave); font-size: 0.84rem; text-align: center; }
+.fran-chips { display: flex; flex-wrap: wrap; justify-content: center; gap: 5px; margin-bottom: 10px; }
+.fran-chips button { min-height: 36px; padding: 0 10px; border: 1px solid var(--borde); border-radius: 999px; background: var(--fondo-tarjeta); color: var(--texto); font: inherit; font-size: 0.84rem; cursor: pointer; }
+.fran-chips .activo { border-color: var(--libro); background: var(--libro); color: #0d0f12; font-weight: 700; }
+.fran-guardar { width: 100%; min-height: 52px; border-radius: 16px; background: var(--libro); color: #0d0f12; font-size: 1.05rem; font-weight: 800; }
 
-.fran-chips { display: flex; flex-wrap: wrap; gap: 6px; }
-.fran-chips button { min-height: 42px; padding: 0 12px; border: 1px solid var(--borde); border-radius: 999px; background: var(--fondo-tarjeta); color: var(--texto); font: inherit; cursor: pointer; }
-.fran-chips button.activo { background: var(--destacado); color: var(--destacado-texto); border-color: var(--destacado); }
+/* Registrar en Préstamos y Pensión */
+.fran-opciones { display: flex; flex-direction: column; gap: 7px; margin-bottom: 12px; }
+.fran-opciones a { display: flex; align-items: center; gap: 12px; min-height: 50px; padding: 6px 12px; border: 1.5px solid var(--libro); border-radius: 14px; color: var(--texto); font-weight: 800; text-decoration: none; }
+.fran-opciones a span { width: 30px; height: 30px; display: grid; place-items: center; border-radius: 50%; background: var(--libro); color: #fff; font-size: 0.95rem; }
+.fran-opciones a.activo { background: color-mix(in srgb, var(--libro) 30%, transparent); }
+.fran-campos { display: flex; flex-direction: column; gap: 2px; }
+.fran-campos > label, .fran-campos > div { display: flex; flex-direction: column; padding: 7px 0; border-bottom: 1px solid var(--borde); }
+.fran-campos small { color: var(--texto-suave); font-size: 0.8rem; }
+.fran-campos input, .fran-campos select { width: 100%; min-height: 40px; padding: 2px 0; border: 0; background: transparent; color: var(--texto); font-size: 16px; font-weight: 700; outline: none; }
+.fran-campos select option { color: #111; }
+.fran-campos .fran-chips { justify-content: flex-start; margin: 6px 0 2px; }
+.fran-campos .fran-guardar { margin-top: 12px; }
 
-.fran-hoja { position: fixed; inset: 0; z-index: 90; display: flex; align-items: flex-end; background: rgba(0, 0, 0, 0.55); }
-.fran-hoja__caja { width: 100%; display: flex; flex-direction: column; gap: 8px; padding: 16px 16px calc(16px + env(safe-area-inset-bottom, 0px)); border-radius: 20px 20px 0 0; background: var(--fondo-tarjeta); border-top: 5px solid var(--libro); }
-.fran-hoja__caja p { margin: 0 0 4px; }
-.fran-hoja__opcion { display: flex; align-items: center; min-height: 54px; padding: 0 14px; border-radius: 12px; background: var(--fondo-suave); color: var(--texto); font-weight: 600; text-decoration: none; }
+/* Ficha del cliente */
+.fran-cliente { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+.fran-cliente > div { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.fran-cliente strong { font-size: 1.15rem; overflow-wrap: anywhere; }
+.fran-cliente small { color: var(--texto-suave); font-size: 0.82rem; }
+.fran-avatar { flex: none; width: 50px; height: 50px; display: grid; place-items: center; border-radius: 50%; background: var(--libro); color: #fff; font-size: 1.5rem; font-weight: 800; }
+.fran-progreso { height: 9px; margin-bottom: 6px; border-radius: 6px; background: var(--fondo-suave); overflow: hidden; }
+.fran-progreso span { display: block; height: 100%; background: var(--libro); }
+.fran-tres { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 7px; margin-bottom: 8px; }
+.fran-tres a { display: grid; place-items: center; min-height: 52px; padding: 4px; border-radius: 12px; color: #fff; font-weight: 700; font-size: 0.86rem; text-align: center; text-decoration: none; }
+.fran-tres .azul { background: #2563eb; }
+.fran-tres .verde { background: #16a34a; }
+.fran-tres .gris { background: #475569; }
+.fran-check { flex: none; width: 40px; height: 40px; border: 1.5px solid var(--libro); border-radius: 50%; background: none; color: var(--texto); font-size: 1.05rem; cursor: pointer; }
 
-/* Barra inferior: botón + en el centro */
+/* Yo */
+.fran-ajuste { margin-bottom: 8px; border-radius: 14px; background: var(--fondo-tarjeta); box-shadow: var(--sombra); overflow: hidden; }
+.fran-ajuste summary { display: flex; align-items: center; gap: 12px; min-height: 54px; padding: 8px 14px; font-weight: 700; cursor: pointer; list-style: none; }
+.fran-ajuste summary::-webkit-details-marker { display: none; }
+.fran-ajuste summary::after { content: '›'; margin-left: auto; color: var(--texto-suave); font-size: 1.4rem; }
+.fran-ajuste[open] summary::after { transform: rotate(90deg); }
+.fran-ajuste .tarjeta { margin: 0; border-radius: 0; box-shadow: none; }
+.fran-ajuste .ajustes-seccion__titulo { display: none; }
+.fran-enlace { display: flex; align-items: center; gap: 12px; min-height: 54px; padding: 8px 14px; margin-bottom: 8px; border-radius: 14px; background: var(--fondo-tarjeta); box-shadow: var(--sombra); color: var(--texto); font-weight: 700; text-decoration: none; }
+
+/* Barra inferior */
+.pestana--activa { color: var(--libro, var(--primario)); }
 .pestana--mas { flex: none; width: 64px; border: 0; background: none; cursor: pointer; padding: 0; }
-.pestana--mas span { display: grid; place-items: center; width: 56px; height: 56px; margin: -22px auto 0; border-radius: 50%; background: var(--libro, var(--primario)); color: #0d0f12; font-size: 2rem; line-height: 1; box-shadow: 0 3px 10px rgba(0, 0, 0, 0.4); }
+.pestana--mas span { display: grid; place-items: center; width: 54px; height: 54px; margin: -20px auto 0; border-radius: 50%; background: var(--libro, var(--primario)); color: #0d0f12; font-size: 2rem; line-height: 1; box-shadow: 0 3px 10px rgba(0, 0, 0, 0.4); }
 body.sin-barra .barra-inferior { display: none; }

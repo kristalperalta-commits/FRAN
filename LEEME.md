@@ -37,8 +37,8 @@ Las instrucciones también están dentro de la app, en Ajustes.
 
 ## Probar con los casos de ejemplo
 
-Ajustes → Cargar casos de prueba. Trae a Ramiro, Ernesto, Marta y la mamá con sus
-cuentas reales. Borra todo lo que haya; úsalo solo antes de meter datos reales.
+Los casos de ejemplo quedan solo para las pruebas automáticas (`js/casos.js`). Ya no se
+pueden cargar desde la app, para que nadie borre datos reales por error.
 
 ## Para programadores
 

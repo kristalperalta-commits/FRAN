@@ -11,7 +11,7 @@
 
 import * as ui from './ui.js';
 
-const VERSION_APP = '2.1.1';
+const VERSION_APP = '3.0.1';
 const contenedor = document.getElementById('pantalla');
 
 // ---------- Rutas (sección 7 de la especificación) ----------
@@ -20,28 +20,30 @@ const contenedor = document.getElementById('pantalla');
 // pestana: qué pestaña de la barra se marca como activa.
 const RUTAS = [
   { patron: '/inicio', pantalla: 'fran', vista: 'principal', pestana: null, sinBarra: true },
-  { patron: '/libro/prestamos/resumen', pantalla: 'fran', vista: 'resumen', pestana: 'inicio', libro: 'prestamos' },
-  { patron: '/libro/prestamos/personas', pantalla: 'fran', vista: 'personas', pestana: 'inicio', libro: 'prestamos' },
-  { patron: '/libro/prestamos/persona/:nombre', pantalla: 'fran', vista: 'persona', pestana: 'inicio', libro: 'prestamos' },
-  { patron: '/prestamos/elegir/:accion', pantalla: 'fran', vista: 'elegir', pestana: 'inicio', libro: 'prestamos' },
-  { patron: '/libro/pension/mover/:accion', pantalla: 'fran', vista: 'moverPension', pestana: 'inicio', libro: 'pension' },
+  { patron: '/otros', pantalla: 'fran', vista: 'otros', pestana: null, sinBarra: true },
+  { patron: '/libro/prestamos/personas', pantalla: 'fran', vista: 'personas', pestana: 'informes', libro: 'prestamos' },
+  { patron: '/libro/prestamos/persona/:nombre', pantalla: 'fran', vista: 'persona', pestana: 'informes', libro: 'prestamos' },
+  { patron: '/libro/prestamos/registrar/:tipo', pantalla: 'fran', vista: 'registrar', pestana: 'inicio', libro: 'prestamos', sinBarra: true },
+  { patron: '/libro/prestamos/registrar/:tipo/:clienteId', pantalla: 'fran', vista: 'registrar', pestana: 'inicio', libro: 'prestamos', sinBarra: true },
+  { patron: '/libro/pension/mover/:accion', pantalla: 'fran', vista: 'moverPension', pestana: 'inicio', libro: 'pension', sinBarra: true },
   { patron: '/libro/:libro', pantalla: 'fran', vista: 'libro', pestana: 'inicio' },
   { patron: '/libro/:libro/graficos', pantalla: 'fran', vista: 'graficos', pestana: 'graficos' },
+  { patron: '/libro/:libro/calendario', pantalla: 'fran', vista: 'calendario', pestana: 'graficos' },
   { patron: '/libro/:libro/informes', pantalla: 'fran', vista: 'informes', pestana: 'informes' },
-  { patron: '/libro/:libro/nuevo/:tipo', pantalla: 'fran', vista: 'nuevo', pestana: 'inicio' },
+  { patron: '/libro/:libro/agregar/:tipo', pantalla: 'fran', vista: 'agregar', pestana: 'inicio', sinBarra: true },
   { patron: '/libro/:libro/categoria/:tipo/:categoria', pantalla: 'fran', vista: 'categoria', pestana: 'graficos' },
   { patron: '/clientes', pantalla: 'clientes', vista: 'lista', pestana: 'inicio', libro: 'prestamos' },
   { patron: '/clientes/nuevo', pantalla: 'clientes', vista: 'nuevo', pestana: 'inicio', libro: 'prestamos' },
-  { patron: '/cliente/:id', pantalla: 'clientes', vista: 'ficha', pestana: 'inicio', libro: 'prestamos' },
+  { patron: '/cliente/:id', pantalla: 'fran', vista: 'ficha', pestana: 'inicio', libro: 'prestamos' },
   { patron: '/cliente/:id/editar', pantalla: 'clientes', vista: 'editar', pestana: 'inicio', libro: 'prestamos' },
   { patron: '/cliente/:clienteId/pago', pantalla: 'prestamo', vista: 'pagoCliente', pestana: 'inicio', libro: 'prestamos' },
   { patron: '/prestamo/nuevo/:clienteId', pantalla: 'prestamo', vista: 'nuevo', pestana: 'inicio', libro: 'prestamos' },
   { patron: '/prestamo/:id', pantalla: 'prestamo', vista: 'ficha', pestana: 'inicio', libro: 'prestamos' },
   { patron: '/prestamo/:id/pago', pantalla: 'prestamo', vista: 'pago', pestana: 'inicio', libro: 'prestamos' },
   { patron: '/prestamo/:id/perdon', pantalla: 'prestamo', vista: 'perdon', pestana: 'inicio', libro: 'prestamos' },
-  { patron: '/caja', pantalla: 'caja', vista: 'lista', pestana: 'inicio', libro: 'prestamos' },
-  { patron: '/caja/movimiento/:tipo', pantalla: 'caja', vista: 'movimiento', pestana: 'inicio', libro: 'prestamos' },
-  { patron: '/agenda', pantalla: 'agenda', vista: 'agenda', pestana: 'inicio', libro: 'prestamos' },
+  { patron: '/caja', pantalla: 'caja', vista: 'lista', pestana: 'informes', libro: 'prestamos' },
+  { patron: '/caja/movimiento/:tipo', pantalla: 'caja', vista: 'movimiento', pestana: 'informes', libro: 'prestamos' },
+  { patron: '/agenda', pantalla: 'fran', vista: 'agenda', pestana: 'inicio', libro: 'prestamos' },
   { patron: '/ajustes', pantalla: 'ajustes', vista: 'ajustes', pestana: 'yo' }
 ];
 

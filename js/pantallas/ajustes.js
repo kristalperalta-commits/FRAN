@@ -540,17 +540,53 @@ function seccionAcerca(ctx) {
 
 /* ---------- Render ---------- */
 
+function plegable(icono, texto, seccion, ui) {
+  const caja = ui.el(`<details class="fran-ajuste"><summary><span>${icono}</span>${ui.esc(texto)}</summary></details>`);
+  caja.append(seccion);
+  return caja;
+}
+
+function seccionHistoricos(ctx) {
+  const { ui, datos } = ctx;
+  const seccion = ui.el(`
+    <section class="tarjeta ajustes-seccion">
+      <h2 class="ajustes-seccion__titulo">Actualizar históricos</h2>
+      <p class="ajustes-texto">Trae los meses nuevos de Mis Gastos y la agenda, sin borrar lo que anotaste en la app.</p>
+      <div class="ajustes-botones">
+        <button type="button" class="boton boton--secundario boton--grande" id="boton-historicos">Actualizar históricos</button>
+        <input type="file" id="archivo-historicos" class="oculto" accept=".json,application/json,text/plain" aria-label="Archivo de históricos">
+      </div>
+    </section>
+  `);
+  const entrada = seccion.querySelector('#archivo-historicos');
+  seccion.querySelector('#boton-historicos').addEventListener('click', () => { entrada.value = ''; entrada.click(); });
+  entrada.addEventListener('change', async () => {
+    const archivo = entrada.files && entrada.files[0];
+    if (!archivo) return;
+    try {
+      const r = await datos.actualizarHistoricos(await leerArchivoComoTexto(archivo));
+      ui.toast(`Históricos actualizados. Se conservaron ${r.propios} movimientos tuyos.`, 5000);
+    } catch (error) {
+      ui.toast(`No se pudo actualizar: ${textoError(error)}`, 6000);
+    }
+  });
+  return seccion;
+}
+
+/* ---------- Render ---------- */
+
 export async function render(contenedor, params, ctx) {
   const { ui } = ctx;
   contenedor.innerHTML = '';
-  contenedor.append(ui.el(ui.encabezado('Yo', { atras: '#/inicio' })));
+  contenedor.append(ui.el(`<header class="fran-titulo"><a href="#/inicio" class="fran-titulo__atras" aria-label="Volver">‹</a><h1>Yo</h1></header>`));
   contenedor.append(seccionTemas(ctx));
-  contenedor.append(seccionNombre(ctx));
-  contenedor.append(seccionNube(ctx));
-  contenedor.append(seccionCopia(ctx));
-  contenedor.append(seccionCaja(ctx));
-  contenedor.append(seccionCasos(ctx));
-  contenedor.append(seccionInstalar(ctx));
-  contenedor.append(seccionAcerca(ctx));
-  contenedor.append(seccionBorrar(ctx));
+  contenedor.append(plegable('☁️', 'Nube', seccionNube(ctx), ui));
+  const respaldo = plegable('💾', 'Respaldo y copias', seccionCopia(ctx), ui);
+  respaldo.append(seccionHistoricos(ctx));
+  respaldo.append(seccionBorrar(ctx));
+  contenedor.append(respaldo);
+  contenedor.append(ui.el('<a class="fran-enlace" href="#/libro/pension"><span>💱</span>Moneda COP · tasa USD</a>'));
+  contenedor.append(ui.el('<a class="fran-enlace" href="#/caja"><span>🧾</span>Caja efectivo y virtual</a>'));
+  contenedor.append(plegable('📲', 'Instalar en el teléfono', seccionInstalar(ctx), ui));
+  contenedor.append(plegable('ℹ️', 'Acerca de la app', seccionAcerca(ctx), ui));
 }

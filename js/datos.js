@@ -126,6 +126,7 @@ function franVacio() {
     terceros: [],
     tarjetas: [],
     deudasInternas: [],
+    agenda: [],
     presupuestoMensual: 2000000,
   };
 }
@@ -146,6 +147,7 @@ function completarFran(fran) {
     terceros: lista(f.terceros),
     tarjetas: lista(f.tarjetas),
     deudasInternas: lista(f.deudasInternas),
+    agenda: lista(f.agenda),
     presupuestoMensual: Number(f.presupuestoMensual) > 0 ? Number(f.presupuestoMensual) : base.presupuestoMensual,
   };
 }
@@ -1331,6 +1333,21 @@ export const datos = {
   async eliminarAsiento(id) {
     estadoActual.fran.asientos = estadoActual.fran.asientos.filter((a) => a.id !== id);
     await guardar();
+  },
+
+  // Cambia los históricos importados sin tocar lo que ella anotó en la app.
+  // Lo marcado "importado" se reemplaza; lo demás se conserva. La agenda se junta por id.
+  async actualizarHistoricos(texto) {
+    const objeto = typeof texto === 'string' ? JSON.parse(texto) : texto;
+    const nuevo = completarFran(objeto.fran);
+    exigir(nuevo.asientos.length > 0, 'El archivo no trae movimientos de históricos.');
+    const propios = estadoActual.fran.asientos.filter((a) => !a.importado);
+    const agenda = [...estadoActual.fran.agenda];
+    const ids = new Set(agenda.map((x) => x.id));
+    for (const x of nuevo.agenda) if (!ids.has(x.id)) agenda.push(x);
+    estadoActual.fran = { ...estadoActual.fran, asientos: [...nuevo.asientos.filter((a) => a.importado), ...propios], agenda };
+    await guardar();
+    return { historicos: nuevo.asientos.length, propios: propios.length, agenda: agenda.length };
   },
 
   // Cambia partes de la pensión, tasa o presupuesto.
