@@ -1,0 +1,93 @@
+/* Estilos de los libros de Fran (js/pantallas/fran.js). */
+.fran-cabeza { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
+.fran-cabeza h1 { margin: 0; font-size: 1.9rem; }
+.fran-yo { padding: 8px 16px; border-radius: 999px; background: var(--fondo-suave); color: var(--texto); font-weight: 600; text-decoration: none; }
+
+.fran-plata { --libro: var(--primario); padding: 18px; margin-bottom: 14px; border-radius: 18px; background: var(--fondo-tarjeta); border-left: 5px solid var(--libro); box-shadow: var(--sombra); }
+.fran-plata__titulo { margin: 0; color: var(--texto-suave); }
+.fran-plata__valor { margin: 2px 0 4px; font-size: 2.3rem; font-weight: 700; word-break: break-word; }
+.fran-plata__detalle { margin: 0; color: var(--texto-suave); font-size: 0.95rem; }
+
+.fran-aviso { padding: 14px; margin-bottom: 14px; border-radius: 14px; background: var(--fondo-suave); }
+.fran-aviso p { margin: 0 0 8px; }
+
+.fran-libros { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+.fran-libro { display: flex; flex-direction: column; gap: 3px; min-height: 104px; padding: 14px; border-radius: 16px; background: var(--fondo-tarjeta); color: var(--texto); text-decoration: none; border-top: 5px solid var(--libro); box-shadow: var(--sombra); min-width: 0; }
+.fran-libro--ancho { grid-column: 1 / -1; }
+.fran-libro__nombre { font-weight: 700; }
+.fran-libro__valor { font-size: 1.45rem; font-weight: 700; word-break: break-word; }
+.fran-libro__detalle { color: var(--texto-suave); font-size: 0.9rem; }
+
+.fran-franja { display: flex; align-items: center; gap: 10px; margin: calc(var(--espacio) * -1) calc(var(--espacio) * -1) 12px; padding: 14px var(--espacio); background: var(--libro); color: #0d0f12; }
+.fran-franja h1 { margin: 0; font-size: 1.3rem; color: inherit; min-width: 0; overflow-wrap: anywhere; }
+.fran-franja__atras { font-size: 2rem; line-height: 1; color: inherit; text-decoration: none; padding: 0 8px 4px 0; }
+
+.fran-mes { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+.fran-mes button { width: 48px; height: 44px; border: 1px solid var(--borde); border-radius: 12px; background: var(--fondo-tarjeta); color: var(--texto); font-size: 1.4rem; cursor: pointer; }
+.fran-mes strong { text-transform: capitalize; }
+
+.fran-cifras { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; margin-bottom: 12px; }
+.fran-cifras div { padding: 10px; border-radius: 12px; background: var(--fondo-tarjeta); box-shadow: var(--sombra); min-width: 0; }
+.fran-cifras small { display: block; color: var(--texto-suave); font-size: 0.85rem; }
+.fran-cifras strong { font-size: 1rem; overflow-wrap: anywhere; }
+
+.fran-estados { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 12px; }
+.fran-estados span { padding: 6px 10px; border-radius: 999px; background: var(--fondo-suave); font-size: 0.92rem; }
+.fran-accesos { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 14px; }
+.fran-accesos .boton { width: 100%; }
+
+.fran-lista { margin-bottom: 14px; }
+.fran-dia { display: flex; justify-content: space-between; gap: 8px; padding: 10px 2px 4px; font-weight: 600; font-size: 0.92rem; flex-wrap: wrap; }
+.fran-mov { display: flex; align-items: center; gap: 10px; padding: 10px; border-bottom: 1px solid var(--borde); background: var(--fondo-tarjeta); }
+.fran-mov__icono { flex: none; width: 36px; height: 36px; display: grid; place-items: center; border-radius: 50%; background: var(--fondo-suave); font-weight: 700; }
+.fran-mov__texto { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.fran-mov__texto small { color: var(--texto-suave); overflow-wrap: anywhere; }
+.fran-nota { margin: 0 0 10px; }
+
+.fran-barra-fila { display: flex; flex-direction: column; gap: 5px; padding: 12px 10px; border-bottom: 1px solid var(--borde); background: var(--fondo-tarjeta); color: var(--texto); text-decoration: none; }
+.fran-barra-fila__fila { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+.fran-barra-fila strong { min-width: 0; overflow-wrap: anywhere; }
+.fran-barra { display: block; height: 9px; border-radius: 6px; background: var(--libro); flex: none; }
+.fran-barra-fila small { color: var(--texto-suave); }
+
+.fran-total { margin: 0 0 10px; }
+.fran-orden { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; padding: 4px; margin-bottom: 12px; border-radius: 14px; background: var(--fondo-suave); }
+.fran-orden button, .fran-anios button { min-height: 44px; border: 0; border-radius: 10px; background: transparent; color: var(--texto); font: inherit; font-weight: 600; cursor: pointer; }
+.fran-orden button.activo, .fran-anios button.activo { background: var(--fondo-tarjeta); box-shadow: var(--sombra); }
+.fran-anios { display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 12px; }
+.fran-anios button { padding: 0 14px; background: var(--fondo-suave); }
+
+.fran-grafico { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 10px; align-items: center; margin-bottom: 12px; }
+.fran-dona { width: 100%; max-width: 170px; }
+.fran-dona__texto { font-size: 13px; font-weight: 700; fill: var(--texto); }
+.fran-leyenda { list-style: none; margin: 0; padding: 0; font-size: 0.92rem; }
+.fran-leyenda li { display: grid; grid-template-columns: 12px 1fr auto; gap: 6px; align-items: center; padding: 3px 0; }
+.fran-leyenda i { width: 12px; height: 12px; border-radius: 50%; }
+
+.fran-tabla { width: 100%; border-collapse: collapse; font-size: 0.86rem; }
+.fran-tabla th, .fran-tabla td { padding: 7px 3px; text-align: right; border-bottom: 1px solid var(--borde); }
+.fran-tabla th:first-child { text-align: left; }
+.fran-tabla tfoot th, .fran-tabla tfoot td { font-weight: 700; border-bottom: 0; }
+
+.fran-cal { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; text-align: center; margin: 6px 0; }
+.fran-cal span, .fran-cal b { padding: 7px 0; border-radius: 8px; }
+.fran-cal .rojo { background: #c62828; color: #fff; }
+.fran-cal .verde { background: #2e7d32; color: #fff; }
+
+.fran-tasa { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-bottom: 12px; }
+.fran-tasa label { width: 100%; color: var(--texto-suave); }
+.fran-tasa input { flex: 1; min-width: 0; min-height: 44px; padding: 8px 10px; font-size: 16px; border-radius: 10px; border: 1px solid var(--borde); background: var(--fondo-tarjeta); color: var(--texto); }
+
+.fran-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.fran-chips button { min-height: 42px; padding: 0 12px; border: 1px solid var(--borde); border-radius: 999px; background: var(--fondo-tarjeta); color: var(--texto); font: inherit; cursor: pointer; }
+.fran-chips button.activo { background: var(--destacado); color: var(--destacado-texto); border-color: var(--destacado); }
+
+.fran-hoja { position: fixed; inset: 0; z-index: 90; display: flex; align-items: flex-end; background: rgba(0, 0, 0, 0.55); }
+.fran-hoja__caja { width: 100%; display: flex; flex-direction: column; gap: 8px; padding: 16px 16px calc(16px + env(safe-area-inset-bottom, 0px)); border-radius: 20px 20px 0 0; background: var(--fondo-tarjeta); border-top: 5px solid var(--libro); }
+.fran-hoja__caja p { margin: 0 0 4px; }
+.fran-hoja__opcion { display: flex; align-items: center; min-height: 54px; padding: 0 14px; border-radius: 12px; background: var(--fondo-suave); color: var(--texto); font-weight: 600; text-decoration: none; }
+
+/* Barra inferior: botón + en el centro */
+.pestana--mas { flex: none; width: 64px; border: 0; background: none; cursor: pointer; padding: 0; }
+.pestana--mas span { display: grid; place-items: center; width: 56px; height: 56px; margin: -22px auto 0; border-radius: 50%; background: var(--libro, var(--primario)); color: #0d0f12; font-size: 2rem; line-height: 1; box-shadow: 0 3px 10px rgba(0, 0, 0, 0.4); }
+body.sin-barra .barra-inferior { display: none; }

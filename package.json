@@ -1,0 +1,11 @@
+{
+  "name": "mis-prestamos",
+  "version": "1.0.0",
+  "private": true,
+  "description": "PWA para llevar préstamos y caja. Sin dependencias.",
+  "type": "module",
+  "scripts": {
+    "test": "node --test \"pruebas/*.test.js\"",
+    "servir": "python -m http.server 8080"
+  }
+}

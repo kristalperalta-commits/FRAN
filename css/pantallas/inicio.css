@@ -1,0 +1,131 @@
+/*
+  Estilos propios de la pantalla Inicio (tablero).
+  Usa las variables y componentes base de css/estilos.css.
+*/
+
+.inicio__fecha {
+  margin: -8px 0 var(--espacio);
+  font-size: 1rem;
+}
+
+/* Atajos grandes, uno al lado del otro; en pantallas angostas se apilan */
+.inicio__atajos .boton {
+  flex: 1 1 160px;
+}
+
+/* Tarjetas que son enlaces: se ven igual que una tarjeta normal */
+.inicio__tarjeta-enlace {
+  display: block;
+  color: inherit;
+  text-decoration: none;
+}
+
+.inicio__tarjeta-enlace:active {
+  filter: brightness(0.95);
+}
+
+.tarjeta--primario.inicio__tarjeta-enlace {
+  color: var(--destacado-texto);
+}
+
+/* Dos valores dentro de una misma tarjeta (intereses del mes y del año) */
+.inicio__par {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--espacio);
+}
+
+.inicio__par .tarjeta__valor {
+  font-size: 1.35rem;
+}
+
+/* Botones dentro de una tarjeta */
+.inicio__tarjeta-botones {
+  margin: 12px 0 0;
+}
+
+/* Cobros: resumen por grupo */
+.inicio__cobro-grupos {
+  margin-bottom: 12px;
+}
+
+.inicio__cobro-grupo {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 40px;
+  border-bottom: 1px solid var(--borde);
+}
+
+.inicio__cobro-grupo:last-child {
+  border-bottom: 0;
+}
+
+.inicio__cobro-nombre {
+  font-weight: 600;
+  flex: 1;
+}
+
+.inicio__cobro-cantidad {
+  white-space: nowrap;
+}
+
+.inicio__cobro-monto {
+  font-weight: 600;
+  min-width: 110px;
+  text-align: right;
+  white-space: nowrap;
+}
+
+.inicio__cobro-lista {
+  margin-bottom: 0;
+  box-shadow: none;
+  border: 1px solid var(--borde);
+}
+
+.inicio__sin-cobros {
+  margin: 0;
+}
+
+/* Selector de cliente para los atajos */
+.inicio__selector-cabeza {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.inicio__selector-lista {
+  max-height: 320px;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  box-shadow: none;
+  border: 1px solid var(--borde);
+}
+
+.inicio__selector .vacio {
+  margin-bottom: 0;
+}
+
+/* Estado vacío del tablero */
+.inicio__vacio p {
+  color: var(--texto);
+}
+
+.inicio__vacio-botones {
+  margin: var(--espacio) 0 0;
+  justify-content: center;
+}
+
+/* En pantallas muy angostas (375px) los valores grandes se achican un poco */
+@media (max-width: 380px) {
+  .tarjetas-dos .tarjeta__valor,
+  .inicio__par .tarjeta__valor {
+    font-size: 1.2rem;
+  }
+
+  .inicio__cobro-monto {
+    min-width: 90px;
+  }
+}

@@ -1,0 +1,453 @@
+/*
+  Pantalla de Ajustes (ruta #/ajustes). Dueño: agente pantalla ajustes.
+  Secciones:
+  - Temas: seis formas de ver la app.
+  - Nombre del negocio.
+  - Copia de seguridad: exportar (descarga copia-fran-AAAA-MM-DD.json) e importar.
+  - Caja: atajo para registrar el saldo inicial.
+  - Casos de prueba: reemplaza todo con los casos de casos.js (pide confirmación).
+  - Borrar todo (doble confirmación).
+  - Instalar en el teléfono: instrucciones para iPhone y Android.
+  - Acerca de la app: versión, dónde se guarda, cuántos registros hay.
+
+  Todo se pinta con ui.el y el texto que viene de la usuaria pasa por ui.esc.
+  Toda operación que guarda va dentro de try/catch y avisa con ui.toast.
+*/
+
+export const titulo = 'Yo';
+
+/* ---------- Ayudas ---------- */
+
+/** Nombre del archivo de la copia: copia-fran-AAAA-MM-DD.json */
+function nombreArchivoCopia(hoy) {
+  return `copia-fran-${hoy}.json`;
+}
+
+/** Verdadero si la app ya está abierta como instalada (pantalla de inicio). */
+function estaInstalada() {
+  try {
+    if (window.navigator && window.navigator.standalone === true) return true;
+    return !!(window.matchMedia && window.matchMedia('(display-mode: standalone)').matches);
+  } catch {
+    return false;
+  }
+}
+
+/** Intenta adivinar el teléfono para resaltar las instrucciones que le sirven. */
+function tipoDeTelefono() {
+  const agente = String((window.navigator && window.navigator.userAgent) || '');
+  if (/iPhone|iPad|iPod/i.test(agente)) return 'iphone';
+  if (/Android/i.test(agente)) return 'android';
+  return 'otro';
+}
+
+/** Mensaje legible de un error. */
+function textoError(error) {
+  if (error && error.message) return error.message;
+  return String(error || 'Ocurrió un error desconocido.');
+}
+
+/** Descarga un texto como archivo usando un enlace temporal. */
+function descargarTexto(texto, nombreArchivo) {
+  const archivo = new Blob([texto], { type: 'application/json' });
+  const url = URL.createObjectURL(archivo);
+  const enlace = document.createElement('a');
+  enlace.href = url;
+  enlace.download = nombreArchivo;
+  enlace.rel = 'noopener';
+  document.body.append(enlace);
+  enlace.click();
+  enlace.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 2000);
+}
+
+/** Verdadero si el teléfono permite compartir archivos con la hoja nativa. */
+function puedeCompartirArchivos(nombreArchivo) {
+  try {
+    if (!window.navigator || typeof window.navigator.share !== 'function') return false;
+    if (typeof window.navigator.canShare !== 'function' || typeof File !== 'function') return false;
+    const prueba = new File(['{}'], nombreArchivo, { type: 'application/json' });
+    return window.navigator.canShare({ files: [prueba] });
+  } catch {
+    return false;
+  }
+}
+
+/** Lee un archivo elegido por la usuaria como texto. */
+function leerArchivoComoTexto(archivo) {
+  if (typeof archivo.text === 'function') return archivo.text();
+  return new Promise((resolver, rechazar) => {
+    const lector = new FileReader();
+    lector.onload = () => resolver(String(lector.result || ''));
+    lector.onerror = () => rechazar(lector.error || new Error('No se pudo leer el archivo.'));
+    lector.readAsText(archivo);
+  });
+}
+
+/* ---------- Piezas de la pantalla ---------- */
+
+function seccionTemas(ctx) {
+  const { ui } = ctx;
+  const temas = window.Tema;
+  if (!temas) return document.createDocumentFragment();
+
+  const seccion = ui.el(`
+    <section class="tarjeta ajustes-seccion">
+      <h2 class="ajustes-seccion__titulo">Temas</h2>
+      <div class="ajustes-temas">
+        ${temas.lista.map((tema) => `
+          <button type="button" class="ajustes-tema" data-tema-opcion="${ui.esc(tema.id)}"
+            aria-pressed="${tema.id === temas.actual()}"
+            style="background:${ui.esc(tema.fondo)};color:${ui.esc(tema.texto)}">
+            <span class="ajustes-tema__muestra" style="background:${ui.esc(tema.tarjeta)}" aria-hidden="true">
+              <span class="ajustes-tema__punto" style="background:${ui.esc(tema.color)}"></span>
+            </span>
+            <span class="ajustes-tema__nombre">${ui.esc(tema.nombre)}</span>
+          </button>
+        `).join('')}
+      </div>
+    </section>
+  `);
+
+  const botones = [...seccion.querySelectorAll('[data-tema-opcion]')];
+  botones.forEach((boton) => {
+    boton.addEventListener('click', () => {
+      const elegido = temas.elegir(boton.dataset.temaOpcion);
+      botones.forEach((otro) => {
+        otro.setAttribute('aria-pressed', String(otro.dataset.temaOpcion === elegido));
+      });
+    });
+  });
+
+  return seccion;
+}
+
+function seccionNombre(ctx) {
+  const { ui, datos } = ctx;
+  const nombreActual = (datos.estado.config && datos.estado.config.nombreNegocio) || 'Mis Préstamos';
+
+  const seccion = ui.el(`
+    <section class="tarjeta ajustes-seccion">
+      <h2 class="ajustes-seccion__titulo">Nombre del negocio</h2>
+      <form class="formulario ajustes-formulario" id="formulario-nombre" novalidate>
+        ${ui.campo({
+          etiqueta: 'Cómo se llama tu negocio',
+          nombre: 'nombreNegocio',
+          valor: nombreActual,
+          requerido: true,
+          ayuda: 'Aparece en la copia de seguridad y en los reportes.',
+          atributos: { maxlength: 60, autocomplete: 'off' }
+        })}
+        <button type="submit" class="boton boton--primario boton--grande">Guardar nombre</button>
+      </form>
+    </section>
+  `);
+
+  const formulario = seccion.querySelector('#formulario-nombre');
+  formulario.addEventListener('submit', async (evento) => {
+    evento.preventDefault();
+    const valores = ui.leerFormulario(formulario);
+    const nombre = String(valores.nombreNegocio || '').trim();
+    if (!nombre) {
+      ui.toast('Escribe el nombre del negocio.');
+      formulario.querySelector('[name="nombreNegocio"]').focus();
+      return;
+    }
+    if (nombre === nombreActual) {
+      ui.toast('El nombre ya está guardado.');
+      return;
+    }
+    const boton = formulario.querySelector('button[type="submit"]');
+    boton.disabled = true;
+    try {
+      // datos.js no tiene una operación propia para la configuración: se toma el
+      // estado completo, se cambia el nombre y se vuelve a importar (valida y guarda).
+      const estado = JSON.parse(datos.exportarJSON());
+      estado.config = { ...(estado.config || {}), nombreNegocio: nombre };
+      await datos.importarJSON(JSON.stringify(estado));
+      ui.toast('Nombre guardado.');
+      ctx.navegar('#/ajustes');
+    } catch (error) {
+      ui.toast(`No se pudo guardar el nombre: ${textoError(error)}`, 5000);
+      boton.disabled = false;
+    }
+  });
+
+  return seccion;
+}
+
+function seccionCopia(ctx) {
+  const { ui, datos } = ctx;
+  const hoy = ctx.hoy();
+  const nombreArchivo = nombreArchivoCopia(hoy);
+  const puedeCompartir = puedeCompartirArchivos(nombreArchivo);
+
+  const cantidad = {
+    clientes: datos.listar('clientes').length,
+    prestamos: datos.listar('prestamos').length,
+    pagos: datos.listar('pagos').length,
+    movimientos: datos.listar('movimientos').length
+  };
+
+  const seccion = ui.el(`
+    <section class="tarjeta ajustes-seccion">
+      <h2 class="ajustes-seccion__titulo">Copia de seguridad</h2>
+      <p class="ajustes-texto">
+        Todo se guarda solo en este aparato. Saca una copia cada tanto y guárdala en
+        tus archivos, en tu correo o en WhatsApp. Si cambias de teléfono, la importas y recuperas todo.
+      </p>
+      <ul class="ajustes-cuentas" aria-label="Lo que hay guardado">
+        <li class="ajustes-cuentas__item"><span class="ajustes-cuentas__numero numero">${cantidad.clientes}</span><span class="ajustes-cuentas__texto">clientes</span></li>
+        <li class="ajustes-cuentas__item"><span class="ajustes-cuentas__numero numero">${cantidad.prestamos}</span><span class="ajustes-cuentas__texto">préstamos</span></li>
+        <li class="ajustes-cuentas__item"><span class="ajustes-cuentas__numero numero">${cantidad.pagos}</span><span class="ajustes-cuentas__texto">pagos</span></li>
+        <li class="ajustes-cuentas__item"><span class="ajustes-cuentas__numero numero">${cantidad.movimientos}</span><span class="ajustes-cuentas__texto">movimientos</span></li>
+      </ul>
+      <div class="ajustes-botones">
+        <button type="button" class="boton boton--primario boton--grande" id="boton-exportar">Descargar copia</button>
+        ${puedeCompartir ? '<button type="button" class="boton boton--secundario boton--grande" id="boton-compartir">Compartir copia</button>' : ''}
+        <button type="button" class="boton boton--secundario boton--grande" id="boton-importar">Importar copia</button>
+        <input type="file" id="archivo-importar" class="oculto" accept=".json,application/json,text/plain" aria-label="Archivo de copia de seguridad">
+      </div>
+      <p class="ajustes-ayuda">El archivo se llama <span class="negrita">${ui.esc(nombreArchivo)}</span>. Al importar se reemplaza todo lo que tienes ahora.</p>
+    </section>
+  `);
+
+  // Exportar: descarga el archivo.
+  seccion.querySelector('#boton-exportar').addEventListener('click', () => {
+    try {
+      descargarTexto(datos.exportarJSON(), nombreArchivo);
+      ui.toast('Copia lista. Revisa tus descargas o tus archivos.');
+    } catch (error) {
+      ui.toast(`No se pudo descargar la copia: ${textoError(error)}`, 5000);
+    }
+  });
+
+  // Compartir: hoja nativa del teléfono (guardar en archivos, enviar por WhatsApp, correo).
+  const botonCompartir = seccion.querySelector('#boton-compartir');
+  if (botonCompartir) {
+    botonCompartir.addEventListener('click', async () => {
+      try {
+        const archivo = new File([datos.exportarJSON()], nombreArchivo, { type: 'application/json' });
+        await window.navigator.share({ files: [archivo], title: 'Copia de Fran' });
+        ui.toast('Copia compartida.');
+      } catch (error) {
+        // Si ella cierra la hoja de compartir, no es un error que haya que gritar.
+        if (error && error.name === 'AbortError') return;
+        ui.toast(`No se pudo compartir la copia: ${textoError(error)}`, 5000);
+      }
+    });
+  }
+
+  // Importar: abre el selector de archivos y, con confirmación, reemplaza todo.
+  const entradaArchivo = seccion.querySelector('#archivo-importar');
+  const botonImportar = seccion.querySelector('#boton-importar');
+  botonImportar.addEventListener('click', () => {
+    entradaArchivo.value = '';
+    entradaArchivo.click();
+  });
+  entradaArchivo.addEventListener('change', async () => {
+    const archivo = entradaArchivo.files && entradaArchivo.files[0];
+    if (!archivo) return;
+    const seguro = await ui.confirmar(
+      `¿Importar "${archivo.name}"? Se reemplaza todo lo que tienes guardado ahora (${cantidad.clientes} clientes, ${cantidad.prestamos} préstamos, ${cantidad.pagos} pagos).`,
+      { aceptar: 'Sí, importar', peligro: true }
+    );
+    if (!seguro) return;
+    botonImportar.disabled = true;
+    try {
+      const texto = await leerArchivoComoTexto(archivo);
+      const estado = await datos.importarJSON(texto);
+      ui.toast(`Copia importada: ${estado.clientes.length} clientes y ${estado.prestamos.length} préstamos.`, 4000);
+      ctx.navegar('#/inicio');
+    } catch (error) {
+      ui.toast(`No se pudo importar: ${textoError(error)}`, 6000);
+      botonImportar.disabled = false;
+    }
+  });
+
+  return seccion;
+}
+
+function seccionCaja(ctx) {
+  const { ui } = ctx;
+  return ui.el(`
+    <section class="tarjeta ajustes-seccion">
+      <h2 class="ajustes-seccion__titulo">Caja</h2>
+      <p class="ajustes-texto">Si empiezas a usar la app con plata ya en caja, registra el saldo inicial de efectivo y de virtual.</p>
+      <div class="ajustes-botones">
+        <a href="#/caja/movimiento/saldo_inicial" class="boton boton--secundario boton--grande">Registrar saldo inicial</a>
+      </div>
+    </section>
+  `);
+}
+
+function seccionCasos(ctx) {
+  const { ui, datos } = ctx;
+  const seccion = ui.el(`
+    <section class="tarjeta ajustes-seccion">
+      <h2 class="ajustes-seccion__titulo">Casos de prueba</h2>
+      <p class="ajustes-texto">
+        Carga clientes de ejemplo (Ramiro, Ernesto, Marta, la mamá y otros de prueba) para ver
+        cómo funciona la app. Reemplaza todo lo que tengas guardado.
+      </p>
+      <div class="ajustes-botones">
+        <button type="button" class="boton boton--secundario boton--grande" id="boton-cargar-casos">Cargar casos de prueba</button>
+      </div>
+    </section>
+  `);
+
+  const boton = seccion.querySelector('#boton-cargar-casos');
+  boton.addEventListener('click', async () => {
+    const seguro = await ui.confirmar(
+      '¿Cargar los casos de prueba? Se borra todo lo que tienes guardado y se reemplaza por los ejemplos. Si tienes datos reales, descarga una copia primero.',
+      { aceptar: 'Sí, cargar', peligro: true }
+    );
+    if (!seguro) return;
+    boton.disabled = true;
+    try {
+      const modulo = await import('../casos.js');
+      const lista = modulo.casos || modulo.default;
+      if (!Array.isArray(lista) || lista.length === 0) {
+        throw new Error('El archivo de casos de prueba está vacío.');
+      }
+      const estado = await datos.cargarCasos(lista);
+      ui.toast(`Casos cargados: ${estado.clientes.length} clientes y ${estado.prestamos.length} préstamos.`, 4000);
+      ctx.navegar('#/clientes');
+    } catch (error) {
+      ui.toast(`No se pudieron cargar los casos: ${textoError(error)}`, 6000);
+      boton.disabled = false;
+    }
+  });
+
+  return seccion;
+}
+
+function seccionBorrar(ctx) {
+  const { ui, datos } = ctx;
+  const seccion = ui.el(`
+    <section class="tarjeta ajustes-seccion ajustes-seccion--peligro">
+      <h2 class="ajustes-seccion__titulo">Borrar todo</h2>
+      <p class="ajustes-texto">
+        Borra todos los clientes, préstamos, pagos y movimientos de caja de este teléfono.
+        No se puede deshacer. Descarga una copia antes.
+      </p>
+      <div class="ajustes-botones">
+        <button type="button" class="boton boton--peligro boton--grande" id="boton-borrar-todo">Borrar todos los datos</button>
+      </div>
+    </section>
+  `);
+
+  const boton = seccion.querySelector('#boton-borrar-todo');
+  boton.addEventListener('click', async () => {
+    const cantidadClientes = datos.listar('clientes').length;
+    const cantidadPrestamos = datos.listar('prestamos').length;
+    const primera = await ui.confirmar(
+      `¿Borrar todos los datos? Se van ${cantidadClientes} clientes y ${cantidadPrestamos} préstamos con todos sus pagos y movimientos.`,
+      { aceptar: 'Sí, borrar', peligro: true }
+    );
+    if (!primera) return;
+    const segunda = await ui.confirmar(
+      'Última advertencia: esto no se puede deshacer. ¿Ya descargaste una copia? ¿Borrar de verdad?',
+      { aceptar: 'Borrar de verdad', cancelar: 'No, dejar todo', peligro: true }
+    );
+    if (!segunda) return;
+    boton.disabled = true;
+    try {
+      await datos.borrarTodo();
+      ui.toast('Todo borrado. La app quedó vacía.');
+      ctx.navegar('#/inicio');
+    } catch (error) {
+      ui.toast(`No se pudo borrar: ${textoError(error)}`, 6000);
+      boton.disabled = false;
+    }
+  });
+
+  return seccion;
+}
+
+function seccionInstalar(ctx) {
+  const { ui } = ctx;
+  const instalada = estaInstalada();
+  const telefono = tipoDeTelefono();
+
+  const avisoInstalada = instalada
+    ? '<p class="ajustes-aviso-ok">La app ya está instalada en este teléfono.</p>'
+    : '';
+
+  return ui.el(`
+    <section class="tarjeta ajustes-seccion">
+      <h2 class="ajustes-seccion__titulo">Instalar en el teléfono</h2>
+      ${avisoInstalada}
+      <p class="ajustes-texto">
+        Instalada se abre como cualquier otra app, a pantalla completa y sin conexión. No se
+        descarga de ninguna tienda y no cuesta nada.
+      </p>
+      <div class="ajustes-instrucciones">
+        <article class="ajustes-instruccion ${telefono === 'iphone' ? 'ajustes-instruccion--resaltada' : ''}">
+          <h3 class="ajustes-instruccion__titulo">iPhone</h3>
+          <ol class="ajustes-pasos">
+            <li>Abre esta página en <span class="negrita">Safari</span> (no sirve desde Chrome ni desde WhatsApp).</li>
+            <li>Toca el botón <span class="negrita">Compartir</span> (el cuadrado con la flecha hacia arriba, abajo en el centro).</li>
+            <li>Baja en la lista y toca <span class="negrita">Añadir a pantalla de inicio</span>.</li>
+            <li>Toca <span class="negrita">Añadir</span> arriba a la derecha. Listo: queda el ícono con las demás apps.</li>
+          </ol>
+        </article>
+        <article class="ajustes-instruccion ${telefono === 'android' ? 'ajustes-instruccion--resaltada' : ''}">
+          <h3 class="ajustes-instruccion__titulo">Android</h3>
+          <ol class="ajustes-pasos">
+            <li>Abre esta página en <span class="negrita">Chrome</span>.</li>
+            <li>Toca los <span class="negrita">tres puntos</span> arriba a la derecha.</li>
+            <li>Toca <span class="negrita">Instalar aplicación</span> o <span class="negrita">Añadir a pantalla de inicio</span>.</li>
+            <li>Confirma con <span class="negrita">Instalar</span>. Listo: queda el ícono con las demás apps.</li>
+          </ol>
+        </article>
+      </div>
+      <p class="ajustes-ayuda">Los datos quedan guardados en el teléfono aunque cierres la app. Igual descarga una copia de vez en cuando.</p>
+    </section>
+  `);
+}
+
+function seccionAcerca(ctx) {
+  const { ui, datos } = ctx;
+  const version = ctx.version || '1.0.0';
+  const almacen = datos.almacenamiento || { nombre: '', ultimoError: null };
+  const nombresAlmacen = {
+    indexeddb: 'En el teléfono (base de datos del navegador)',
+    localstorage: 'En el teléfono (respaldo del navegador)',
+    memoria: 'Solo en memoria (se pierde al cerrar)',
+    ninguno: 'No se pudo guardar en este navegador'
+  };
+  const dondeGuarda = nombresAlmacen[almacen.nombre] || 'En el teléfono';
+  const avisoError = almacen.ultimoError
+    ? `<p class="ajustes-aviso-error">Último guardado con problema: ${ui.esc(textoError(almacen.ultimoError))}. Descarga una copia ya.</p>`
+    : '';
+
+  return ui.el(`
+    <section class="tarjeta ajustes-seccion">
+      <h2 class="ajustes-seccion__titulo">Acerca de la app</h2>
+      <dl class="ajustes-datos">
+        <div class="ajustes-datos__fila"><dt>Versión</dt><dd class="numero">${ui.esc(version)}</dd></div>
+        <div class="ajustes-datos__fila"><dt>Fecha de hoy</dt><dd class="numero">${ui.esc(ctx.hoy())}</dd></div>
+        <div class="ajustes-datos__fila"><dt>Dónde se guarda</dt><dd>${ui.esc(dondeGuarda)}</dd></div>
+        <div class="ajustes-datos__fila"><dt>Internet</dt><dd>No usa internet ni manda datos a ningún lado.</dd></div>
+      </dl>
+      ${avisoError}
+    </section>
+  `);
+}
+
+/* ---------- Render ---------- */
+
+export async function render(contenedor, params, ctx) {
+  const { ui } = ctx;
+  contenedor.innerHTML = '';
+  contenedor.append(ui.el(ui.encabezado('Yo', { atras: '#/inicio' })));
+  contenedor.append(seccionTemas(ctx));
+  contenedor.append(seccionNombre(ctx));
+  contenedor.append(seccionCopia(ctx));
+  contenedor.append(seccionCaja(ctx));
+  contenedor.append(seccionCasos(ctx));
+  contenedor.append(seccionInstalar(ctx));
+  contenedor.append(seccionAcerca(ctx));
+  contenedor.append(seccionBorrar(ctx));
+}

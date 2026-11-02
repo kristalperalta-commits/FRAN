@@ -1,0 +1,239 @@
+/*
+  Estilos propios de la pantalla de caja (js/pantallas/caja.js).
+  Usa las variables y componentes base de css/estilos.css.
+*/
+
+/* ---------- Saldos ---------- */
+.caja-saldos {
+  margin-bottom: var(--espacio);
+}
+
+.caja-saldos .tarjeta__valor {
+  font-size: 1.5rem;
+  word-break: break-word;
+}
+
+.caja-saldo--negativo {
+  color: var(--acento);
+}
+
+.caja-texto-negativo {
+  color: var(--sale);
+}
+
+/* Total en cajas y ganancia disponible */
+.caja-resumen__linea {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 12px;
+  padding: 6px 0;
+  font-size: 1.05rem;
+}
+
+.caja-resumen__linea + .caja-resumen__linea {
+  border-top: 1px solid var(--borde);
+}
+
+.caja-resumen__linea strong {
+  font-size: 1.2rem;
+}
+
+/* ---------- Botones de movimiento ---------- */
+.caja-acciones {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin-bottom: var(--espacio);
+}
+
+.caja-acciones .boton {
+  width: 100%;
+  min-height: 56px;
+  padding-left: 8px;
+  padding-right: 8px;
+  font-size: 1.05rem;
+  line-height: 1.2;
+}
+
+.caja-acciones__ancho {
+  grid-column: 1 / -1;
+}
+
+/* ---------- Filtros ---------- */
+.caja-filtros {
+  display: flex;
+  gap: 10px;
+  margin-bottom: var(--espacio);
+}
+
+.caja-filtros__campo {
+  flex: 1;
+  min-width: 0;
+  margin-bottom: 0;
+}
+
+/* ---------- Total del mes ---------- */
+.caja-total__cifras {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.caja-total__cifras > div {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.caja-total__cifras strong {
+  font-size: 1.05rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* ---------- Lista de movimientos ---------- */
+.caja-movimiento {
+  align-items: flex-start;
+}
+
+.caja-movimiento__detalle {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  color: var(--texto-suave);
+}
+
+.caja-movimiento__enlace {
+  color: var(--primario);
+  font-weight: 600;
+}
+
+.caja-movimiento__nota {
+  white-space: normal;
+  word-break: break-word;
+}
+
+.caja-movimiento .fila__lateral {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 6px;
+}
+
+.caja-movimiento .fila__monto {
+  font-size: 1.1rem;
+}
+
+.caja-movimiento__borrar {
+  background: transparent;
+  border-color: var(--borde);
+  color: var(--peligro);
+}
+
+/* ---------- Formulario de movimiento ---------- */
+.caja-explicacion {
+  color: var(--texto-suave);
+  margin-bottom: var(--espacio);
+}
+
+.caja-selector .opciones {
+  margin-top: 0;
+}
+
+.caja-selector .opcion {
+  flex: 1 1 auto;
+  min-height: var(--alto-toque);
+  font-size: 1rem;
+}
+
+.caja-previa {
+  min-height: 1.4em;
+  padding: 10px 12px;
+  border-radius: var(--radio);
+  background: var(--fondo-suave);
+  color: var(--texto);
+  margin-bottom: var(--espacio);
+}
+
+.caja-previa:empty {
+  display: none;
+}
+
+.caja-formulario__botones .boton {
+  min-height: 56px;
+}
+
+/* ---------- Virtual mes a mes ---------- */
+.caja-mensual {
+  margin-bottom: var(--espacio);
+}
+
+.caja-mensual__aviso {
+  margin: 4px 0 10px;
+  padding: 10px 12px;
+  border-radius: var(--radio);
+  background: var(--fondo-suave);
+  color: var(--texto);
+}
+
+.caja-mensual__tabla {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  margin: 0 calc(var(--espacio) * -1);
+  padding: 0 var(--espacio);
+}
+
+.caja-mensual table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.95rem;
+}
+
+/* En pantalla angosta sobra "Del mes": con entró, salió y acumulado se entiende */
+@media (max-width: 480px) {
+  .caja-mensual__del-mes {
+    display: none;
+  }
+
+  .caja-mensual table {
+    font-size: 0.9rem;
+  }
+
+  .caja-mensual th,
+  .caja-mensual td {
+    padding: 8px 4px;
+  }
+}
+
+.caja-mensual th,
+.caja-mensual td {
+  padding: 8px 6px;
+  text-align: right;
+  white-space: nowrap;
+  border-bottom: 1px solid var(--borde);
+}
+
+.caja-mensual th:first-child,
+.caja-mensual td:first-child {
+  text-align: left;
+  font-weight: 600;
+}
+
+.caja-mensual thead th {
+  color: var(--texto-suave);
+  font-weight: 600;
+  font-size: 0.85rem;
+}
+
+.caja-mensual tbody tr:last-child th,
+.caja-mensual tbody tr:last-child td {
+  border-bottom: 0;
+}
+
+.caja-mensual__mas {
+  width: 100%;
+  margin-top: 10px;
+}

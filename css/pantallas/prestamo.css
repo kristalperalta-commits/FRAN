@@ -1,0 +1,150 @@
+/*
+  Estilos propios de la pantalla de préstamo (ficha, nuevo préstamo, pago, perdón,
+  pago repartido). Lo base (tarjetas, botones, tabla, campos) viene de estilos.css.
+*/
+
+/* ---------- Lista etiqueta / valor ---------- */
+.prestamo-datos {
+  margin: 0;
+}
+
+.prestamo-datos .dato {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 12px;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--borde);
+}
+
+.prestamo-datos .dato:last-child {
+  border-bottom: 0;
+}
+
+.prestamo-datos dt {
+  color: var(--texto-suave);
+  flex-shrink: 0;
+}
+
+.prestamo-datos dd {
+  margin: 0;
+  text-align: right;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  overflow-wrap: anywhere;
+}
+
+/* ---------- Resumen de la ficha ---------- */
+.prestamo-resumen .tarjeta__detalle {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  margin-top: 8px;
+}
+
+.prestamo-avisos {
+  border-left: 6px solid var(--estado-atrasado);
+}
+
+.prestamo-avisos p:last-child {
+  margin-bottom: 0;
+}
+
+/* Botones de la ficha: uno debajo del otro, bien grandes para el dedo */
+.prestamo-acciones .boton {
+  flex: 1 1 100%;
+  min-height: 52px;
+}
+
+/* Paneles que se abren debajo de los botones */
+.prestamo-panel h2 {
+  margin-bottom: 8px;
+}
+
+/* ---------- Tabla mes a mes ---------- */
+.tabla-meses td:first-child {
+  line-height: 1.25;
+}
+
+.tabla-meses tr.proyectado td {
+  color: var(--texto-suave);
+  font-style: italic;
+}
+
+/* ---------- Lista de pagos ---------- */
+.fila__detalle--largo {
+  white-space: normal;
+}
+
+.fila--perdon .fila__monto {
+  color: var(--texto-suave);
+}
+
+.fila .fila__lateral .boton {
+  margin-top: 6px;
+}
+
+/* ---------- Formularios ---------- */
+.reparto {
+  margin-bottom: var(--espacio);
+}
+
+.reparto .opciones {
+  margin-bottom: 10px;
+}
+
+.reparto__campos {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.reparto__campos .campo {
+  margin-bottom: 8px;
+}
+
+@media (max-width: 400px) {
+  .reparto__campos {
+    grid-template-columns: 1fr;
+  }
+}
+
+.fuente {
+  padding: 12px;
+  margin-bottom: 12px;
+  border: 2px dashed var(--borde);
+  border-radius: var(--radio);
+  background: var(--fondo-tarjeta);
+}
+
+.fuente .campo:last-of-type {
+  margin-bottom: 8px;
+}
+
+.prestamo-error {
+  color: var(--peligro);
+  font-weight: 600;
+}
+
+/* ---------- Vista previa "Así quedaría" ---------- */
+.prestamo-previa {
+  border: 2px solid var(--primario);
+}
+
+.prestamo-previa__aviso {
+  margin: 8px 0 0;
+  padding: 8px 10px;
+  border-radius: 8px;
+  background: rgba(239, 108, 0, 0.14);
+  color: var(--texto);
+}
+
+/* ---------- Pago repartido entre préstamos ---------- */
+.prestamo-parte__previa {
+  min-height: 1.4em;
+}
+
+.prestamo-parte .chip-estado {
+  margin-right: 4px;
+}

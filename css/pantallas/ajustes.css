@@ -1,0 +1,211 @@
+/*
+  Estilos de la pantalla de Ajustes. Dueño: agente pantalla ajustes.
+  Usa las variables y componentes base de css/estilos.css (tarjeta, boton, campo).
+  Una sola columna, letra mínima 16px, botones grandes apilados.
+*/
+
+.ajustes-seccion {
+  padding: var(--espacio);
+}
+
+.ajustes-seccion__titulo {
+  font-size: 1.25rem;
+  margin: 0 0 10px;
+}
+
+.ajustes-texto {
+  margin: 0 0 12px;
+  color: var(--texto);
+}
+
+.ajustes-ayuda {
+  margin: 12px 0 0;
+  color: var(--texto-suave);
+}
+
+/* Botones apilados, uno debajo del otro, todos del mismo ancho */
+.ajustes-botones {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.ajustes-botones .boton {
+  width: 100%;
+}
+
+.ajustes-formulario .boton {
+  width: 100%;
+}
+
+/* Cuántos registros hay guardados */
+.ajustes-cuentas {
+  list-style: none;
+  margin: 0 0 14px;
+  padding: 0;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.ajustes-cuentas__item {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  padding: 10px 12px;
+  border-radius: var(--radio);
+  background: var(--fondo-suave);
+}
+
+.ajustes-cuentas__numero {
+  font-size: 1.35rem;
+  font-weight: bold;
+}
+
+.ajustes-cuentas__texto {
+  color: var(--texto-suave);
+}
+
+/* Zona de peligro: borde rojo */
+.ajustes-seccion--peligro {
+  border: 2px solid var(--peligro);
+}
+
+.ajustes-seccion--peligro .ajustes-seccion__titulo {
+  color: var(--peligro);
+}
+
+/* Instrucciones de instalación */
+.ajustes-instrucciones {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.ajustes-instruccion {
+  padding: 12px 14px;
+  border: 2px solid var(--borde);
+  border-radius: var(--radio);
+  background: var(--fondo);
+}
+
+.ajustes-instruccion--resaltada {
+  border-color: var(--primario);
+}
+
+.ajustes-instruccion__titulo {
+  font-size: 1.1rem;
+  margin: 0 0 6px;
+}
+
+.ajustes-instruccion--resaltada .ajustes-instruccion__titulo::after {
+  content: " · este teléfono";
+  font-weight: normal;
+  color: var(--primario);
+}
+
+.ajustes-pasos {
+  margin: 0;
+  padding-left: 22px;
+}
+
+.ajustes-pasos li {
+  margin-bottom: 8px;
+  line-height: 1.45;
+}
+
+.ajustes-pasos li:last-child {
+  margin-bottom: 0;
+}
+
+/* Avisos dentro de las secciones */
+.ajustes-aviso-ok {
+  margin: 0 0 12px;
+  padding: 10px 12px;
+  border-radius: var(--radio);
+  background: var(--fondo-suave);
+  color: var(--texto-estado-al-dia);
+  font-weight: 600;
+}
+
+.ajustes-aviso-error {
+  margin: 12px 0 0;
+  padding: 10px 12px;
+  border-radius: var(--radio);
+  border: 2px solid var(--peligro);
+  color: var(--peligro);
+  font-weight: 600;
+}
+
+/* Datos de "Acerca de la app" */
+.ajustes-datos {
+  margin: 0;
+}
+
+.ajustes-datos__fila {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--borde);
+}
+
+.ajustes-datos__fila:last-child {
+  border-bottom: 0;
+  padding-bottom: 0;
+}
+
+.ajustes-datos__fila:first-child {
+  padding-top: 0;
+}
+
+.ajustes-datos dt {
+  color: var(--texto-suave);
+}
+
+.ajustes-datos dd {
+  margin: 0;
+  font-weight: 600;
+}
+
+/* Temas: muestra de cada tema en dos columnas */
+.ajustes-temas {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.ajustes-tema {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 8px;
+  min-height: var(--alto-toque);
+  padding: 10px;
+  border: 2px solid var(--borde);
+  border-radius: var(--radio);
+  font: inherit;
+  font-weight: 600;
+  text-align: left;
+  cursor: pointer;
+}
+
+.ajustes-tema[aria-pressed="true"] {
+  border-color: var(--primario);
+  outline: 2px solid var(--primario);
+  outline-offset: 1px;
+}
+
+.ajustes-tema__muestra {
+  display: flex;
+  align-items: center;
+  height: 36px;
+  padding: 0 10px;
+  border-radius: 8px;
+}
+
+.ajustes-tema__punto {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+}
