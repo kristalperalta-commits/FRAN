@@ -1345,7 +1345,27 @@ export const datos = {
     const agenda = [...estadoActual.fran.agenda];
     const ids = new Set(agenda.map((x) => x.id));
     for (const x of nuevo.agenda) if (!ids.has(x.id)) agenda.push(x);
-    estadoActual.fran = { ...estadoActual.fran, asientos: [...nuevo.asientos.filter((a) => a.importado), ...propios], agenda };
+    estadoActual.fran = { ...estadoActual.fran, asientos: [...nuevo.asientos.filter((a) => a.importado), ...propios], agenda, virtualPorDefinir: nuevo.virtualPorDefinir };
+    // Préstamos que el plan corrige (marcados "actualizar") y pagos del plan: no tocan la caja.
+    for (const p of Array.isArray(objeto.prestamos) ? objeto.prestamos : []) {
+      if (!p.actualizar) continue;
+      const i = estadoActual.prestamos.findIndex((x) => x.id === p.id);
+      if (i < 0) continue;
+      const { actualizar, ...cambios } = p;
+      const { porConfirmar, ...anterior } = estadoActual.prestamos[i];
+      estadoActual.prestamos[i] = { ...anterior, ...cambios };
+    }
+    for (const g of Array.isArray(objeto.pagos) ? objeto.pagos : []) {
+      if (!String(g.id).startsWith('plan-') || estadoActual.pagos.some((x) => x.id === g.id)) continue;
+      if (estadoActual.prestamos.some((x) => x.id === g.prestamoId)) estadoActual.pagos.push(g);
+    }
+    // Saldos iniciales de la copia ("ini-..."): se agregan o se corrigen; lo demás de la caja no se toca.
+    for (const m of Array.isArray(objeto.movimientos) ? objeto.movimientos : []) {
+      if (!String(m.id).startsWith('ini-')) continue;
+      const fila = { id: m.id, fecha: m.fecha, caja: m.caja, tipo: m.tipo, monto: m.monto, signo: m.signo === -1 ? -1 : 1, origen: '', prestamoId: null, pagoId: null, parId: null, nota: limpiarTexto(m.nota), creadoEn: m.creadoEn };
+      const i = estadoActual.movimientos.findIndex((x) => x.id === m.id);
+      if (i >= 0) estadoActual.movimientos[i] = fila; else estadoActual.movimientos.push(fila);
+    }
     await guardar();
     return { historicos: nuevo.asientos.length, propios: propios.length, agenda: agenda.length };
   },

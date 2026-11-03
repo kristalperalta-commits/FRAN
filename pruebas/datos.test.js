@@ -120,6 +120,37 @@ describe('datos.js', () => {
     await datos.borrarTodo();
   });
 
+  describe('actualizar históricos', () => {
+    const copia = {
+      movimientos: [{ id: 'ini-v', fecha: '2026-11-01', caja: 'virtual', tipo: 'saldo_inicial', monto: 107565, signo: 1, creadoEn: '2026-11-02' }],
+      fran: { asientos: [{ id: 'h1', libro: 'personal', fecha: '2025-01-02', tipo: 'gasto', categoria: 'Agua', valor: 3000, importado: true }], agenda: [{ id: 'ag1', nombre: 'Ana' }] },
+    };
+    test('corrige un préstamo marcado, agrega su pago y la copia se sigue pudiendo importar', async () => {
+      const cliente = await datos.agregarCliente({ nombre: 'Ana' });
+      const p = await datos.crearPrestamo({ clienteId: cliente.id, fecha: '2026-01-01', capital: 600000, tasa: 10, medio: 'efectivo' });
+      const mov = datos.estado.movimientos.length;
+      await datos.actualizarHistoricos(JSON.stringify({
+        ...copia,
+        prestamos: [{ id: p.id, actualizar: true, capital: 686000, modalidad: 'capital_primero', totalPactado: 1745000, fuentes: [{ origen: 'caja_efectivo', monto: 686000, nota: '' }] }],
+        pagos: [{ id: 'plan-1', prestamoId: p.id, clienteId: cliente.id, fecha: '2026-10-31', tipo: 'pago', monto: 80000, interes: 0, capital: 80000, medio: 'efectivo', creadoEn: '2026-11-02' }],
+      }));
+      assert.equal(datos.obtener('prestamos', p.id).capital, 686000);
+      assert.equal(datos.estado.pagos.length, 1);
+      assert.equal(datos.estado.movimientos.length, mov + 1); // solo el saldo inicial
+      await datos.importarJSON(datos.exportarJSON());
+      assert.equal(datos.obtener('prestamos', p.id).totalPactado, 1745000);
+    });
+
+    test('conserva lo anotado, reemplaza lo importado y corrige el saldo inicial', async () => {
+      await datos.agregarAsiento({ libro: 'personal', fecha: '2026-11-02', tipo: 'gasto', categoria: 'Agua', valor: 2000 });
+      await datos.actualizarHistoricos(JSON.stringify(copia));
+      await datos.actualizarHistoricos(JSON.stringify(copia));
+      assert.equal(datos.estado.fran.asientos.length, 2);
+      assert.equal(saldo('virtual'), 107565);
+      assert.equal(datos.estado.fran.agenda.length, 1);
+    });
+  });
+
   describe('caja (sección 5.4, último punto)', () => {
     test('saldo inicial negativo en virtual: plata de la pareja que ya debía', async () => {
       await datos.movimientoCaja({ tipo: 'saldo_inicial', caja: 'virtual', monto: 1006000, fecha: '2026-11-01', negativo: true });

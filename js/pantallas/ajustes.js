@@ -48,8 +48,8 @@ function textoError(error) {
 }
 
 /** Descarga un texto como archivo usando un enlace temporal. */
-function descargarTexto(texto, nombreArchivo) {
-  const archivo = new Blob([texto], { type: 'application/json' });
+function descargarTexto(texto, nombreArchivo, tipo = 'application/json') {
+  const archivo = new Blob([texto], { type: tipo });
   const url = URL.createObjectURL(archivo);
   const enlace = document.createElement('a');
   enlace.href = url;
@@ -99,10 +99,8 @@ function seccionTemas(ctx) {
           <button type="button" class="ajustes-tema" data-tema-opcion="${ui.esc(tema.id)}"
             aria-pressed="${tema.id === temas.actual()}"
             style="background:${ui.esc(tema.fondo)};color:${ui.esc(tema.texto)}">
-            <span class="ajustes-tema__muestra" style="background:${ui.esc(tema.tarjeta)}" aria-hidden="true">
-              <span class="ajustes-tema__punto" style="background:${ui.esc(tema.color)}"></span>
-            </span>
             <span class="ajustes-tema__nombre">${ui.esc(tema.nombre)}</span>
+            ${tema.detalle ? `<small>${ui.esc(tema.detalle)}</small>` : ''}
           </button>
         `).join('')}
       </div>
@@ -306,6 +304,7 @@ function seccionCopia(ctx) {
       </ul>
       <div class="ajustes-botones">
         <button type="button" class="boton boton--primario boton--grande" id="boton-exportar">Descargar copia</button>
+        <button type="button" class="boton boton--secundario boton--grande" id="boton-excel">Exportar a Excel</button>
         ${puedeCompartir ? '<button type="button" class="boton boton--secundario boton--grande" id="boton-compartir">Compartir copia</button>' : ''}
         <button type="button" class="boton boton--secundario boton--grande" id="boton-importar">Importar copia</button>
         <input type="file" id="archivo-importar" class="oculto" accept=".json,application/json,text/plain" aria-label="Archivo de copia de seguridad">
@@ -321,6 +320,20 @@ function seccionCopia(ctx) {
       ui.toast('Copia lista. Revisa tus descargas o tus archivos.');
     } catch (error) {
       ui.toast(`No se pudo descargar la copia: ${textoError(error)}`, 5000);
+    }
+  });
+
+  // Excel: un archivo que abre en Excel, con todos los movimientos de los libros.
+  seccion.querySelector('#boton-excel').addEventListener('click', () => {
+    try {
+      const celda = (v) => `"${String(v ?? '').replace(/"/g, '""')}"`;
+      const filas = (datos.estado.fran.asientos || []).slice().sort((a, b) => a.fecha.localeCompare(b.fecha));
+      const texto = [['Fecha', 'Libro', 'Tipo', 'Categoria', 'Descripcion', 'Valor', 'Cuenta'].join(';'),
+        ...filas.map((a) => [a.fecha, a.libro, a.tipo, a.categoria, a.descripcion, a.valor, a.cuenta].map(celda).join(';'))].join('\r\n');
+      descargarTexto(`\ufeff${texto}`, `fran-movimientos-${hoy}.csv`, 'text/csv;charset=utf-8');
+      ui.toast('Archivo listo. Se abre con Excel.');
+    } catch (error) {
+      ui.toast(`No se pudo exportar: ${textoError(error)}`, 5000);
     }
   });
 
@@ -619,13 +632,14 @@ export async function render(contenedor, params, ctx) {
   contenedor.innerHTML = '';
   contenedor.append(ui.el(`<header class="fran-titulo"><a href="#/inicio" class="fran-titulo__atras" aria-label="Volver">‹</a><h1>Yo</h1></header>`));
   contenedor.append(seccionTemas(ctx));
-  contenedor.append(plegable('🔒', 'Entrada con Face ID', seccionCandado(ctx), ui));
-  contenedor.append(plegable('☁️', 'Nube', seccionNube(ctx), ui));
-  const respaldo = plegable('💾', 'Respaldo y copias', seccionCopia(ctx), ui);
+  contenedor.append(ui.el('<p class="fran-seccion">Ajustes</p>'));
+  contenedor.append(ui.el('<a class="fran-enlace" href="#/libro/pension"><span>💱</span>Moneda COP · tasa USD</a>'));
+  const respaldo = plegable('☁️', 'Respaldo y exportar Excel', seccionCopia(ctx), ui);
   respaldo.append(seccionHistoricos(ctx));
   respaldo.append(seccionBorrar(ctx));
   contenedor.append(respaldo);
-  contenedor.append(ui.el('<a class="fran-enlace" href="#/libro/pension"><span>💱</span>Moneda COP · tasa USD</a>'));
+  contenedor.append(plegable('🔒', 'Face ID', seccionCandado(ctx), ui));
+  contenedor.append(plegable('🌐', 'Nube', seccionNube(ctx), ui));
   contenedor.append(ui.el('<a class="fran-enlace" href="#/caja"><span>🧾</span>Caja efectivo y virtual</a>'));
   contenedor.append(plegable('📲', 'Instalar en el teléfono', seccionInstalar(ctx), ui));
   contenedor.append(plegable('ℹ️', 'Acerca de la app', seccionAcerca(ctx), ui));

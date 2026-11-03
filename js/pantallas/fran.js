@@ -7,13 +7,13 @@
 import { leerTexto } from '../texto.js';
 
 export const LIBROS = {
-  personal: { nombre: 'Finanzas personales', corto: 'Finanzas', icono: '👛', color: '#22C55E' },
-  prestamos: { nombre: 'Préstamos', corto: 'Préstamos', icono: '🤝', color: '#3B82F6' },
-  pension: { nombre: 'Pensión', corto: 'Pensión', icono: '🏦', color: '#A855F7' },
-  productos: { nombre: 'Productos', corto: 'Productos', icono: '📦', color: '#F97316' },
-  arriendos: { nombre: 'Arriendos', corto: 'Arriendos', icono: '🏠', color: '#EAB308' },
-  redes: { nombre: 'Redes y trabajos', corto: 'Redes y trabajos', icono: '🎬', color: '#EC4899' },
-  terceros: { nombre: 'Plata de terceros', corto: 'Plata de terceros', icono: '🔐', color: '#64748B' },
+  personal: { nombre: 'Finanzas personales', corto: 'Finanzas', icono: '💚', color: '#22C55E' },
+  prestamos: { nombre: 'Préstamos', corto: 'Préstamos', icono: '💙', color: '#3B82F6' },
+  pension: { nombre: 'Pensión', corto: 'Pensión', icono: '💜', color: '#A855F7' },
+  productos: { nombre: 'Productos', corto: 'Productos', icono: '🧡', color: '#F97316' },
+  arriendos: { nombre: 'Arriendos', corto: 'Arriendos', icono: '💛', color: '#EAB308' },
+  redes: { nombre: 'Redes y trabajos', corto: 'Redes y trabajos', icono: '🩷', color: '#EC4899' },
+  terceros: { nombre: 'Plata de terceros', corto: 'Plata de terceros', icono: '🤍', color: '#64748B' },
 };
 
 // Qué ofrece el botón + de cada libro: [texto, clave, tipo guardado].
@@ -90,7 +90,7 @@ function asientos(ctx) {
 }
 
 function delLibro(lista, libro) {
-  if (libro === 'personal') return lista.filter((a) => a.libro === 'personal' || (a.tipo === 'ingreso' && !['terceros', 'pension'].includes(a.libro)));
+  if (libro === 'personal') return lista.filter((a) => a.libro === 'personal' || (a.tipo === 'ingreso' && !a.soloLibro && !['terceros', 'pension'].includes(a.libro)));
   return lista.filter((a) => a.libro === libro);
 }
 
@@ -274,20 +274,15 @@ function agendaDeHoy(ctx) {
 
 function renderPrincipal(contenedor, ctx) {
   reiniciarVista();
-  const { ui, dinero, datos, motor, fechas } = ctx;
+  const { ui, dinero, datos } = ctx;
   const estado = datos.estado;
   const fran = estado.fran;
   const lista = asientos(ctx);
   const plata = miPlata(ctx);
-  const verde = delLibro(lista, 'personal');
-  const mes = ultimoMes(ctx, verde);
-  const m = delMes(verde, mes);
-  const nombreMes = fechas.nombreMes(Number(mes.slice(5, 7)));
-  const resumen = motor.resumenNegocio(estado, ctx.hoy());
   const c = clientesPorEstado(ctx);
   const estados = [['Por confirmar', c.por_confirmar], ['Al día', c.al_dia], ['Atrasados', c.atrasado], ['Congelados', c.congelado]].filter((x) => x[1]).map((x) => `${x[0]} ${x[1]}`).join(' · ');
   const usd = fran.pension.cuentas.reduce((s, x) => s + x.usd, 0);
-  const invertido = sumar(deTipo(delLibro(lista, 'productos'), 'gasto'));
+  const inventario = deTipo(delLibro(lista, 'productos'), 'gasto').filter((a) => a.categoria === 'Inventario sin vender');
   const hoyAgenda = agendaDeHoy(ctx);
   const sinDatos = !estado.clientes.length && !fran.asientos.length;
   const grande = (id, valor, detalle) => `<a href="#/libro/${id}" class="fran-libro fran-libro--${id}">
@@ -298,7 +293,7 @@ function renderPrincipal(contenedor, ctx) {
   const chica = (id) => `<a href="#/otros" class="fran-libro-chico fran-libro--${id}"><i>${LIBROS[id].icono}</i><span>${ui.esc(LIBROS[id].corto)}</span></a>`;
 
   contenedor.append(ui.el(`<div class="fran-principal">
-    <header class="fran-titulo fran-titulo--principal"><h1>Fran</h1><a href="#/ajustes" class="fran-yo" aria-label="Yo y ajustes">Yo</a></header>
+    <header class="fran-titulo fran-titulo--principal"><h1>Fran</h1><a href="#/ajustes" class="fran-yo" aria-label="Yo y ajustes"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10"/></svg></a></header>
     <div class="fran-plata">
       <small>Mi plata propia hoy</small>
       <strong class="numero">${dinero.formatear(plata.total)}</strong>
@@ -307,10 +302,10 @@ function renderPrincipal(contenedor, ctx) {
     ${sinDatos ? `<a href="#/ajustes" class="fran-aviso">Todavía no están tus datos en este aparato. Toca aquí y entra a la nube con tu correo.</a>` : ''}
     ${hoyAgenda.length ? `<a href="#/agenda" class="fran-aviso">⏰ Cobros de hoy: ${hoyAgenda.length}. Toca para ver.</a>` : ''}
     <div class="fran-libros">
-      ${grande('personal', dinero.formatear(sumar(deTipo(m, 'ingreso')) - sumar(deTipo(m, 'gasto'))), `Saldo de ${nombreMes}`)}
-      ${grande('prestamos', dinero.formatear(resumen.capitalEnCalle), `Capital anotado${estados ? ` · ${estados}` : ''}`)}
+      ${grande('personal', dinero.formatear(plata.efectivo + plata.virtual), 'Saldo del mes')}
+      ${grande('prestamos', 'Cartera', estados || 'Al día · Atrasados · Congelados')}
       ${grande('pension', dinero.formatear(totalPension(fran)), `${dinero.formatear(usd)} USD + efectivo + carro`)}
-      ${grande('productos', dinero.formatear(invertido), 'Invertido')}
+      ${grande('productos', dinero.formatear(sumar(inventario)), `Invertido · ${inventario.length} productos`)}
     </div>
     <div class="fran-libros-chicos">${chica('arriendos')}${chica('redes')}${chica('terceros')}</div>
   </div>`));
@@ -331,6 +326,7 @@ function renderOtros(contenedor, ctx) {
     const l = deTipo(delLibro(lista, id), 'ingreso');
     const mes = ultimoMes(ctx, l);
     const m = delMes(l, mes);
+    if (m.length <= 2 && m.length && m.every((x) => x.descripcion && !/falta el detalle/.test(x.descripcion))) return [sumar(m), m.map((x) => x.descripcion).join(' + ')];
     return [sumar(m), `${fechas.formatearMes(mes)}${detalleCategorias(m) ? ` · ${detalleCategorias(m)}` : ''}`];
   };
   const [a, ad] = ingresosDe('arriendos');
@@ -372,6 +368,28 @@ function renderLibro(contenedor, id, ctx) {
   contenedor.append(raiz);
 }
 
+/** Une los intereses y el abono de una misma persona: "360.000 int · 1.340.000 capital". */
+function filasDeAsientos(lista, dinero) {
+  const grupos = new Map();
+  for (const a of lista) {
+    if (String(a.id).startsWith('pago-')) continue;
+    const clave = a.persona || a.id;
+    if (!grupos.has(clave)) grupos.set(clave, { a, interes: 0, capital: 0, otro: 0 });
+    const g = grupos.get(clave);
+    if (a.tipo === 'abono') g.capital += a.valor;
+    else if (a.tipo === 'ingreso') g.interes += a.valor;
+    else g.otro -= a.valor;
+  }
+  return [...grupos.values()].map(({ a, interes, capital, otro }) => {
+    let sub = 'Intereses';
+    if (a.sinDetalle) sub = 'Intereses del mes, sin detalle';
+    else if (interes && capital) sub = `${dinero.formatear(interes)} int · ${dinero.formatear(capital)} capital`;
+    else if (capital) sub = 'Abono a capital';
+    else if (otro) sub = a.descripcion || a.categoria;
+    return { fecha: a.fecha, icono: capital && !interes ? '↩️' : (capital ? '↩️' : '%'), titulo: a.persona || a.categoria, sub, valor: interes + capital + otro, ruta: a.clienteId ? `#/cliente/${encodeURIComponent(a.clienteId)}` : null };
+  });
+}
+
 function renderPrestamos(contenedor, ctx, redibujar) {
   const { ui, dinero, datos, motor } = ctx;
   const estado = datos.estado;
@@ -380,7 +398,8 @@ function renderPrestamos(contenedor, ctx, redibujar) {
   const enMes = (f) => f.slice(0, 7) === mes;
   const prestamos = estado.prestamos.filter((p) => enMes(p.fecha));
   const pagos = estado.pagos.filter((g) => g.tipo !== 'perdon' && enMes(g.fecha));
-  const capital = pagos.reduce((s, g) => s + g.capital, 0);
+  const abonos = deTipo(delMes(lista, mes), 'abono');
+  const capital = pagos.reduce((s, g) => s + g.capital, 0) + sumar(abonos);
   const intereses = sumar(deTipo(delMes(lista, mes), 'ingreso'));
   const r = motor.resumenNegocio(estado, ctx.hoy());
   const c = clientesPorEstado(ctx);
@@ -389,16 +408,16 @@ function renderPrestamos(contenedor, ctx, redibujar) {
   const movimientos = [
     ...prestamos.map((p) => ({ fecha: p.fecha, icono: '💵', titulo: nombreCliente(ctx, p.clienteId), sub: 'Nuevo préstamo', valor: -p.capital, ruta: `#/cliente/${encodeURIComponent(p.clienteId)}` })),
     ...pagos.map((g) => ({ fecha: g.fecha, icono: g.capital && !g.interes ? '↩️' : '💯', titulo: nombreCliente(ctx, g.clienteId), sub: [g.interes ? `${dinero.formatear(g.interes)} int` : '', g.capital ? `${dinero.formatear(g.capital)} capital` : ''].filter(Boolean).join(' · '), valor: g.monto, ruta: `#/cliente/${encodeURIComponent(g.clienteId)}` })),
-    ...delMes(lista, mes).filter((a) => !String(a.id).startsWith('pago-')).map((a) => ({ fecha: a.fecha, icono: '💯', titulo: a.persona || a.categoria, sub: a.sinDetalle ? 'Intereses del mes, sin detalle' : 'Intereses', valor: a.tipo === 'gasto' ? -a.valor : a.valor })),
+    ...filasDeAsientos(delMes(lista, mes), dinero),
   ].sort((a, b) => b.fecha.localeCompare(a.fecha) || Math.abs(b.valor) - Math.abs(a.valor));
 
   const pastilla = (t, n, clase) => `<a href="#/clientes" class="fran-pastilla ${clase}"><i></i>${ui.esc(t)} ${n}</a>`;
   const raiz = ui.el(`<div>
     ${titular('prestamos', ctx, '#/inicio')}
-    ${caja3(['Presté', dinero.formatear(prestamos.reduce((s, p) => s + p.capital, 0))], ['Cobré capital', estado.pagos.length ? dinero.formatear(capital) : 'Sin datos'], ['Intereses', dinero.formatear(intereses)], ctx)}
+    ${caja3(['Presté', dinero.formatear(prestamos.reduce((s, p) => s + p.capital, 0))], ['Cobré capital', estado.pagos.length || abonos.length ? dinero.formatear(capital) : 'Sin datos'], ['Intereses', dinero.formatear(intereses)], ctx)}
     ${selectorMes(mes, ctx)}
     <div class="fran-dos">
-      <div class="fran-tarjeta"><small>${provisional ? 'Capital anotado' : 'Cartera'}</small><strong class="numero">${dinero.formatear(r.capitalEnCalle + r.interesesPendientes)}</strong></div>
+      <div class="fran-tarjeta"><small>Cartera</small>${provisional ? `<strong>por confirmar</strong><small>Capital anotado: ${dinero.formatear(r.capitalEnCalle)}</small>` : `<strong class="numero">${dinero.formatear(r.capitalEnCalle + r.interesesPendientes)}</strong>`}</div>
       <div class="fran-tarjeta"><small>Ganancia mes</small><strong class="numero fran-mas">${dinero.formatear(intereses)}</strong></div>
     </div>
     <div class="fran-pastillas">
@@ -432,7 +451,7 @@ function renderProductos(contenedor, ctx, redibujar) {
   const inventario = lista.filter((a) => a.tipo === 'gasto' && a.categoria === 'Inventario sin vender');
   const inversiones = lista.filter((a) => a.tipo === 'gasto' && a.categoria === 'Inversiones');
   const vendido = deTipo(lista, 'ingreso').sort((a, b) => b.fecha.localeCompare(a.fecha));
-  const filas = (l, signo) => l.map((a) => fila({ ui, icono: iconoDe(a.categoria), titulo: a.descripcion || a.categoria, sub: fechas.formatear(a.fecha), derecha: `${signo}${dinero.formatear(a.valor)}`, clase: signo === '+' ? 'fran-mas' : '' })).join('');
+  const filas = (l, signo) => l.map((a) => fila({ ui, icono: iconoDe(a.categoria), titulo: a.descripcion || a.categoria, sub: a.textoFecha || fechas.formatear(a.fecha), derecha: `${signo}${dinero.formatear(a.valor)}`, clase: signo === '+' ? 'fran-mas' : '' })).join('');
   const raiz = ui.el(`<div>
     ${titular('productos', ctx, '#/inicio')}
     ${caja3(['Metí yo', dinero.formatear(meti)], ['Vendí', dinero.formatear(vendi)], ['Ganancia', dinero.formatear(vendi - gastosProductos)], ctx)}
@@ -576,7 +595,7 @@ function renderDetalle(contenedor, id, tituloDetalle, lista, atras, ctx) {
         <span class="fran-barra-fila__c">
           <span class="fran-barra-fila__l"><strong>${ui.esc(a.descripcion || a.categoria)}</strong><span class="numero">${dinero.formatear(a.valor)}</span></span>
           <span class="fran-barra-fila__l"><span class="fran-barra" style="width:${Math.max(1.5, (a.valor / maximo) * 80)}%"></span><small>${(total ? (a.valor / total) * 100 : 0).toFixed(2).replace('.', ',')}%</small></span>
-          <span class="fran-barra-fila__l"><small>${ui.esc(fechas.formatear(a.fecha))}</small>${a.importado ? '' : `<button type="button" class="fran-borrar" data-borrar="${ui.esc(a.id)}">Borrar</button>`}</span>
+          <span class="fran-barra-fila__l"><small>${ui.esc(a.textoFecha || fechas.formatear(a.fecha))}</small>${a.importado ? '' : `<button type="button" class="fran-borrar" data-borrar="${ui.esc(a.id)}">Borrar</button>`}</span>
         </span>
       </div>`).join('') || '<p class="fran-vacio">Sin movimientos.</p>'}</div>
     </div>`);
@@ -699,7 +718,10 @@ function renderInformes(contenedor, id, ctx) {
 // ---------- Botón + ----------
 
 export function abrirMas(id, ctx) {
-  if (id === 'prestamos') return ctx.navegar('/libro/prestamos/registrar/nuevo');
+  if (id === 'prestamos') {
+    const enFicha = window.location.hash.match(/^#\/cliente\/([^/]+)$/);
+    return ctx.navegar(enFicha ? `/libro/prestamos/registrar/interes/${enFicha[1]}` : '/libro/prestamos/registrar/nuevo');
+  }
   if (id === 'pension') return ctx.navegar('/libro/pension/mover/ingreso');
   return ctx.navegar(`/libro/${id}/agregar/${(TIPOS[id] || TIPOS.personal)[0][1]}`);
 }
@@ -724,15 +746,18 @@ function renderAgregar(contenedor, id, clave, ctx) {
       ${esTransfer ? `
         <p class="fran-seccion">Sale de</p>${chips('cuenta', CUENTAS, 'Efectivo', ui)}
         <p class="fran-seccion">Entra a</p>${chips('destino', CUENTAS, 'Nequi propio', ui)}` : `
-        <div class="fran-iconos">${categorias.map((c) => `<button type="button" class="${c === elegida ? 'activo' : ''}" data-cat="${ui.esc(c)}"><span>${ui.esc(iconoDe(c))}</span><small>${ui.esc(c)}</small></button>`).join('')}
-          <button type="button" data-nueva><span>＋</span><small>Nueva</small></button></div>
+        <div class="fran-iconos">${categorias.map((c, i) => `<button type="button" class="${c === elegida ? 'activo' : ''}${i >= 11 ? ' fran-mas-cat oculto' : ''}" data-cat="${ui.esc(c)}"><span>${ui.esc(iconoDe(c))}</span><small>${ui.esc(c.replace(' públicos', ''))}</small></button>`).join('')}
+          ${categorias.length > 11 ? '<button type="button" data-ver-mas><span>＋</span><small>Más</small></button>' : ''}
+          <button type="button" class="${categorias.length > 11 ? 'fran-mas-cat oculto' : ''}" data-nueva><span>✎</span><small>Nueva</small></button></div>
         <input type="text" class="fran-entrada oculto" name="nueva" placeholder="Nombre de la categoría nueva" autocomplete="off">`}
-      <div class="fran-escribir">
-        <input type="text" name="texto" autocomplete="off" placeholder="${esTransfer ? '¿Cuánto?' : '¿Para qué y cuánto cuesta?'}" aria-label="Para qué y cuánto cuesta">
-        <button type="button" class="fran-mic oculto" aria-label="Dictar">🎤</button>
+      <div class="fran-agregar__pie">
+        <div class="fran-escribir">
+          <input type="text" name="texto" autocomplete="off" placeholder="${esTransfer ? '¿Cuánto?' : '¿Para qué y cuánto cuesta?'}" aria-label="Para qué y cuánto cuesta">
+          <button type="button" class="fran-mic oculto" aria-label="Dictar">🎤</button>
+          <button type="submit" class="fran-enviar" aria-label="Guardar">✓</button>
+        </div>
+        ${esTransfer || id === 'terceros' ? '' : `<p class="fran-pagado">${tipo === 'ingreso' ? 'Entra por' : 'Pagado con'}:</p>${chips('cuenta', CUENTAS, 'Efectivo', ui).replace('fran-chips', 'fran-chips fran-chips--texto')}`}
       </div>
-      ${esTransfer || id === 'terceros' ? '' : `<p class="fran-pagado">${tipo === 'ingreso' ? 'Entra por' : 'Pagado con'}</p>${chips('cuenta', CUENTAS, 'Efectivo', ui)}`}
-      <button class="boton boton--primario fran-guardar">Guardar</button>
     </form>
   </div>`);
   conectarChips(raiz);
@@ -742,6 +767,11 @@ function renderAgregar(contenedor, id, clave, ctx) {
     const n = raiz.querySelector('[name="nueva"]');
     if (n) { n.classList.add('oculto'); n.value = ''; }
   }));
+  const verMas = raiz.querySelector('[data-ver-mas]');
+  if (verMas) verMas.addEventListener('click', () => {
+    raiz.querySelectorAll('.fran-mas-cat').forEach((x) => x.classList.remove('oculto'));
+    verMas.remove();
+  });
   const botonNueva = raiz.querySelector('[data-nueva]');
   if (botonNueva) botonNueva.addEventListener('click', () => {
     raiz.querySelectorAll('[data-cat],[data-nueva]').forEach((x) => x.classList.toggle('activo', x === botonNueva));
@@ -885,11 +915,13 @@ function renderFicha(contenedor, id, ctx) {
   const recuperado = Math.max(0, r.capitalPrestado - r.capitalPendiente);
   const pct = r.capitalPrestado ? Math.min(100, (recuperado / r.capitalPrestado) * 100) : 0;
   const acuerdo = (estado.fran.agenda || []).find((x) => x.clienteId === id || norm(x.nombre) === norm(cliente.nombre));
-  const textoAcuerdo = acuerdo ? `Acuerdo: ${[acuerdo.monto ? dinero.formatear(acuerdo.monto) : '', acuerdo.repite || (acuerdo.fecha ? fechas.formatear(acuerdo.fecha) : ''), acuerdo.nota].filter(Boolean).join(' · ')}` : '';
+  const cuando = acuerdo && (acuerdo.repite ? `${acuerdo.repite}s` : (acuerdo.fecha ? fechas.formatear(acuerdo.fecha) : ''));
+  const textoAcuerdo = acuerdo ? `Acuerdo: ${[acuerdo.monto ? `${dinero.formatear(acuerdo.monto)} ${acuerdo.repite ? cuando : ''}`.trim() : (acuerdo.repite ? cuando : ''), !acuerdo.repite && acuerdo.monto ? cuando : (!acuerdo.repite ? cuando : ''), acuerdo.nota].filter(Boolean).join(' · ')}` : '';
+  const capitalPrimero = propios.some((p) => p.modalidad === 'capital_primero');
   const historial = [
     ...propios.map((p) => ({ f: p.fecha, sinFecha: p.porConfirmar && p.porConfirmar.fecha, icono: '💵', t: 'Préstamo', v: `−${dinero.formatear(p.capital)}`, c: 'fran-menos', ruta: `#/prestamo/${encodeURIComponent(p.id)}` })),
     ...pagos.map((g) => ({ f: g.fecha, icono: g.tipo === 'perdon' ? '🎁' : '↩️', t: g.tipo === 'perdon' ? 'Perdón de intereses' : (g.capital && !g.interes ? 'Abono a capital' : 'Pago'), v: `+${dinero.formatear(g.monto)}`, c: 'fran-mas' })),
-    ...(estado.fran.asientos || []).filter((a) => a.persona && norm(a.persona) === norm(cliente.nombre)).map((a) => ({ f: a.fecha, icono: '💯', t: 'Intereses', v: `+${dinero.formatear(a.valor)}`, c: 'fran-mas' })),
+    ...(estado.fran.asientos || []).filter((a) => a.clienteId === id || (a.persona && norm(a.persona) === norm(cliente.nombre))).map((a) => ({ f: a.fecha, textoFecha: a.textoFecha, icono: a.tipo === 'abono' ? '↩️' : '%', t: a.tipo === 'abono' ? 'Abono a capital' : 'Intereses', v: `+${dinero.formatear(a.valor)}`, c: 'fran-mas' })),
   ].sort((a, b) => b.f.localeCompare(a.f));
   const tel = soloDigitos(cliente.telefono);
   const editar = `#/cliente/${encodeURIComponent(id)}/editar`;
@@ -905,19 +937,15 @@ function renderFicha(contenedor, id, ctx) {
       <div class="fran-tarjeta"><small>Capital pendiente</small><strong class="numero">${dinero.formatear(r.capitalPendiente)}</strong></div>
     </div>
     <div class="fran-progreso"><span style="width:${pct}%"></span></div>
-    <p class="fran-nota">Recuperado ${dinero.formatear(recuperado)} de ${dinero.formatear(r.capitalPrestado)} de capital.</p>
+    <p class="fran-nota">Recuperado ${dinero.formatear(recuperado)} de ${dinero.formatear(r.capitalPrestado)} de capital.${capitalPrimero ? ' Cuando llegue a 100%, todo lo que pague es ganancia.' : ''}</p>
+    <p class="fran-seccion">Historial</p>
+    <div class="fran-lista">${historial.map((h) => fila({ ui, icono: h.icono, titulo: h.t, sub: h.sinFecha ? `Fecha por confirmar (${h.sinFecha})` : (h.textoFecha || fechas.formatear(h.f)), derecha: h.v, clase: h.c, ruta: h.ruta })).join('') || '<p class="fran-vacio">Sin movimientos.</p>'}</div>
     <div class="fran-tres">
       <a class="azul" href="${tel ? `tel:+${tel}` : editar}">📞 ${tel ? 'Llamar' : 'Poner teléfono'}</a>
       <a class="verde" href="${tel ? `https://wa.me/${tel}` : editar}"${tel ? ' target="_blank" rel="noopener"' : ''}>💬 WhatsApp</a>
       <a class="gris" href="#/libro/prestamos/registrar/acuerdo/${encodeURIComponent(id)}">⏰ Recordar</a>
     </div>
-    <div class="fran-accesos">
-      <a href="#/libro/prestamos/registrar/interes/${encodeURIComponent(id)}">💯 Registrar pago</a>
-      <a href="#/libro/prestamos/registrar/nuevo/${encodeURIComponent(id)}">＋ Nuevo préstamo</a>
-    </div>
-    <p class="fran-seccion">Historial</p>
-    <div class="fran-lista">${historial.map((h) => fila({ ui, icono: h.icono, titulo: h.t, sub: h.sinFecha ? `Fecha por confirmar (${h.sinFecha})` : fechas.formatear(h.f), derecha: h.v, clase: h.c, ruta: h.ruta })).join('') || '<p class="fran-vacio">Sin movimientos.</p>'}</div>
-    <a class="fran-acceso" href="${editar}">✏️ Editar datos del cliente</a>
+    <a class="fran-enlace-suave" href="${editar}">Editar datos del cliente</a>
   </div>`);
   contenedor.append(raiz);
 }
@@ -945,7 +973,7 @@ function renderAgenda(contenedor, ctx) {
       ? (x.repite === 'diario' ? (x.desde ? `Desde ${fechas.nombreMes(Number(x.desde.slice(5, 7)), true)} ${Number(x.desde.slice(8))}`.replace(/^Desde (\S+) (\d+)$/, 'Desde $2 $1') : 'Todos los días') : `${x.repite[0].toUpperCase()}${x.repite.slice(1)}`)
       : fechaLinda(x.fecha, ctx).replace(/^(.+) · (\S+)$/, '$2 $1');
     return `<div class="fran-fila">
-      <span class="fran-ico">${icono}</span>
+      <span class="fran-ico${x.repite ? ' fran-ico--verde' : (legal ? ' fran-ico--rojo' : '')}">${icono}</span>
       <span class="fran-fila__texto"><strong>${ui.esc(x.nombre)}</strong><small>${ui.esc([cuando, x.nota].filter(Boolean).join(' · '))}</small></span>
       <span class="fran-fila__valor numero">${x.monto ? dinero.formatear(x.monto) : ui.esc(x.repite || '—')}</span>
       <button type="button" class="fran-check" data-hecho="${ui.esc(x.id)}" aria-label="Marcar ${ui.esc(x.nombre)} como cobrado">✓</button>

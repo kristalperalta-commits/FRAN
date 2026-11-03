@@ -108,10 +108,21 @@ async function verificar() {
 
 /* ---------- Pantalla ---------- */
 
+const CARA = '<svg class="candado__cara" viewBox="0 0 96 40" aria-hidden="true"><circle cx="16" cy="18" r="13"/><circle class="ojo" cx="16" cy="18" r="7"/><circle cx="80" cy="18" r="13"/><circle class="ojo" cx="80" cy="18" r="7"/><path d="M36 30c6 6 18 6 24 0"/></svg>';
+
+let turnoAuto = 0;
+
+function colorBarra(color) {
+  const barra = document.querySelector('meta[name="theme-color"]');
+  if (barra) barra.setAttribute('content', color);
+}
+
 function abrir() {
+  turnoAuto++;
   cerradoAhora = false;
   if (capa) { capa.remove(); capa = null; }
   document.body.classList.remove('con-candado');
+  if (window.Tema) window.Tema.elegir(window.Tema.actual());
   if (alAbrir) { const fn = alAbrir; alAbrir = null; fn(); }
 }
 
@@ -124,39 +135,74 @@ function pintar(html) {
     document.body.append(capa);
     document.body.classList.add('con-candado');
   }
-  capa.innerHTML = `<div class="candado__caja"><span class="candado__logo">F</span><h1>Fran</h1>${html}</div>`;
+  colorBarra('#000000');
+  capa.innerHTML = `<div class="candado__caja"><p class="candado__logo">Fran</p>${html}</div>`;
   return capa;
 }
 
 function mensajeDe(error) {
-  if (error && error.name === 'NotAllowedError') return 'No se confirmó. Inténtalo otra vez.';
-  return (error && error.message) || 'No se pudo. Inténtalo otra vez.';
+  if (error && error.name === 'NotAllowedError') return 'No se confirmó. Toca la pantalla para intentar otra vez.';
+  return (error && error.message) || 'No se pudo. Toca la pantalla para intentar otra vez.';
 }
 
-function pantallaBloqueo(mensaje = '') {
+/** Boceto 1. Toda la pantalla sirve para lanzar Face ID: no hay botón que buscar. */
+function pantallaBloqueo(mensaje = '', conSalida = false) {
   const c = pintar(`
-    <button type="button" class="candado__boton" id="candado-entrar">Entrar con Face ID</button>
-    <p class="candado__nota">Si Face ID falla, el teléfono te pide su código.</p>
+    ${CARA}
+    <p class="candado__titulo">Face ID</p>
+    <p class="candado__nota">Si falla → código del teléfono</p>
     <p class="candado__error" aria-live="polite">${mensaje}</p>
-    <button type="button" class="candado__enlace" id="candado-perdi">No puedo entrar</button>`);
-  c.querySelector('#candado-entrar').addEventListener('click', () => intentar(true));
-  c.querySelector('#candado-perdi').addEventListener('click', pantallaContrasena);
+    ${conSalida ? '<button type="button" class="candado__enlace" id="candado-perdi">No puedo entrar</button>' : ''}`);
+  c.onclick = (e) => {
+    if (e.target.closest('#candado-perdi')) { c.onclick = null; pantallaContrasena(); return; }
+    intentar();
+  };
 }
 
-async function intentar(conMensaje) {
+/** Con un toque. El toque es el permiso que el iPhone exige en algunas versiones. */
+async function intentar() {
   if (verificando) return;
+  turnoAuto++;
   try {
     await verificar();
     abrir();
   } catch (error) {
-    pantallaBloqueo(conMensaje ? mensajeDe(error) : '');
+    pantallaBloqueo(mensajeDe(error), true);
   }
+}
+
+const dormir = (ms) => new Promise((r) => setTimeout(r, ms));
+
+/**
+ * Sin tocar nada: lanza Face ID en cuanto la app está al frente. Si el iPhone lo rechaza de
+ * inmediato (no alcanzó a preguntar), reintenta dos veces. Un rechazo lento es que ella canceló
+ * o que Face ID falló: ahí no se insiste, para no quedar en un ciclo.
+ */
+async function automatico() {
+  const turno = ++turnoAuto;
+  for (let i = 0; i < 3; i++) {
+    await dormir(i === 0 ? 250 : 700);
+    if (turno !== turnoAuto || !cerradoAhora) return;
+    if (document.visibilityState !== 'visible') return;
+    if (verificando) return;
+    const inicio = Date.now();
+    try {
+      await verificar();
+      if (turno === turnoAuto) abrir();
+      return;
+    } catch (error) {
+      if (turno !== turnoAuto) return;
+      if (Date.now() - inicio > 1500) { pantallaBloqueo(mensajeDe(error), true); return; }
+    }
+  }
+  if (turno === turnoAuto) pantallaBloqueo('Toca la pantalla para usar Face ID.', true);
 }
 
 /** Salida si la llave se perdió: la contraseña de Fran en la nube, con internet. */
 function pantallaContrasena() {
   const nube = ctx && ctx.nube;
   const correo = nube && nube.estado().sesion ? nube.estado().sesion.correo : '';
+  turnoAuto++;
   const c = pintar(`
     <form id="candado-form" class="candado__form" novalidate>
       <label>Correo<input name="correo" type="email" autocomplete="username" value="${String(correo).replace(/"/g, '&quot;')}"></label>
@@ -166,7 +212,8 @@ function pantallaContrasena() {
     <p class="candado__nota">Necesita internet. Después podrás activar Face ID otra vez en Yo.</p>
     <p class="candado__error" id="candado-msg" aria-live="polite"></p>
     <button type="button" class="candado__enlace" id="candado-volver">Volver a Face ID</button>`);
-  c.querySelector('#candado-volver').addEventListener('click', () => pantallaBloqueo());
+  c.onclick = null;
+  c.querySelector('#candado-volver').addEventListener('click', () => { pantallaBloqueo(); intentar(); });
   c.querySelector('#candado-form').addEventListener('submit', async (e) => {
     e.preventDefault();
     const f = e.target;
@@ -179,23 +226,25 @@ function pantallaContrasena() {
       desactivar();
       abrir();
     } catch (error) {
-      msg.textContent = mensajeDe(error);
+      msg.textContent = (error && error.message) || 'No se pudo entrar.';
     }
   });
 }
 
 function pantallaPrimeraVez(mensaje = '') {
   const c = pintar(`
-    <p class="candado__texto">Protege tu plata: activa Face ID para que solo tú puedas abrir Fran en este aparato.</p>
+    ${CARA}
+    <p class="candado__texto">Activa Face ID para que solo tú puedas abrir Fran en este aparato.</p>
     <button type="button" class="candado__boton" id="candado-activar">Activar Face ID</button>
     <p class="candado__error" aria-live="polite">${mensaje}</p>
     <button type="button" class="candado__enlace" id="candado-luego">Ahora no</button>`);
+  c.onclick = null;
   c.querySelector('#candado-activar').addEventListener('click', async () => {
     try {
       await activar();
       abrir();
     } catch (error) {
-      pantallaPrimeraVez(mensajeDe(error));
+      pantallaPrimeraVez(mensajeDe(error).replace('Toca la pantalla para intentar otra vez.', 'Inténtalo otra vez.'));
     }
   });
   c.querySelector('#candado-luego').addEventListener('click', () => {
@@ -213,13 +262,17 @@ function vigilar() {
       salidaEn = Date.now();
       return;
     }
-    if (!salidaEn || cerradoAhora) return;
+    if (!salidaEn) return;
     const fuera = Date.now() - salidaEn;
     salidaEn = 0;
+    if (cerradoAhora) {
+      automatico();
+      return;
+    }
     if (fuera >= minutos * 60000) {
       cerradoAhora = true;
       pantallaBloqueo();
-      intentar(false);
+      automatico();
     }
   });
 }
@@ -238,7 +291,7 @@ export function exigir(contexto) {
         alAbrir = resolver;
         cerradoAhora = true;
         pantallaBloqueo();
-        intentar(false);
+        automatico();
         return;
       }
       if (!c.pospuesto && await disponible()) {

@@ -9,14 +9,14 @@
   const CLAVE = 'mis-prestamos-tema';
   const POR_DEFECTO = 'oscuro';
 
-  // fondo, tarjeta, color y texto solo sirven para pintar la muestra y la barra del teléfono.
+  // fondo y texto solo sirven para pintar la muestra y la barra del teléfono.
   const LISTA = [
-    { id: 'oscuro', nombre: 'Oscuro', fondo: '#14161a', tarjeta: '#1f2228', color: '#60a5fa', texto: '#eef0f3' },
-    { id: 'claro', nombre: 'Claro', fondo: '#e4e6ea', tarjeta: '#f1f2f4', color: '#1d4ed8', texto: '#1c2026' },
-    { id: 'morada', nombre: 'Noche morada', fondo: '#17121f', tarjeta: '#231c31', color: '#b794f6', texto: '#f1edf8' },
-    { id: 'menta', nombre: 'Verde menta', fondo: '#dcebe5', tarjeta: '#ecf5f1', color: '#0c655e', texto: '#12241d' },
-    { id: 'rosa', nombre: 'Rosa', fondo: '#f1e2e8', tarjeta: '#f9f0f4', color: '#be185d', texto: '#2a1620' },
-    { id: 'dorado', nombre: 'Dorado', fondo: '#ece5d3', tarjeta: '#f6f1e4', color: '#745704', texto: '#241d0d' }
+    { id: 'oscuro', nombre: 'Oscuro', detalle: '(predeterminado)', fondo: '#14161a', texto: '#eef0f3' },
+    { id: 'claro', nombre: 'Claro', fondo: '#e4e6ea', texto: '#1c2026' },
+    { id: 'morada', nombre: 'Noche morada', fondo: '#1f1b3d', texto: '#c4b5fd' },
+    { id: 'menta', nombre: 'Verde menta', fondo: '#0a3026', texto: '#6ee7b7' },
+    { id: 'rosa', nombre: 'Rosa', fondo: '#350d27', texto: '#f9a8d4' },
+    { id: 'dorado', nombre: 'Dorado', fondo: '#33200a', texto: '#fcd34d' }
   ];
 
   function buscar(id) {
