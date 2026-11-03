@@ -192,6 +192,17 @@ describe('datos.js', () => {
     });
   });
 
+  describe('origen de la pensión', () => {
+    test('llega con los históricos, no borra la tasa y cruza exportar e importar', async () => {
+      await datos.actualizarFran({ pension: { tasa: 4000, cuentas: [], otros: [] } });
+      await datos.actualizarHistoricos(JSON.stringify({ fran: { pension: { origen: 'De los préstamos' }, asientos: [{ id: 'h', libro: 'personal', fecha: '2025-01-02', tipo: 'gasto', categoria: 'Agua', valor: 1, importado: true }] } }));
+      assert.equal(datos.estado.fran.pension.origen, 'De los préstamos');
+      assert.equal(datos.estado.fran.pension.tasa, 4000);
+      await datos.importarJSON(datos.exportarJSON());
+      assert.equal(datos.estado.fran.pension.origen, 'De los préstamos');
+    });
+  });
+
   describe('actualizar históricos', () => {
     const copia = {
       movimientos: [{ id: 'ini-v', fecha: '2026-11-01', caja: 'virtual', tipo: 'saldo_inicial', monto: 107565, signo: 1, creadoEn: '2026-11-02' }],

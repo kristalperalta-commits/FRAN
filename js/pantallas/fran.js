@@ -571,6 +571,7 @@ function renderPension(contenedor, ctx) {
       <small>Total pensión</small>
       <strong class="numero">${dinero.formatear(totalPension(fran))}</strong>
       <button type="button" id="fran-tasa">Tasa del día: ${dinero.formatear(p.tasa)} COP/USD ✏️</button>
+      ${p.origen ? `<small>Origen: ${ui.esc(p.origen.charAt(0).toLowerCase() + p.origen.slice(1))}.</small>` : ''}
       <form id="fran-tasa-form" class="fran-tasa oculto"><input name="tasa" inputmode="numeric" value="${ui.esc(p.tasa)}" aria-label="Tasa del día"><button class="boton boton--pequeno boton--primario">Guardar</button></form>
     </div>
     <div class="fran-lista">

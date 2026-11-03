@@ -122,7 +122,7 @@ function franVacio() {
   return {
     asientos: [],
     virtualPorDefinir: false,
-    pension: { tasa: 3700, cuentas: [], otros: [] },
+    pension: { tasa: 3700, cuentas: [], otros: [], origen: '' },
     terceros: [],
     tarjetas: [],
     deudasInternas: [],
@@ -162,6 +162,7 @@ function completarFran(fran) {
       tasa: Number(pension.tasa) > 0 ? Number(pension.tasa) : base.pension.tasa,
       cuentas: lista(pension.cuentas),
       otros: lista(pension.otros),
+      origen: typeof pension.origen === 'string' ? pension.origen : '',
     },
     terceros: lista(f.terceros),
     tarjetas: lista(f.tarjetas),
@@ -1445,7 +1446,7 @@ export const datos = {
       const ya = agenda.find((y) => y.id === x.id);
       if (x.clienteId && !ya.clienteId) ya.clienteId = x.clienteId;
     }
-    estadoActual.fran = { ...estadoActual.fran, asientos: [...nuevo.asientos.filter((a) => a.importado), ...propios], agenda, propiedades: nuevo.propiedades, virtualPorDefinir: nuevo.virtualPorDefinir, virtualHistorial: nuevo.virtualHistorial, virtualCuentas: estadoActual.fran.virtualCuentas || nuevo.virtualCuentas };
+    estadoActual.fran = { ...estadoActual.fran, asientos: [...nuevo.asientos.filter((a) => a.importado), ...propios], agenda, propiedades: nuevo.propiedades, pension: { ...estadoActual.fran.pension, origen: nuevo.pension.origen || estadoActual.fran.pension.origen }, virtualPorDefinir: nuevo.virtualPorDefinir, virtualHistorial: nuevo.virtualHistorial, virtualCuentas: estadoActual.fran.virtualCuentas || nuevo.virtualCuentas };
     // Préstamos que el plan corrige (marcados "actualizar") y pagos del plan: no tocan la caja.
     for (const p of Array.isArray(objeto.prestamos) ? objeto.prestamos : []) {
       if (!p.actualizar) continue;
