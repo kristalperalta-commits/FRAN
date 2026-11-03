@@ -14,7 +14,14 @@
   Toda operación que guarda va dentro de try/catch y avisa con ui.toast.
 */
 
+import { CATEGORIAS_BASE, LIBROS, categoriasDe, iconoDe } from './fran.js';
+import { calendarioIcs } from '../recordatorios.js';
+
 export const titulo = 'Yo';
+
+// Lo abierto en Yo sigue abierto cuando la pantalla se vuelve a dibujar.
+const abiertos = new Set();
+let ultimoSalto = '';
 
 /* ---------- Ayudas ---------- */
 
@@ -593,9 +600,135 @@ function seccionCandado(ctx) {
 }
 
 function plegable(icono, texto, seccion, ui) {
-  const caja = ui.el(`<details class="fran-ajuste"><summary><span>${icono}</span>${ui.esc(texto)}</summary></details>`);
+  const caja = ui.el(`<details class="fran-ajuste"${abiertos.has(texto) ? ' open' : ''}><summary><span>${icono}</span>${ui.esc(texto)}</summary></details>`);
   caja.append(seccion);
+  caja.dataset.seccion = texto;
+  caja.addEventListener('toggle', () => { if (caja.open) abiertos.add(texto); else abiertos.delete(texto); });
   return caja;
+}
+
+const LISTAS_CATEGORIAS = [
+  ['personal', 'gasto', 'gasto', 'Finanzas · Gastos'], ['personal', 'ingreso', 'ingreso', 'Finanzas · Ingresos'],
+  ['arriendos', 'gasto', 'gasto', 'Arriendos · Gastos'], ['arriendos', 'ingreso', 'ingreso', 'Arriendos · Ingresos'],
+  ['redes', 'gasto', 'gasto', 'Redes · Gastos'], ['redes', 'ingreso', 'ingreso', 'Redes · Ingresos'],
+  ['productos', 'inversion', 'gasto', 'Productos · Inversión'], ['productos', 'gasto', 'gasto', 'Productos · Gastos'], ['productos', 'ingreso', 'ingreso', 'Productos · Ventas'],
+];
+let listaCategorias = 0;
+
+/** Boceto 16 · Categorías. Ocultar no borra nada: el historial sigue igual. */
+function seccionCategorias(ctx) {
+  const { ui, datos } = ctx;
+  const fran = datos.estado.fran;
+  const [id, clave, tipo] = LISTAS_CATEGORIAS[listaCategorias];
+  const llave = `${id}:${clave}`;
+  const { todas, ocultas } = categoriasDe(fran, id, clave, tipo);
+  const s = ui.el(`<section class="tarjeta ajustes-seccion">
+    <label class="fran-campo-yo"><small>Libro</small><select name="lista">${LISTAS_CATEGORIAS.map((l, i) => `<option value="${i}"${i === listaCategorias ? ' selected' : ''}>${ui.esc(l[3])}</option>`).join('')}</select></label>
+    <div class="fran-lista">${todas.map((c) => `<div class="fran-fila">
+      <span class="fran-ico">${ui.esc(iconoDe(c))}</span>
+      <span class="fran-fila__texto"><strong>${ui.esc(c)}</strong></span>
+      <button type="button" class="fran-borrar" data-cat="${ui.esc(c)}">${ocultas.includes(c) ? 'Mostrar' : 'Ocultar'}</button>
+    </div>`).join('')}</div>
+    <form class="fran-en-linea" novalidate><input class="fran-entrada" name="nueva" autocomplete="off" placeholder="Categoría nueva" aria-label="Categoría nueva"><button class="boton boton--primario">Agregar</button></form>
+    <p class="ajustes-ayuda">Ocultar solo la quita de la pantalla Agregar. El historial no cambia.</p>
+  </section>`);
+  s.querySelector('[name="lista"]').addEventListener('change', (e) => {
+    listaCategorias = Number(e.target.value);
+    s.replaceWith(seccionCategorias(ctx));
+  });
+  s.querySelectorAll('[data-cat]').forEach((b) => b.addEventListener('click', async () => {
+    const c = b.dataset.cat;
+    const nuevas = ocultas.includes(c) ? ocultas.filter((x) => x !== c) : [...ocultas, c];
+    await datos.actualizarFran({ categoriasOcultas: { ...fran.categoriasOcultas, [llave]: nuevas } });
+  }));
+  s.querySelector('form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const nombre = e.target.elements.nueva.value.trim();
+    if (!nombre) { ui.toast('Escribe el nombre de la categoría.'); return; }
+    if (todas.some((c) => c.toLowerCase() === nombre.toLowerCase())) { ui.toast('Esa categoría ya existe.'); return; }
+    await datos.actualizarFran({ categoriasExtra: { ...fran.categoriasExtra, [llave]: [...(fran.categoriasExtra[llave] || []), nombre] } });
+    ui.toast('Categoría agregada.');
+  });
+  return s;
+}
+
+/** Boceto 15. Con la app cerrada, los avisos los da el calendario del teléfono. */
+function seccionRecordatorios(ctx) {
+  const { ui, datos, dinero } = ctx;
+  const r = datos.estado.fran.recordatorios;
+  const s = ui.el(`<section class="tarjeta ajustes-seccion">
+    <label class="fran-campo-yo"><small>Cobros de hoy</small><input type="time" name="cobros" value="${ui.esc(r.cobros)}"></label>
+    <label class="fran-campo-yo"><small>Anotar gastos e ingresos</small><input type="time" name="gastos" value="${ui.esc(r.gastos)}"></label>
+    <div class="ajustes-botones"><button type="button" class="boton boton--primario boton--grande" id="boton-avisos">Poner avisos en el calendario</button></div>
+    <p class="ajustes-ayuda">Se descarga un archivo. Ábrelo y elige Agregar: el calendario te avisa a esas horas aunque Fran esté cerrada. Si cambian los cobros, vuelve a tocar este botón.</p>
+    <p class="ajustes-ayuda">Dentro de Fran, el inicio te muestra los cobros de hoy y te recuerda anotar.</p>
+  </section>`);
+  const guardarHoras = async () => {
+    const f = { cobros: s.querySelector('[name="cobros"]').value, gastos: s.querySelector('[name="gastos"]').value };
+    if (f.cobros && f.gastos) await datos.actualizarFran({ recordatorios: f });
+  };
+  s.querySelectorAll('input').forEach((i) => i.addEventListener('change', guardarHoras));
+  s.querySelector('#boton-avisos').addEventListener('click', async () => {
+    try {
+      await guardarHoras();
+      const fran = datos.estado.fran;
+      descargarTexto(calendarioIcs(fran.agenda, fran.recordatorios, ctx.hoy(), (v) => dinero.formatear(v)), 'fran-avisos.ics', 'text/calendar;charset=utf-8');
+      ui.toast('Archivo listo. Ábrelo para agregarlo al calendario.');
+    } catch (error) {
+      ui.toast(`No se pudo: ${textoError(error)}`, 5000);
+    }
+  });
+  return s;
+}
+
+const NOMBRE_FRECUENCIA = { mensual: 'Cada mes', quincenal: 'Cada 15 días', semanal: 'Cada semana', diario: 'Cada día' };
+
+/** Boceto 16 · Transacciones recurrentes: se anotan solas cuando llega la fecha. */
+function seccionRecurrentes(ctx) {
+  const { ui, datos, dinero, fechas } = ctx;
+  const lista = datos.estado.fran.recurrentes;
+  const libros = ['personal', 'arriendos', 'redes', 'productos'];
+  const s = ui.el(`<section class="tarjeta ajustes-seccion">
+    <div class="fran-lista">${lista.map((r) => `<div class="fran-fila">
+      <span class="fran-ico">${ui.esc(iconoDe(r.categoria))}</span>
+      <span class="fran-fila__texto"><strong>${ui.esc(r.descripcion || r.categoria)}</strong><small>${ui.esc(NOMBRE_FRECUENCIA[r.frecuencia])} · sigue ${ui.esc(fechas.formatear(r.proxima))}</small></span>
+      <span class="fran-fila__valor numero">${dinero.formatear(r.valor)}</span>
+      <button type="button" class="fran-borrar" data-quitar="${ui.esc(r.id)}">Quitar</button>
+    </div>`).join('') || '<p class="ajustes-ayuda">Todavía no hay ninguna. Agrega lo que pagas o cobras siempre igual.</p>'}</div>
+    <form class="fran-campos" novalidate>
+      <label><small>Nombre</small><input name="descripcion" autocomplete="off" placeholder="¿Qué es?"></label>
+      <label><small>Valor</small><input name="valor" inputmode="numeric" autocomplete="off" placeholder="0"></label>
+      <label><small>Libro</small><select name="libro">${libros.map((l) => `<option value="${l}">${ui.esc(LIBROS[l].nombre)}</option>`).join('')}</select></label>
+      <label><small>Tipo</small><select name="tipo"><option value="gasto">Gasto</option><option value="ingreso">Ingreso</option></select></label>
+      <label><small>Categoría</small><select name="categoria"></select></label>
+      <label><small>Cada cuánto</small><select name="frecuencia">${Object.entries(NOMBRE_FRECUENCIA).map(([k, v]) => `<option value="${k}">${v}</option>`).join('')}</select></label>
+      <label><small>Primera fecha</small><input type="date" name="proxima" value="${ui.esc(ctx.hoy())}"></label>
+      <button class="boton boton--primario fran-guardar">Guardar</button>
+    </form>
+  </section>`);
+  const f = s.querySelector('form').elements;
+  const llenar = () => {
+    const opciones = categoriasDe(datos.estado.fran, f.libro.value, f.tipo.value, f.tipo.value).visibles;
+    const todas = opciones.length ? opciones : (CATEGORIAS_BASE[f.libro.value] && CATEGORIAS_BASE[f.libro.value].inversion) || ['Otros'];
+    f.categoria.innerHTML = todas.map((c) => `<option>${ui.esc(c)}</option>`).join('');
+  };
+  f.libro.addEventListener('change', llenar);
+  f.tipo.addEventListener('change', llenar);
+  llenar();
+  s.querySelectorAll('[data-quitar]').forEach((b) => b.addEventListener('click', async () => {
+    if (await ui.confirmar('¿Quitar esta transacción recurrente? Lo ya anotado se queda.', { aceptar: 'Sí, quitar', peligro: true })) await datos.eliminarRecurrente(b.dataset.quitar);
+  }));
+  s.querySelector('form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const valor = Number(f.valor.value.replace(/\D/g, ''));
+    if (!valor) { ui.toast('Escribe el valor.'); return; }
+    try {
+      await datos.agregarRecurrente({ libro: f.libro.value, tipo: f.tipo.value, categoria: f.categoria.value, descripcion: f.descripcion.value, valor, frecuencia: f.frecuencia.value, proxima: f.proxima.value });
+      const n = await datos.aplicarRecurrentes(ctx.hoy());
+      ui.toast(n ? `Guardada. Anoté ${n} que ya tocaba.` : 'Guardada.');
+    } catch (error) { ui.toast(error.message); }
+  });
+  return s;
 }
 
 function seccionHistoricos(ctx) {
@@ -630,17 +763,29 @@ function seccionHistoricos(ctx) {
 export async function render(contenedor, params, ctx) {
   const { ui } = ctx;
   contenedor.innerHTML = '';
+  const irA = { categorias: 'Categorías', recordatorios: 'Recordatorios', recurrentes: 'Transacciones recurrentes' }[params && params.seccion];
+  const saltar = irA && irA !== ultimoSalto;
+  ultimoSalto = irA || '';
+  if (saltar) { abiertos.clear(); abiertos.add(irA); }
   contenedor.append(ui.el(`<header class="fran-titulo"><a href="#/inicio" class="fran-titulo__atras" aria-label="Volver">‹</a><h1>Yo</h1></header>`));
   contenedor.append(seccionTemas(ctx));
   contenedor.append(ui.el('<p class="fran-seccion">Ajustes</p>'));
+  contenedor.append(plegable('⚙️', 'Categorías', seccionCategorias(ctx), ui));
   contenedor.append(ui.el('<a class="fran-enlace" href="#/libro/pension"><span>💱</span>Moneda COP · tasa USD</a>'));
+  contenedor.append(plegable('⏰', 'Recordatorios', seccionRecordatorios(ctx), ui));
+  contenedor.append(plegable('🔁', 'Transacciones recurrentes', seccionRecurrentes(ctx), ui));
   const respaldo = plegable('☁️', 'Respaldo y exportar Excel', seccionCopia(ctx), ui);
   respaldo.append(seccionHistoricos(ctx));
   respaldo.append(seccionBorrar(ctx));
   contenedor.append(respaldo);
   contenedor.append(plegable('🔒', 'Face ID', seccionCandado(ctx), ui));
+  contenedor.append(ui.el('<p class="fran-seccion">Esta app</p>'));
   contenedor.append(plegable('🌐', 'Nube', seccionNube(ctx), ui));
   contenedor.append(ui.el('<a class="fran-enlace" href="#/caja"><span>🧾</span>Caja efectivo y virtual</a>'));
   contenedor.append(plegable('📲', 'Instalar en el teléfono', seccionInstalar(ctx), ui));
   contenedor.append(plegable('ℹ️', 'Acerca de la app', seccionAcerca(ctx), ui));
+  if (saltar) {
+    const destino = [...contenedor.querySelectorAll('.fran-ajuste')].find((x) => x.dataset.seccion === irA);
+    if (destino) setTimeout(() => destino.scrollIntoView(), 80);
+  }
 }

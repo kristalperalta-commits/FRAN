@@ -11,7 +11,7 @@
 
 import * as ui from './ui.js';
 
-const VERSION_APP = '3.3.0';
+const VERSION_APP = '3.4.0';
 const contenedor = document.getElementById('pantalla');
 
 // ---------- Rutas (sección 7 de la especificación) ----------
@@ -44,7 +44,8 @@ const RUTAS = [
   { patron: '/caja', pantalla: 'caja', vista: 'lista', pestana: 'informes', libro: 'prestamos' },
   { patron: '/caja/movimiento/:tipo', pantalla: 'caja', vista: 'movimiento', pestana: 'informes', libro: 'prestamos' },
   { patron: '/agenda', pantalla: 'fran', vista: 'agenda', pestana: 'inicio', libro: 'prestamos' },
-  { patron: '/ajustes', pantalla: 'ajustes', vista: 'ajustes', pestana: 'yo' }
+  { patron: '/ajustes', pantalla: 'ajustes', vista: 'ajustes', pestana: 'yo' },
+  { patron: '/ajustes/:seccion', pantalla: 'ajustes', vista: 'ajustes', pestana: 'yo' }
 ];
 
 /**
@@ -268,7 +269,12 @@ function registrarServiceWorker() {
     recargando = true;
     window.location.reload();
   });
-  navigator.serviceWorker.register('./sw.js').catch((error) => {
+  navigator.serviceWorker.register('./sw.js').then((registro) => {
+    // Instalada en el teléfono, la app casi nunca se recarga: al volver a ella se busca la versión nueva.
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'visible') registro.update().catch(() => {});
+    });
+  }).catch((error) => {
     console.warn('No se pudo registrar el service worker:', error);
   });
 }
@@ -324,6 +330,12 @@ async function arrancar() {
     await ctx.candado.exigir(ctx);
   } catch (error) {
     console.warn('El candado no arrancó:', error);
+  }
+  try {
+    const anotados = await ctx.datos.aplicarRecurrentes(ctx.hoy());
+    if (anotados) ui.toast(`Anoté ${anotados} ${anotados === 1 ? 'movimiento recurrente' : 'movimientos recurrentes'}.`);
+  } catch (error) {
+    console.warn('No se pudieron anotar los recurrentes:', error);
   }
   await renderizar({ conservarScroll: false });
 }

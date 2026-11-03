@@ -262,3 +262,41 @@ body.con-candado .barra-inferior { display: none; }
 .fran-chips--texto::-webkit-scrollbar { display: none; }
 .fran-chips--texto button { flex: none; }
 .fran-tarjeta strong:not(.numero) { font-size: 1.05rem; }
+
+/* Agregar como el boceto 4 */
+.fran-agregar__cabeza { grid-template-columns: 76px 1fr 76px; }
+.fran-agregar__repite { justify-self: end; font-size: 1.4rem; line-height: 1; }
+.fran-fecha-fila { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 8px; color: var(--texto-suave); }
+.fran-fecha-fila input { min-height: 36px; padding: 2px 6px; border: 1px solid var(--borde); border-radius: 8px; background: var(--fondo-tarjeta); color: var(--texto); font-size: 16px; }
+.fran-iconos a { display: flex; flex-direction: column; align-items: center; gap: 4px; color: var(--texto); text-decoration: none; min-width: 0; }
+.fran-mic { flex: none; width: 34px; }
+.fran-mic.activo { border-radius: 50%; box-shadow: 0 0 0 2px var(--libro); }
+.fran-iconos .oculto, .fran-mic.oculto { display: none; }
+
+/* Detalle del mes: total, promedio y línea, como Mis Gastos */
+.fran-total small { display: block; margin-top: 2px; color: var(--texto-suave); font-size: 0.95rem; font-weight: 700; }
+.fran-linea { display: block; width: 100%; height: auto; margin-bottom: 10px; }
+.fran-linea line { stroke: var(--borde); stroke-width: 1; }
+.fran-linea text { fill: var(--texto-suave); font-size: 9px; }
+.fran-linea polyline { fill: none; stroke: var(--libro); stroke-width: 2; stroke-linejoin: round; }
+.fran-linea circle { fill: var(--libro); }
+.fran-barra-fila[role="button"] { cursor: pointer; }
+.fran-segmento button { font-size: 0.86rem; }
+
+/* Pantalla Detalles */
+.fran-titulo button.fran-titulo__atras { border: 0; background: none; color: inherit; font: inherit; cursor: pointer; }
+.fran-detalles__cabeza { display: flex; flex-direction: column; align-items: center; gap: 8px; margin: 12px 0 20px; font-size: 1.25rem; }
+.fran-detalles dl { display: grid; grid-template-columns: 92px 1fr; gap: 16px 12px; margin: 0 0 20px; }
+.fran-detalles dt { color: var(--texto-suave); font-weight: 700; }
+.fran-detalles dd { margin: 0; overflow-wrap: anywhere; }
+.fran-detalles__botones { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 12px; }
+.fran-recibo { display: block; width: 100%; margin-bottom: 12px; border-radius: 12px; }
+
+/* Yo */
+.fran-campo-yo { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 10px; }
+.fran-campo-yo small { color: var(--texto-suave); font-size: 0.9rem; }
+.fran-campo-yo select, .fran-campo-yo input { min-height: 40px; padding: 4px 8px; border: 1px solid var(--borde); border-radius: 10px; background: var(--fondo-tarjeta); color: var(--texto); font-size: 16px; }
+.fran-en-linea { display: flex; gap: 8px; align-items: flex-start; margin-top: 10px; }
+.fran-en-linea .fran-entrada { flex: 1; min-width: 0; margin: 0; }
+.fran-en-linea .boton { flex: none; min-height: 46px; }
+.fran-ajuste .fran-campos { margin-top: 12px; }

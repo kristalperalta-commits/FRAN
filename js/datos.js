@@ -128,7 +128,22 @@ function franVacio() {
     deudasInternas: [],
     agenda: [],
     presupuestoMensual: 2000000,
+    categoriasExtra: {},
+    categoriasOcultas: {},
+    recurrentes: [],
+    recordatorios: { cobros: '07:00', gastos: '19:00' },
   };
+}
+
+/** Siguiente fecha de un movimiento recurrente. El día del mes se conserva cuando el mes lo tiene. */
+export function siguienteRecurrente(fecha, frecuencia, dia) {
+  const [a, m, d] = fecha.split('-').map(Number);
+  const texto = (x) => x.toISOString().slice(0, 10);
+  if (frecuencia === 'diario') return texto(new Date(Date.UTC(a, m - 1, d + 1)));
+  if (frecuencia === 'semanal') return texto(new Date(Date.UTC(a, m - 1, d + 7)));
+  if (frecuencia === 'quincenal') return texto(new Date(Date.UTC(a, m - 1, d + 15)));
+  const ultimo = new Date(Date.UTC(a, m + 1, 0)).getUTCDate();
+  return texto(new Date(Date.UTC(a, m, Math.min(dia || d, ultimo))));
 }
 
 function completarFran(fran) {
@@ -149,6 +164,13 @@ function completarFran(fran) {
     deudasInternas: lista(f.deudasInternas),
     agenda: lista(f.agenda),
     presupuestoMensual: Number(f.presupuestoMensual) > 0 ? Number(f.presupuestoMensual) : base.presupuestoMensual,
+    categoriasExtra: f.categoriasExtra && typeof f.categoriasExtra === 'object' ? f.categoriasExtra : {},
+    categoriasOcultas: f.categoriasOcultas && typeof f.categoriasOcultas === 'object' ? f.categoriasOcultas : {},
+    recurrentes: lista(f.recurrentes).filter((r) => r && r.id && esFechaValida(r.proxima) && Number.isInteger(r.valor) && r.valor > 0),
+    recordatorios: {
+      cobros: /^\d\d:\d\d$/.test(f.recordatorios && f.recordatorios.cobros) ? f.recordatorios.cobros : base.recordatorios.cobros,
+      gastos: /^\d\d:\d\d$/.test(f.recordatorios && f.recordatorios.gastos) ? f.recordatorios.gastos : base.recordatorios.gastos,
+    },
   };
 }
 
@@ -1325,9 +1347,57 @@ export const datos = {
       categoria: limpiarTexto(a.categoria) || 'Otros', descripcion: limpiarTexto(a.descripcion),
       valor: a.valor, cuenta: limpiarTexto(a.cuenta), destino: limpiarTexto(a.destino),
     };
+    if (a.conFoto === true) asiento.conFoto = true;
     estadoActual.fran.asientos.push(asiento);
     await guardar();
     return asiento;
+  },
+
+  async actualizarAsiento(id, cambios) {
+    const i = estadoActual.fran.asientos.findIndex((a) => a.id === id);
+    exigir(i >= 0, 'No encontré ese movimiento.');
+    exigirFecha(cambios.fecha, 'del movimiento');
+    exigirMonto(cambios.valor, 'valor del movimiento');
+    estadoActual.fran.asientos[i] = {
+      ...estadoActual.fran.asientos[i], fecha: cambios.fecha, valor: cambios.valor,
+      categoria: limpiarTexto(cambios.categoria) || 'Otros', descripcion: limpiarTexto(cambios.descripcion),
+    };
+    await guardar();
+  },
+
+  // Movimientos que se repiten solos. El id del asiento lleva la fecha: dos aparatos no lo duplican.
+  async agregarRecurrente(r) {
+    exigirFecha(r.proxima, 'de inicio');
+    exigirMonto(r.valor, 'valor');
+    estadoActual.fran.recurrentes.push({
+      id: generarId(), libro: r.libro, tipo: r.tipo, categoria: limpiarTexto(r.categoria) || 'Otros',
+      descripcion: limpiarTexto(r.descripcion), valor: r.valor, cuenta: limpiarTexto(r.cuenta),
+      frecuencia: r.frecuencia, proxima: r.proxima, dia: Number(r.proxima.slice(8)),
+    });
+    await guardar();
+  },
+
+  async eliminarRecurrente(id) {
+    estadoActual.fran.recurrentes = estadoActual.fran.recurrentes.filter((r) => r.id !== id);
+    await guardar();
+  },
+
+  async aplicarRecurrentes(hoy) {
+    let anotados = 0;
+    let cambio = false;
+    for (const r of estadoActual.fran.recurrentes) {
+      for (let vueltas = 0; r.proxima <= hoy && vueltas < 400; vueltas++) {
+        const id = `rec-${r.id}-${r.proxima}`;
+        if (!estadoActual.fran.asientos.some((a) => a.id === id)) {
+          estadoActual.fran.asientos.push({ id, libro: r.libro, fecha: r.proxima, tipo: r.tipo, categoria: r.categoria, descripcion: r.descripcion, valor: r.valor, cuenta: r.cuenta || '', destino: '' });
+          anotados++;
+        }
+        r.proxima = siguienteRecurrente(r.proxima, r.frecuencia, r.dia);
+        cambio = true;
+      }
+    }
+    if (cambio) await guardar();
+    return anotados;
   },
 
   async eliminarAsiento(id) {

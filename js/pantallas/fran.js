@@ -5,6 +5,7 @@
 */
 
 import { leerTexto } from '../texto.js';
+import { guardarFoto, leerFoto, reducirFoto } from '../fotos.js';
 
 export const LIBROS = {
   personal: { nombre: 'Finanzas personales', corto: 'Finanzas', icono: '💚', color: '#22C55E' },
@@ -25,7 +26,7 @@ const TIPOS = {
   terceros: [['Recibí', 'ingreso', 'ingreso'], ['Devolví', 'gasto', 'gasto'], ['Usé', 'uso', 'gasto']],
 };
 
-const CATEGORIAS_BASE = {
+export const CATEGORIAS_BASE = {
   personal: {
     gasto: ['Alimentos', 'Vivienda', 'Carro', 'Gasolina', 'Servicios públicos', 'Compras', 'Medicina', 'Abogados', 'Social', 'Viajes', 'Electrónicos', 'Belleza', 'Deportes', 'Entretenimiento', 'Transporte', 'Otros'],
     ingreso: ['Salario', 'Inversiones', 'Tiempo parcial', 'Premios', 'Ingreso mensual', 'Negocio Ropa', 'Otros'],
@@ -63,7 +64,7 @@ function norm(s) {
   return String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().trim();
 }
 
-function iconoDe(categoria) {
+export function iconoDe(categoria) {
   const n = norm(categoria);
   for (const [patron, emoji] of ICONOS) if (patron.test(n)) return emoji;
   return '🔖';
@@ -285,6 +286,9 @@ function renderPrincipal(contenedor, ctx) {
   const inventario = deTipo(delLibro(lista, 'productos'), 'gasto').filter((a) => a.categoria === 'Inventario sin vender');
   const hoyAgenda = agendaDeHoy(ctx);
   const sinDatos = !estado.clientes.length && !fran.asientos.length;
+  const ahora = new Date();
+  const horaAhora = `${String(ahora.getHours()).padStart(2, '0')}:${String(ahora.getMinutes()).padStart(2, '0')}`;
+  const avisoAnotar = !sinDatos && horaAhora >= fran.recordatorios.gastos && !fran.asientos.some((x) => x.fecha === ctx.hoy());
   const grande = (id, valor, detalle) => `<a href="#/libro/${id}" class="fran-libro fran-libro--${id}">
     <span class="fran-libro__nombre"><i>${LIBROS[id].icono}</i>${ui.esc(id === 'personal' ? 'Finanzas personales' : LIBROS[id].corto)}</span>
     <span class="fran-libro__valor numero">${ui.esc(valor)}</span>
@@ -301,6 +305,7 @@ function renderPrincipal(contenedor, ctx) {
     </div>
     ${sinDatos ? `<a href="#/ajustes" class="fran-aviso">Todavía no están tus datos en este aparato. Toca aquí y entra a la nube con tu correo.</a>` : ''}
     ${hoyAgenda.length ? `<a href="#/agenda" class="fran-aviso">⏰ Cobros de hoy: ${hoyAgenda.length}. Toca para ver.</a>` : ''}
+    ${avisoAnotar ? '<a href="#/libro/personal/agregar/gasto" class="fran-aviso">📝 Hoy no has anotado nada. ¿Gastos o ingresos?</a>' : ""}
     <div class="fran-libros">
       ${grande('personal', dinero.formatear(plata.efectivo + plata.virtual), 'Saldo del mes')}
       ${grande('prestamos', 'Cartera', estados || 'Al día · Atrasados · Congelados')}
@@ -575,33 +580,109 @@ function renderGraficos(contenedor, id, ctx) {
   contenedor.append(raiz);
 }
 
-function renderDetalle(contenedor, id, tituloDetalle, lista, atras, ctx) {
+/** Gráfica de línea del mes, día por día, como la de Mis Gastos. */
+function graficaDelMes(lista, mes, ctx) {
+  const dias = new Date(Number(mes.slice(0, 4)), Number(mes.slice(5, 7)), 0).getDate();
+  const porDia = new Array(dias).fill(0);
+  for (const a of lista) porDia[Number(a.fecha.slice(8)) - 1] += a.valor;
+  const maximo = Math.max(...porDia, 1);
+  const x = (i) => 44 + (i * 286) / Math.max(1, dias - 1);
+  const y = (v) => 110 - (v / maximo) * 100;
+  const puntos = porDia.map((v, i) => `${x(i).toFixed(1)},${y(v).toFixed(1)}`).join(' ');
+  const corto = (v) => ctx.dinero.formatear(Math.round(v)).replace(/\s/g, '');
+  return `<svg class="fran-linea" viewBox="0 0 340 128" role="img" aria-label="Movimientos por día">
+    <line x1="44" y1="10" x2="44" y2="110" /><line x1="44" y1="110" x2="330" y2="110" />
+    <text x="40" y="14" text-anchor="end">${corto(maximo)}</text><text x="40" y="64" text-anchor="end">${corto(maximo / 2)}</text><text x="40" y="114" text-anchor="end">0</text>
+    ${[1, 8, 15, 22, 29].filter((d) => d <= dias).map((d) => `<text x="${x(d - 1).toFixed(1)}" y="124" text-anchor="middle">${d}</text>`).join('')}
+    <polyline points="${puntos}" />
+    ${porDia.map((v, i) => `<circle cx="${x(i).toFixed(1)}" cy="${y(v).toFixed(1)}" r="${v ? 3 : 1.6}" />`).join('')}
+  </svg>`;
+}
+
+/** Pantalla Detalles de un movimiento: tipo, importe, fecha y nota, con Editar y Eliminar. */
+function verAsiento(contenedor, a, id, volver, ctx) {
   const { ui, dinero, fechas, datos } = ctx;
+  contenedor.innerHTML = '';
+  const NOMBRE_TIPO = { gasto: 'Gasto', ingreso: 'Ingreso', abono: 'Abono a capital', transferencia: 'Transferencia', uso: 'Uso' };
+  const raiz = ui.el(`<div class="fran-detalles">
+    <header class="fran-titulo"><button type="button" class="fran-titulo__atras" data-volver aria-label="Volver">‹</button><h1>Detalles</h1></header>
+    <div class="fran-detalles__cabeza"><span class="fran-ico">${ui.esc(iconoDe(a.categoria))}</span><strong>${ui.esc(a.categoria)}</strong></div>
+    <dl>
+      <dt>Tipo</dt><dd>${ui.esc(NOMBRE_TIPO[a.tipo] || a.tipo)}</dd>
+      <dt>Importe</dt><dd class="numero">${dinero.formatear(a.valor)}</dd>
+      <dt>Fecha</dt><dd>${ui.esc(a.textoFecha || fechas.formatear(a.fecha))}</dd>
+      ${a.descripcion ? `<dt>Nota</dt><dd>${ui.esc(a.descripcion)}</dd>` : ''}
+      ${a.cuenta ? `<dt>Cuenta</dt><dd>${ui.esc(a.cuenta)}</dd>` : ''}
+    </dl>
+    ${a.conFoto ? '<img class="fran-recibo oculto" alt="Foto del recibo"><p class="fran-nota oculto" data-sin-foto>La foto quedó en el aparato donde la tomaste.</p>' : ''}
+    ${a.importado ? '<p class="fran-nota">Viene de tu historial de Mis Gastos.</p>' : `<div class="fran-detalles__botones">
+      <button type="button" class="boton boton--primario" data-editar>Editar</button>
+      <button type="button" class="boton boton--secundario" data-eliminar>Eliminar</button>
+    </div>`}
+  </div>`);
+  raiz.querySelector('[data-volver]').addEventListener('click', volver);
+  if (a.conFoto) leerFoto(a.id).then((foto) => {
+    if (foto) { const img = raiz.querySelector('.fran-recibo'); img.src = foto; img.classList.remove('oculto'); } else raiz.querySelector('[data-sin-foto]').classList.remove('oculto');
+  }).catch(() => raiz.querySelector('[data-sin-foto]').classList.remove('oculto'));
+  const borrar = raiz.querySelector('[data-eliminar]');
+  if (borrar) borrar.addEventListener('click', async () => {
+    if (await ui.confirmar('¿Borrar este movimiento?', { aceptar: 'Sí, borrar', peligro: true })) await datos.eliminarAsiento(a.id);
+  });
+  const editar = raiz.querySelector('[data-editar]');
+  if (editar) editar.addEventListener('click', () => {
+    const caja = raiz.querySelector('dl');
+    caja.replaceWith(ui.el(`<form class="fran-campos" novalidate>
+      <label><small>Nota</small><input name="descripcion" autocomplete="off" value="${ui.esc(a.descripcion || '')}"></label>
+      <label><small>Importe</small><input name="valor" inputmode="numeric" autocomplete="off" value="${a.valor}"></label>
+      <label><small>Categoría</small><input name="categoria" autocomplete="off" value="${ui.esc(a.categoria)}"></label>
+      <label><small>Fecha</small><input type="date" name="fecha" value="${ui.esc(a.fecha)}"></label>
+      <button class="boton boton--primario fran-guardar">Guardar</button>
+    </form>`));
+    raiz.querySelector('.fran-detalles__botones').remove();
+    raiz.querySelector('form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const f = e.target.elements;
+      try {
+        await datos.actualizarAsiento(a.id, { descripcion: f.descripcion.value, categoria: f.categoria.value, fecha: f.fecha.value, valor: Number(f.valor.value.replace(/\D/g, '')) });
+        ui.toast('Guardado.');
+      } catch (error) { ui.toast(error.message); }
+    });
+  });
+  contenedor.append(raiz);
+}
+
+function renderDetalle(contenedor, id, tituloDetalle, lista, atras, ctx) {
+  const { ui, dinero, fechas } = ctx;
   const total = sumar(lista);
+  const meses = new Set(lista.map((a) => a.fecha.slice(0, 7)));
+  const mesUnico = meses.size === 1 ? [...meses][0] : '';
+  const diasMes = mesUnico ? new Date(Number(mesUnico.slice(0, 4)), Number(mesUnico.slice(5, 7)), 0).getDate() : 0;
   const dibujar = () => {
     contenedor.innerHTML = '';
     const ordenada = [...lista].sort((a, b) => (vista.orden === 'cantidad' ? b.valor - a.valor : b.fecha.localeCompare(a.fecha)));
     const maximo = ordenada.reduce((m, a) => Math.max(m, a.valor), 1);
     const raiz = ui.el(`<div>
       ${titular(id, ctx, atras, tituloDetalle)}
-      <p class="fran-total"><strong class="numero">Total: ${dinero.formatear(total)}</strong></p>
+      <p class="fran-total"><strong class="numero">Total: ${dinero.formatear(total)}</strong>${mesUnico ? `<small class="numero">Promedio: ${dinero.formatear(Math.round(total / diasMes))}</small>` : ''}</p>
+      ${mesUnico ? graficaDelMes(lista, mesUnico, ctx) : ''}
       ${avisoSinDetalle(lista)}
       <div class="fran-segmento">
-        <button type="button" data-orden="cantidad" class="${vista.orden === 'cantidad' ? 'activo' : ''}">Por cantidad</button>
-        <button type="button" data-orden="fecha" class="${vista.orden === 'fecha' ? 'activo' : ''}">Por fecha</button>
+        <button type="button" data-orden="cantidad" class="${vista.orden === 'cantidad' ? 'activo' : ''}">Ordenar por cantidad</button>
+        <button type="button" data-orden="fecha" class="${vista.orden === 'fecha' ? 'activo' : ''}">Ordenar por fecha</button>
       </div>
-      <div class="fran-lista">${ordenada.map((a) => `<div class="fran-barra-fila">
+      <div class="fran-lista">${ordenada.map((a) => `<div class="fran-barra-fila" role="button" tabindex="0" data-ver="${ui.esc(a.id)}">
         <span class="fran-ico">${ui.esc(iconoDe(a.categoria))}</span>
         <span class="fran-barra-fila__c">
           <span class="fran-barra-fila__l"><strong>${ui.esc(a.descripcion || a.categoria)}</strong><span class="numero">${dinero.formatear(a.valor)}</span></span>
           <span class="fran-barra-fila__l"><span class="fran-barra" style="width:${Math.max(1.5, (a.valor / maximo) * 80)}%"></span><small>${(total ? (a.valor / total) * 100 : 0).toFixed(2).replace('.', ',')}%</small></span>
-          <span class="fran-barra-fila__l"><small>${ui.esc(a.textoFecha || fechas.formatear(a.fecha))}</small>${a.importado ? '' : `<button type="button" class="fran-borrar" data-borrar="${ui.esc(a.id)}">Borrar</button>`}</span>
+          <span class="fran-barra-fila__l"><small>${ui.esc(a.textoFecha || fechas.formatear(a.fecha))}${a.conFoto ? ' · 📷' : ''}</small></span>
         </span>
       </div>`).join('') || '<p class="fran-vacio">Sin movimientos.</p>'}</div>
     </div>`);
     raiz.querySelectorAll('[data-orden]').forEach((b) => b.addEventListener('click', () => { vista.orden = b.dataset.orden; dibujar(); }));
-    raiz.querySelectorAll('[data-borrar]').forEach((b) => b.addEventListener('click', async () => {
-      if (await ui.confirmar('¿Borrar este movimiento?', { aceptar: 'Sí, borrar', peligro: true })) await datos.eliminarAsiento(b.dataset.borrar);
+    raiz.querySelectorAll('[data-ver]').forEach((b) => b.addEventListener('click', () => {
+      const asiento = lista.find((x) => x.id === b.dataset.ver);
+      if (asiento) { verAsiento(contenedor, asiento, id, dibujar, ctx); window.scrollTo(0, 0); }
     }));
     contenedor.append(raiz);
   };
@@ -728,32 +809,45 @@ export function abrirMas(id, ctx) {
 
 // ---------- Agregar (boceto 4) ----------
 
+/** Categorías de un libro: las del plan, las que ella creó y las que ya usó. */
+export function categoriasDe(fran, id, clave, tipo) {
+  const llave = `${id}:${clave}`;
+  const base = (CATEGORIAS_BASE[id] && CATEGORIAS_BASE[id][clave]) || [];
+  const extra = fran.categoriasExtra[llave] || [];
+  const usadas = {};
+  for (const a of fran.asientos) if (a.tipo === tipo && a.libro === id && !a.sinDetalle) usadas[a.categoria] = (usadas[a.categoria] || 0) + 1;
+  const todas = [...new Set([...base, ...extra, ...Object.keys(usadas).sort((a, b) => usadas[b] - usadas[a])])].filter((c) => !/total del mes|resto sin|^casas del mes$|^arriendos del mes$/i.test(c));
+  const ocultas = fran.categoriasOcultas[llave] || [];
+  return { todas, visibles: todas.filter((c) => !ocultas.includes(c)), ocultas };
+}
+
 function renderAgregar(contenedor, id, clave, ctx) {
   const { ui, datos } = ctx;
   const tipos = TIPOS[id] || TIPOS.personal;
   const def = tipos.find((t) => t[1] === clave) || tipos[0];
   const tipo = def[2];
   const esTransfer = tipo === 'transferencia';
-  const base = (CATEGORIAS_BASE[id] && CATEGORIAS_BASE[id][def[1]]) || [];
-  const usadas = {};
-  for (const a of datos.estado.fran.asientos) if (a.tipo === tipo && a.libro === id && !a.sinDetalle) usadas[a.categoria] = (usadas[a.categoria] || 0) + 1;
-  const categorias = [...new Set([...base, ...Object.keys(usadas).sort((a, b) => usadas[b] - usadas[a])])].filter((c) => !/total del mes|resto sin/i.test(c));
+  const categorias = categoriasDe(datos.estado.fran, id, def[1], tipo).visibles;
   let elegida = categorias[0] || 'Otros';
   const raiz = ui.el(`<div class="fran-agregar">
-    <header class="fran-agregar__cabeza"><a href="#/libro/${id}">Cancelar</a><strong>Agregar</strong><label class="fran-fecha"><input type="date" name="fecha" value="${ui.esc(ctx.hoy())}" aria-label="Fecha"></label></header>
+    <header class="fran-agregar__cabeza"><a href="#/libro/${id}">Cancelar</a><strong>Agregar</strong><a class="fran-agregar__repite" href="#/ajustes/recurrentes" aria-label="Transacciones recurrentes">↻</a></header>
     <div class="fran-segmento">${tipos.map((t) => `<a href="#/libro/${id}/agregar/${t[1]}" class="${t === def ? 'activo' : ''}">${ui.esc(t[0])}</a>`).join('')}</div>
     <form novalidate>
       ${esTransfer ? `
         <p class="fran-seccion">Sale de</p>${chips('cuenta', CUENTAS, 'Efectivo', ui)}
         <p class="fran-seccion">Entra a</p>${chips('destino', CUENTAS, 'Nequi propio', ui)}` : `
         <div class="fran-iconos">${categorias.map((c, i) => `<button type="button" class="${c === elegida ? 'activo' : ''}${i >= 11 ? ' fran-mas-cat oculto' : ''}" data-cat="${ui.esc(c)}"><span>${ui.esc(iconoDe(c))}</span><small>${ui.esc(c.replace(' públicos', ''))}</small></button>`).join('')}
-          ${categorias.length > 11 ? '<button type="button" data-ver-mas><span>＋</span><small>Más</small></button>' : ''}
-          <button type="button" class="${categorias.length > 11 ? 'fran-mas-cat oculto' : ''}" data-nueva><span>✎</span><small>Nueva</small></button></div>
+          <button type="button" data-ver-mas><span>＋</span><small>Ajustes</small></button>
+          <button type="button" class="fran-mas-cat oculto" data-nueva><span>✎</span><small>Nueva</small></button>
+          <a class="fran-mas-cat oculto" href="#/ajustes/categorias"><span>⚙️</span><small>Categorías</small></a></div>
         <input type="text" class="fran-entrada oculto" name="nueva" placeholder="Nombre de la categoría nueva" autocomplete="off">`}
       <div class="fran-agregar__pie">
+        <label class="fran-fecha-fila"><small>Fecha</small><input type="date" name="fecha" value="${ui.esc(ctx.hoy())}" aria-label="Fecha"></label>
         <div class="fran-escribir">
           <input type="text" name="texto" autocomplete="off" placeholder="${esTransfer ? '¿Cuánto?' : '¿Para qué y cuánto cuesta?'}" aria-label="Para qué y cuánto cuesta">
           <button type="button" class="fran-mic oculto" aria-label="Dictar">🎤</button>
+          <button type="button" class="fran-mic" data-foto aria-label="Foto del recibo">📷</button>
+          <input type="file" class="oculto" name="foto" accept="image/*" capture="environment" aria-hidden="true" tabindex="-1">
           <button type="submit" class="fran-enviar" aria-label="Guardar">✓</button>
         </div>
         ${esTransfer || id === 'terceros' ? '' : `<p class="fran-pagado">${tipo === 'ingreso' ? 'Entra por' : 'Pagado con'}:</p>${chips('cuenta', CUENTAS, 'Efectivo', ui).replace('fran-chips', 'fran-chips fran-chips--texto')}`}
@@ -778,6 +872,18 @@ function renderAgregar(contenedor, id, clave, ctx) {
     const n = raiz.querySelector('[name="nueva"]');
     n.classList.remove('oculto');
     n.focus();
+  });
+  let foto = null;
+  const botonFoto = raiz.querySelector('[data-foto]');
+  const entradaFoto = raiz.querySelector('[name="foto"]');
+  botonFoto.addEventListener('click', () => entradaFoto.click());
+  entradaFoto.addEventListener('change', async () => {
+    if (!entradaFoto.files[0]) return;
+    try {
+      foto = await reducirFoto(entradaFoto.files[0]);
+      botonFoto.classList.add('activo');
+      ui.toast('Foto lista.');
+    } catch (error) { ui.toast(error.message); }
   });
   const texto = raiz.querySelector('[name="texto"]');
   const Voz = window.SpeechRecognition || window.webkitSpeechRecognition;
@@ -806,7 +912,8 @@ function renderAgregar(contenedor, id, clave, ctx) {
     const nueva = form.elements.nueva ? form.elements.nueva.value.trim() : '';
     if (botonNueva && botonNueva.classList.contains('activo') && !nueva) { ui.toast('Escribe el nombre de la categoría.'); return; }
     try {
-      await datos.agregarAsiento({ libro: id, fecha, tipo, categoria: esTransfer ? 'Transferencia' : (nueva || elegida), descripcion, valor, cuenta, destino });
+      const asiento = await datos.agregarAsiento({ libro: id, fecha, tipo, categoria: esTransfer ? 'Transferencia' : (nueva || elegida), descripcion, valor, cuenta, destino, conFoto: !!foto });
+      if (foto) await guardarFoto(asiento.id, foto).catch(() => ui.toast('El movimiento quedó, pero la foto no se pudo guardar.'));
       ui.toast('Guardado.');
       vista.mes = fecha.slice(0, 7);
       ctx.navegar(`/libro/${id}`);
@@ -913,6 +1020,7 @@ function renderFicha(contenedor, id, ctx) {
   const pagos = estado.pagos.filter((g) => g.clienteId === id);
   const r = motor.resumenCliente(cliente, propios, pagos, ctx.hoy());
   const recuperado = Math.max(0, r.capitalPrestado - r.capitalPendiente);
+  const abonosPlan = estado.fran.asientos.filter((x) => x.clienteId === id && x.tipo === 'abono').reduce((s, x) => s + x.valor, 0);
   const pct = r.capitalPrestado ? Math.min(100, (recuperado / r.capitalPrestado) * 100) : 0;
   const acuerdo = (estado.fran.agenda || []).find((x) => x.clienteId === id || norm(x.nombre) === norm(cliente.nombre));
   const cuando = acuerdo && (acuerdo.repite ? `${acuerdo.repite}s` : (acuerdo.fecha ? fechas.formatear(acuerdo.fecha) : ''));
@@ -937,7 +1045,7 @@ function renderFicha(contenedor, id, ctx) {
       <div class="fran-tarjeta"><small>Capital pendiente</small><strong class="numero">${dinero.formatear(r.capitalPendiente)}</strong></div>
     </div>
     <div class="fran-progreso"><span style="width:${pct}%"></span></div>
-    <p class="fran-nota">Recuperado ${dinero.formatear(recuperado)} de ${dinero.formatear(r.capitalPrestado)} de capital.${capitalPrimero ? ' Cuando llegue a 100%, todo lo que pague es ganancia.' : ''}</p>
+    <p class="fran-nota">${abonosPlan && !recuperado ? `Abono a capital anotado: ${dinero.formatear(abonosPlan)}. El saldo está por confirmar.` : `Recuperado ${dinero.formatear(recuperado)} de ${dinero.formatear(r.capitalPrestado)} de capital.`}${capitalPrimero ? ' Cuando llegue a 100%, todo lo que pague es ganancia.' : ''}</p>
     <p class="fran-seccion">Historial</p>
     <div class="fran-lista">${historial.map((h) => fila({ ui, icono: h.icono, titulo: h.t, sub: h.sinFecha ? `Fecha por confirmar (${h.sinFecha})` : (h.textoFecha || fechas.formatear(h.f)), derecha: h.v, clase: h.c, ruta: h.ruta })).join('') || '<p class="fran-vacio">Sin movimientos.</p>'}</div>
     <div class="fran-tres">

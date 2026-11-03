@@ -5,7 +5,7 @@
 import { test, describe, beforeEach } from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  datos, usarAlmacenamiento, crearAlmacenamientoMemoria, crearAlmacenamientoNavegador, VERSION_ACTUAL,
+  datos, usarAlmacenamiento, crearAlmacenamientoMemoria, crearAlmacenamientoNavegador, VERSION_ACTUAL, siguienteRecurrente,
 } from '../js/datos.js';
 
 const HOY = '2026-11-02';
@@ -118,6 +118,36 @@ describe('datos.js', () => {
     memoria = crearAlmacenamientoMemoria();
     usarAlmacenamiento(memoria);
     await datos.borrarTodo();
+  });
+
+  describe('movimientos recurrentes', () => {
+    test('el mes siguiente conserva el día, y febrero usa su último día', () => {
+      assert.equal(siguienteRecurrente('2026-01-31', 'mensual', 31), '2026-02-28');
+      assert.equal(siguienteRecurrente('2026-02-28', 'mensual', 31), '2026-03-31');
+      assert.equal(siguienteRecurrente('2026-12-15', 'mensual', 15), '2027-01-15');
+      assert.equal(siguienteRecurrente('2026-11-02', 'semanal', 2), '2026-11-09');
+      assert.equal(siguienteRecurrente('2026-11-20', 'quincenal', 20), '2026-12-05');
+    });
+
+    test('anota lo vencido una sola vez y sobrevive a exportar e importar', async () => {
+      await datos.agregarRecurrente({ libro: 'personal', tipo: 'gasto', categoria: 'Servicios públicos', descripcion: 'wifi', valor: 60000, frecuencia: 'mensual', proxima: '2026-09-10' });
+      assert.equal(await datos.aplicarRecurrentes('2026-11-02'), 2);
+      assert.equal(await datos.aplicarRecurrentes('2026-11-02'), 0);
+      assert.deepEqual(datos.estado.fran.asientos.map((a) => a.fecha), ['2026-09-10', '2026-10-10']);
+      assert.equal(datos.estado.fran.recurrentes[0].proxima, '2026-11-10');
+      await datos.importarJSON(datos.exportarJSON());
+      assert.equal(datos.estado.fran.recurrentes.length, 1);
+      assert.equal(await datos.aplicarRecurrentes('2026-11-10'), 1);
+    });
+
+    test('editar un movimiento cambia solo ese movimiento', async () => {
+      const a = await datos.agregarAsiento({ libro: 'personal', fecha: HOY, tipo: 'gasto', categoria: 'Agua', descripcion: 'x', valor: 1000 });
+      await datos.actualizarAsiento(a.id, { fecha: HOY, valor: 2500, categoria: 'Alimentos', descripcion: 'pan' });
+      const b = datos.estado.fran.asientos.find((x) => x.id === a.id);
+      assert.equal(b.valor, 2500);
+      assert.equal(b.categoria, 'Alimentos');
+      assert.equal(b.tipo, 'gasto');
+    });
   });
 
   describe('actualizar históricos', () => {
