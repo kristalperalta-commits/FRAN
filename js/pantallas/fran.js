@@ -400,7 +400,7 @@ function renderPrincipal(contenedor, ctx) {
       ${grande('personal', dinero.formatear(sumar(deTipo(mVerde, 'ingreso')) - sumar(deTipo(mVerde, 'gasto'))), `Saldo de ${fechas.nombreMes(Number(mesVerde.slice(5, 7)))}`)}
       ${grande('prestamos', 'Cartera', estados || 'Al día · Atrasados · Congelados')}
       ${grande('pension', dinero.formatear(totalPension(fran)), `${dinero.formatear(usd)} USD + efectivo + carro`)}
-      ${grande('productos', dinero.formatear(sumar(inventario.filter((a) => !a.enPago))), `Invertido · ${inventario.length} productos`)}
+      ${grande('productos', dinero.formatear(sumar(inventario.filter((a) => !a.enPago))), `Invertido · ${inventario.filter((a) => !a.enPago).length} productos`)}
     </div>
     <div class="fran-libros-chicos">${chica('arriendos')}${chica('redes')}${chica('terceros')}</div>
   </div>`));

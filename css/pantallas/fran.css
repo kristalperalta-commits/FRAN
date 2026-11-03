@@ -55,8 +55,6 @@
 .fran-fila__texto strong { font-weight: 700; overflow-wrap: anywhere; }
 .fran-fila__texto small { color: var(--texto-suave); font-size: 0.82rem; overflow-wrap: anywhere; }
 .fran-fila__valor { flex: none; max-width: 48%; text-align: right; font-weight: 800; }
-.fran-mas { color: var(--entra); }
-.fran-menos { color: var(--sale); }
 .fran-vacio { padding: 18px 8px; color: var(--texto-suave); text-align: center; }
 .fran-nota { margin: 0 0 12px; color: var(--texto-suave); font-size: 0.9rem; }
 .fran-seccion { margin: 12px 0 2px; padding-bottom: 5px; border-bottom: 1px solid var(--borde); color: var(--texto-suave); font-size: 0.88rem; }
@@ -311,7 +309,6 @@ a.fran-plata { color: inherit; text-decoration: none; }
 .fran-virtual__cuadro { padding: 10px 12px; margin-bottom: 12px; border-radius: 14px; background: var(--fondo-tarjeta); box-shadow: var(--sombra); }
 .fran-virtual__queda { padding-top: 6px; border-top: 1px solid var(--borde); font-weight: 800; }
 .fran-virtual__botones { margin-bottom: 12px; }
-.fran-menos { color: var(--peligro, #ef4444); }
 
 /* Elegir mes, como Mis Gastos */
 .fran-mes button.fran-mes__elegir { min-height: 40px; padding: 4px 16px; border: 1px solid var(--borde); border-radius: 20px; background: var(--fondo-tarjeta); color: var(--texto); font-weight: 700; font-size: 1rem; cursor: pointer; }
@@ -356,10 +353,7 @@ a.fran-plata { color: inherit; text-decoration: none; }
 .candado__logo::before { top: 0; background: linear-gradient(90deg, #22c55e, #3b82f6, #a855f7, #f97316); }
 .candado__logo::after { bottom: 0; background: rgba(255, 255, 255, 0.12); }
 
-/* Números rojos y verdes con contorno blanco, para leerlos sin cansar la vista */
-.fran-mas, .fran-menos { font-weight: 800; text-shadow: 0.3px 0.3px 0 #fff, -0.3px -0.3px 0 #fff, 0.3px -0.3px 0 #fff, -0.3px 0.3px 0 #fff; }
 .fran-dia b { font-weight: 800; }
-.fran-plata strong.fran-mas, .fran-plata strong.fran-menos, .fran-virtual .fran-tarjeta strong.fran-mas, .fran-virtual .fran-tarjeta strong.fran-menos { text-shadow: 0.6px 0.6px 0 #fff, -0.6px -0.6px 0 #fff, 0.6px -0.6px 0 #fff, -0.6px 0.6px 0 #fff; }
 
 /* Letra blanca sobre el color del libro */
 .fran-segmento .activo, .fran-anios .activo, .fran-chips .activo, .fran-guardar, .pestana--mas span, .fran-enviar { background: var(--libro-g2, var(--libro)); border-color: var(--libro-g2, var(--libro)); color: #fff; }
@@ -373,3 +367,15 @@ a.fran-plata { color: inherit; text-decoration: none; }
 .fran-libro--arriendos, .fran-libro-chico.fran-libro--arriendos { background: linear-gradient(145deg, #a16207, #713f12); }
 .fran-libro--redes, .fran-libro-chico.fran-libro--redes { background: linear-gradient(145deg, #be185d, #831843); }
 .fran-libro--terceros, .fran-libro-chico.fran-libro--terceros { background: linear-gradient(145deg, #475569, #1e293b); }
+
+/* Letras y números siempre del color del texto. El rojo y el verde van en el fondo del renglón. */
+.fran-mas, .fran-menos { color: inherit; font-weight: 800; }
+:root { --renglon-gasto: rgba(220, 38, 38, 0.34); --renglon-ingreso: rgba(22, 163, 74, 0.34); --marca-gasto: #ef4444; --marca-ingreso: #22c55e; }
+.fran-fila:has(.fran-mas), .fran-fila:has(.fran-menos),
+.fran-barra-fila:has(.numero.fran-mas), .fran-barra-fila:has(.numero.fran-menos) { padding: 8px 10px; margin-bottom: 5px; border-bottom: 0; border-left: 4px solid transparent; border-radius: 12px; }
+.fran-fila:has(.fran-mas), .fran-barra-fila:has(.numero.fran-mas), .fran-caja3 > div:has(.fran-mas), .fran-virtual__cuadro p:has(.fran-mas), .fran-tarjeta:has(strong.fran-mas), .fran-plata:has(strong.fran-mas) { background: var(--renglon-ingreso); border-left-color: var(--marca-ingreso); }
+.fran-fila:has(.fran-menos), .fran-barra-fila:has(.numero.fran-menos), .fran-caja3 > div:has(.fran-menos), .fran-virtual__cuadro p:has(.fran-menos), .fran-tarjeta:has(strong.fran-menos), .fran-plata:has(strong.fran-menos) { background: var(--renglon-gasto); border-left-color: var(--marca-gasto); }
+.fran-caja3 > div { padding: 5px 2px; border-radius: 10px; }
+.fran-virtual__cuadro p:has(.fran-mas), .fran-virtual__cuadro p:has(.fran-menos) { padding: 5px 8px; border-radius: 8px; }
+.fran-tarjeta:has(strong.fran-mas), .fran-tarjeta:has(strong.fran-menos), .fran-plata:has(strong.fran-mas), .fran-plata:has(strong.fran-menos) { border-left-width: 4px; border-left-style: solid; }
+.fran-total .fran-mas { background: none; }
