@@ -815,3 +815,20 @@ button.fila {
   border-top: 1px solid var(--borde);
   margin: var(--espacio) 0;
 }
+
+/* Letras blancas en todos los temas oscuros. Verde y rojo solo para los números. */
+:root:not([data-tema="claro"]) {
+  --texto: #ffffff;
+  --texto-suave: #e6e8eb;
+  --primario: #ffffff;
+  --entra: #2ee66f;
+  --sale: #ff4d4d;
+  --texto-estado-al-dia: #ffffff;
+  --texto-estado-atrasado: #ffffff;
+  --texto-estado-vencido: #ffffff;
+  --texto-estado-pagado: #ffffff;
+  --texto-estado-perdido: #ffffff;
+  --texto-estado-legal: #ffffff;
+  --texto-estado-congelado: #ffffff;
+  --texto-estado-familia: #ffffff;
+}

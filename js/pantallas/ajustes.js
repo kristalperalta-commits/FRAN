@@ -14,7 +14,7 @@
   Toda operación que guarda va dentro de try/catch y avisa con ui.toast.
 */
 
-import { CATEGORIAS_BASE, LIBROS, categoriasDe, iconoDe } from './fran.js';
+import { CATEGORIAS_BASE, INGRESOS_DE_OTRO_LIBRO, LIBROS, categoriasDe, iconoDe } from './fran.js';
 import { calendarioIcs } from '../recordatorios.js';
 
 export const titulo = 'Yo';
@@ -708,7 +708,8 @@ function seccionRecurrentes(ctx) {
   </section>`);
   const f = s.querySelector('form').elements;
   const llenar = () => {
-    const opciones = categoriasDe(datos.estado.fran, f.libro.value, f.tipo.value, f.tipo.value).visibles;
+    const opciones = categoriasDe(datos.estado.fran, f.libro.value, f.tipo.value, f.tipo.value).visibles
+      .filter((c) => !(f.libro.value === 'personal' && INGRESOS_DE_OTRO_LIBRO[c] && f.tipo.value === 'ingreso'));
     const todas = opciones.length ? opciones : (CATEGORIAS_BASE[f.libro.value] && CATEGORIAS_BASE[f.libro.value].inversion) || ['Otros'];
     f.categoria.innerHTML = todas.map((c) => `<option>${ui.esc(c)}</option>`).join('');
   };

@@ -132,6 +132,7 @@ function franVacio() {
     categoriasOcultas: {},
     recurrentes: [],
     recordatorios: { cobros: '07:00', gastos: '19:00' },
+    propiedades: [],
     virtualMov: [],
     virtualHistorial: [],
     virtualCuentas: null,
@@ -174,6 +175,7 @@ function completarFran(fran) {
       cobros: /^\d\d:\d\d$/.test(f.recordatorios && f.recordatorios.cobros) ? f.recordatorios.cobros : base.recordatorios.cobros,
       gastos: /^\d\d:\d\d$/.test(f.recordatorios && f.recordatorios.gastos) ? f.recordatorios.gastos : base.recordatorios.gastos,
     },
+    propiedades: lista(f.propiedades).filter((p) => p && p.nombre),
     virtualMov: lista(f.virtualMov).filter((m) => m && m.id && esFechaValida(m.fecha) && Number.isInteger(m.valor) && m.valor > 0 && (m.tipo === 'entra' || m.tipo === 'sale')),
     virtualHistorial: lista(f.virtualHistorial),
     virtualCuentas: f.virtualCuentas && Number.isInteger(f.virtualCuentas.valor) ? f.virtualCuentas : null,
@@ -1443,7 +1445,7 @@ export const datos = {
       const ya = agenda.find((y) => y.id === x.id);
       if (x.clienteId && !ya.clienteId) ya.clienteId = x.clienteId;
     }
-    estadoActual.fran = { ...estadoActual.fran, asientos: [...nuevo.asientos.filter((a) => a.importado), ...propios], agenda, virtualPorDefinir: nuevo.virtualPorDefinir, virtualHistorial: nuevo.virtualHistorial, virtualCuentas: estadoActual.fran.virtualCuentas || nuevo.virtualCuentas };
+    estadoActual.fran = { ...estadoActual.fran, asientos: [...nuevo.asientos.filter((a) => a.importado), ...propios], agenda, propiedades: nuevo.propiedades, virtualPorDefinir: nuevo.virtualPorDefinir, virtualHistorial: nuevo.virtualHistorial, virtualCuentas: estadoActual.fran.virtualCuentas || nuevo.virtualCuentas };
     // Préstamos que el plan corrige (marcados "actualizar") y pagos del plan: no tocan la caja.
     for (const p of Array.isArray(objeto.prestamos) ? objeto.prestamos : []) {
       if (!p.actualizar) continue;

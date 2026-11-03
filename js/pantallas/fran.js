@@ -26,12 +26,23 @@ const TIPOS = {
   terceros: [['Recibí', 'ingreso', 'ingreso'], ['Devolví', 'gasto', 'gasto'], ['Usé', 'uso', 'gasto']],
 };
 
+// Estos ingresos entran solos a Finanzas desde su libro. Se anotan allá, una sola vez.
+export const INGRESOS_DE_OTRO_LIBRO = {
+  'Ganancia de préstamos': '/libro/prestamos/registrar/interes',
+  Arriendos: '/libro/arriendos/agregar/ingreso',
+  'Redes sociales': '/libro/redes/agregar/ingreso',
+  'Trabajo audiovisual': '/libro/redes/agregar/ingreso',
+  Ventas: '/libro/productos/agregar/ingreso',
+};
+
+const NOTA_PROPIEDAD = { 'Arriendos del mes': 'Falta el detalle de esos meses' };
+
 export const CATEGORIAS_BASE = {
   personal: {
     gasto: ['Alimentos', 'Vivienda', 'Carro', 'Gasolina', 'Servicios públicos', 'Compras', 'Medicina', 'Abogados', 'Social', 'Viajes', 'Electrónicos', 'Belleza', 'Deportes', 'Entretenimiento', 'Transporte', 'Otros'],
-    ingreso: ['Salario', 'Inversiones', 'Tiempo parcial', 'Premios', 'Ingreso mensual', 'Negocio Ropa', 'Otros'],
+    ingreso: ['Otros', 'Salario', 'Negocio Ropa', 'Ingreso mensual'],
   },
-  arriendos: { ingreso: ['Prado', 'Laguna', 'Bodega mamá', 'Miguel', 'Apartamento la 17'], gasto: ['Mano de obra', 'Servicios de las casas', 'Remodelación', 'Materiales', 'Trámites'] },
+  arriendos: { ingreso: [], gasto: ['Mano de obra', 'Servicios de las casas', 'Remodelación', 'Materiales', 'Trámites'] },
   redes: { ingreso: ['Redes sociales', 'Trabajo audiovisual'], gasto: ['Redes sociales', 'Videos'] },
   productos: { inversion: ['Inventario sin vender', 'Inversiones'], ingreso: ['Ventas'], gasto: ['Gasto de productos'] },
   terceros: { ingreso: ['Abuelos', 'Esposo'], gasto: ['Abuelos', 'Esposo'], uso: ['Préstamo interno'] },
@@ -45,7 +56,7 @@ const ICONOS = [
   [/servicio/, '💡'], [/compra/, '🛍️'], [/medicina|salud/, '💊'], [/abogado/, '⚖️'], [/social/, '👥'], [/viaje/, '✈️'],
   [/electronic/, '📱'], [/belleza/, '💄'], [/deporte/, '⚽'], [/entreten/, '🎬'], [/transporte/, '🚌'], [/educacion/, '📚'],
   [/regalo/, '🎁'], [/agua/, '💧'], [/ropa/, '👕'], [/tarjeta/, '💳'], [/descuadre/, '❓'], [/deuda/, '📄'],
-  [/interes|prestamo/, '💵'], [/prado|laguna|bodega|miguel|apartamento|franklin|arriendo/, '🏢'], [/mano de obra/, '👷'],
+  [/interes|prestamo/, '💵'], [/prado|laguna|bodega|piso|apartamento|franklin|arriendo/, '🏢'], [/mano de obra/, '👷'],
   [/remodel/, '🎨'], [/material/, '🧱'], [/tramite/, '📑'], [/casas/, '🏗️'], [/redes|youtube|video/, '📺'], [/audiovisual/, '🎬'],
   [/inventario|venta|producto/, '📦'], [/inversion/, '📈'], [/salario|ingreso|tiempo|premio/, '💰'], [/abuelo|esposo/, '🤝'],
   [/transferencia/, '🔁'], [/total|resto/, '🧾'],
@@ -90,8 +101,14 @@ function asientos(ctx) {
   return [...propios, ...deIntereses];
 }
 
-function delLibro(lista, libro) {
-  if (libro === 'personal') return lista.filter((a) => a.libro === 'personal' || (a.tipo === 'ingreso' && !a.soloLibro && !['terceros', 'pension'].includes(a.libro)));
+const NOMBRE_EN_FINANZAS = { prestamos: 'Ganancia de préstamos', arriendos: 'Arriendos' };
+
+export function delLibro(lista, libro) {
+  if (libro === 'personal') {
+    return lista
+      .filter((a) => a.libro === 'personal' || (a.tipo === 'ingreso' && !a.soloLibro && !['terceros', 'pension'].includes(a.libro)))
+      .map((a) => (a.tipo === 'ingreso' && NOMBRE_EN_FINANZAS[a.libro] ? { ...a, categoria: NOMBRE_EN_FINANZAS[a.libro] } : a));
+  }
   return lista.filter((a) => a.libro === libro);
 }
 
@@ -183,7 +200,12 @@ function titular(id, ctx, atras, texto) {
 
 function caja3(a, b, c, ctx) {
   const { ui } = ctx;
-  return `<div class="fran-caja3">${[a, b, c].map(([t, v]) => `<div><small>${ui.esc(t)}</small><strong class="numero">${ui.esc(v)}</strong></div>`).join('')}</div>`;
+  const clase = (t, v) => {
+    if (['Gastos', 'Presté', 'Metí yo'].includes(t)) return 'fran-menos';
+    if (['Ingresos', 'Cobré capital', 'Intereses', 'Vendí'].includes(t)) return 'fran-mas';
+    return String(v).startsWith('-') ? 'fran-menos' : 'fran-mas';
+  };
+  return `<div class="fran-caja3">${[a, b, c].map(([t, v]) => `<div><small>${ui.esc(t)}</small><strong class="numero ${/\d/.test(v) ? clase(t, v) : ''}">${ui.esc(v)}</strong></div>`).join('')}</div>`;
 }
 
 function selectorMes(mes, ctx) {
@@ -297,7 +319,7 @@ function listaPorDia(lista, ctx) {
   for (const [dia, filas] of dias) {
     const g = sumar(deTipo(filas, 'gasto'));
     const i = sumar(deTipo(filas, 'ingreso'));
-    html += `<div class="fran-dia"><span>${ui.esc(fechaLinda(dia, ctx))}</span><span>${g ? `G: ${dinero.formatear(g)} ` : ''}${i ? `I: ${dinero.formatear(i)}` : ''}</span></div>`;
+    html += `<div class="fran-dia"><span>${ui.esc(fechaLinda(dia, ctx))}</span><span>${g ? `G: <b class="numero fran-menos">${dinero.formatear(g)}</b> ` : ''}${i ? `I: <b class="numero fran-mas">${dinero.formatear(i)}</b>` : ''}</span></div>`;
     for (const a of filas) {
       const signo = a.tipo === 'ingreso' ? '+' : (a.tipo === 'gasto' ? '−' : '');
       html += fila({ ui, icono: iconoDe(a.categoria), titulo: a.categoria, sub: a.descripcion, derecha: `${signo}${dinero.formatear(a.valor)}`, clase: a.tipo === 'ingreso' ? 'fran-mas' : (a.tipo === 'gasto' ? 'fran-menos' : '') });
@@ -366,7 +388,7 @@ function renderPrincipal(contenedor, ctx) {
     <header class="fran-titulo fran-titulo--principal"><h1>Fran</h1><a href="#/ajustes" class="fran-yo" aria-label="Yo y ajustes"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10"/></svg></a></header>
     <a href="#/virtual" class="fran-plata">
       <small>Mi plata propia hoy</small>
-      <strong class="numero">${dinero.formatear(plata.total)}</strong>
+      <strong class="numero ${plata.total < 0 ? 'fran-menos' : 'fran-mas'}">${dinero.formatear(plata.total)}</strong>
       <small>Efectivo ${dinero.formatear(plata.efectivo)} · Virtual ${fran.virtualPorDefinir ? 'por confirmar' : dinero.formatear(plata.virtual)} · Tarjetas −${dinero.formatear(plata.tarjetas)}</small>
       ${fran.virtualCuentas ? `<small>En las cuentas hay ${dinero.formatear(fran.virtualCuentas.valor)} entre los dos. No es tuyo.</small>` : ''}
     </a>
@@ -432,6 +454,7 @@ function renderLibro(contenedor, id, ctx) {
   const raiz = ui.el(`<div>
     ${titular(id, ctx, '#/inicio')}
     ${caja3(['Gastos', dinero.formatear(g)], ['Ingresos', dinero.formatear(i)], ['Saldo', dinero.formatear(i - g)], ctx)}
+    ${id === 'arriendos' ? '<a class="fran-aviso" href="#/libro/arriendos/propiedades">🏠 Cuánto dio cada propiedad</a>' : ''}
     ${selectorMes(mes, ctx)}
     ${avisoSinDetalle(m)}
     ${m.length ? `<div class="fran-lista">${listaPorDia(m, ctx)}</div>` : vacioConSalto(lista, ctx, 'No hay movimientos en este mes.')}
@@ -632,7 +655,7 @@ function renderGraficos(contenedor, id, ctx) {
     <div class="fran-lista">${filas.map(([cat, v], i) => `<a href="#/libro/${id}/categoria/${vista.tipo}/${encodeURIComponent(cat)}" class="fran-barra-fila">
       <span class="fran-ico">${ui.esc(iconoDe(cat))}</span>
       <span class="fran-barra-fila__c">
-        <span class="fran-barra-fila__l"><strong>${ui.esc(cat)}</strong><span class="numero">${dinero.formatear(v)}</span></span>
+        <span class="fran-barra-fila__l"><strong>${ui.esc(cat)}</strong><span class="numero ${vista.tipo === 'ingreso' ? 'fran-mas' : 'fran-menos'}">${dinero.formatear(v)}</span></span>
         <span class="fran-barra-fila__l"><span class="fran-barra" style="width:${Math.max(1.5, (v / filas[0][1]) * 80)}%;background:${COLORES[Math.min(i, 4) % COLORES.length]}"></span><small>${pct(v)}%</small></span>
       </span>
     </a>`).join('')}</div>
@@ -736,7 +759,7 @@ function renderDetalle(contenedor, id, tituloDetalle, lista, atras, ctx, conMes 
       <div class="fran-lista">${ordenada.map((a) => `<div class="fran-barra-fila" role="button" tabindex="0" data-ver="${ui.esc(a.id)}">
         <span class="fran-ico">${ui.esc(iconoDe(a.categoria))}</span>
         <span class="fran-barra-fila__c">
-          <span class="fran-barra-fila__l"><strong>${ui.esc(a.descripcion || a.categoria)}</strong><span class="numero">${dinero.formatear(a.valor)}</span></span>
+          <span class="fran-barra-fila__l"><strong>${ui.esc(a.descripcion || a.categoria)}</strong><span class="numero ${a.tipo === 'gasto' ? 'fran-menos' : 'fran-mas'}">${dinero.formatear(a.valor)}</span></span>
           <span class="fran-barra-fila__l"><span class="fran-barra" style="width:${Math.max(1.5, (a.valor / maximo) * 80)}%"></span><small>${(total ? (a.valor / total) * 100 : 0).toFixed(2).replace('.', ',')}%</small></span>
           <span class="fran-barra-fila__l"><small>${ui.esc(a.textoFecha || fechas.formatear(a.fecha))}${a.conFoto ? ' · 📷' : ''}</small></span>
         </span>
@@ -878,9 +901,19 @@ export function categoriasDe(fran, id, clave, tipo) {
   const llave = `${id}:${clave}`;
   const base = (CATEGORIAS_BASE[id] && CATEGORIAS_BASE[id][clave]) || [];
   const extra = fran.categoriasExtra[llave] || [];
-  const usadas = {};
-  for (const a of fran.asientos) if (a.tipo === tipo && a.libro === id && !a.sinDetalle) usadas[a.categoria] = (usadas[a.categoria] || 0) + 1;
-  const todas = [...new Set([...base, ...extra, ...Object.keys(usadas).sort((a, b) => usadas[b] - usadas[a])])].filter((c) => !/total del mes|resto sin|^casas del mes$|^arriendos del mes$/i.test(c));
+  const uso = new Map();
+  for (const a of fran.asientos) {
+    if (a.tipo !== tipo || a.libro !== id || a.sinDetalle) continue;
+    if (!uso.has(a.categoria)) uso.set(a.categoria, { meses: new Set(), veces: 0 });
+    const u = uso.get(a.categoria);
+    u.meses.add(a.fecha.slice(0, 7));
+    u.veces++;
+  }
+  const usadas = [...uso.keys()].sort((x, y) => uso.get(y).meses.size - uso.get(x).meses.size || uso.get(y).veces - uso.get(x).veces);
+  let fijas = [];
+  if (id === 'personal' && clave === 'ingreso') fijas = Object.keys(INGRESOS_DE_OTRO_LIBRO);
+  if (id === 'arriendos' && clave === 'ingreso') fijas = (fran.propiedades || []).map((p) => p.nombre);
+  const todas = [...new Set([...fijas, ...usadas, ...extra, ...base])].filter((c) => !/total del mes|resto sin|^casas del mes$|^arriendos del mes$|sin decir piso|^laguna y prado$/i.test(c));
   const ocultas = fran.categoriasOcultas[llave] || [];
   return { todas, visibles: todas.filter((c) => !ocultas.includes(c)), ocultas };
 }
@@ -892,7 +925,8 @@ function renderAgregar(contenedor, id, clave, ctx) {
   const tipo = def[2];
   const esTransfer = tipo === 'transferencia';
   const categorias = categoriasDe(datos.estado.fran, id, def[1], tipo).visibles;
-  let elegida = categorias[0] || 'Otros';
+  const vaAOtroLibro = (c) => (id === 'personal' && clave === 'ingreso' ? INGRESOS_DE_OTRO_LIBRO[c] : null);
+  let elegida = categorias.find((c) => !vaAOtroLibro(c)) || 'Otros';
   const raiz = ui.el(`<div class="fran-agregar">
     <header class="fran-agregar__cabeza"><a href="#/libro/${id}">Cancelar</a><strong>Agregar</strong><a class="fran-agregar__repite" href="#/ajustes/recurrentes" aria-label="Transacciones recurrentes">↻</a></header>
     <div class="fran-segmento">${tipos.map((t) => `<a href="#/libro/${id}/agregar/${t[1]}" class="${t === def ? 'activo' : ''}">${ui.esc(t[0])}</a>`).join('')}</div>
@@ -901,7 +935,7 @@ function renderAgregar(contenedor, id, clave, ctx) {
         <p class="fran-seccion">Sale de</p>${chips('cuenta', CUENTAS, 'Efectivo', ui)}
         <p class="fran-seccion">Entra a</p>${chips('destino', CUENTAS, 'Nequi propio', ui)}` : `
         <div class="fran-iconos">${categorias.map((c, i) => `<button type="button" class="${c === elegida ? 'activo' : ''}${i >= 11 ? ' fran-mas-cat oculto' : ''}" data-cat="${ui.esc(c)}"><span>${ui.esc(iconoDe(c))}</span><small>${ui.esc(c.replace(' públicos', ''))}</small></button>`).join('')}
-          <button type="button" data-ver-mas><span>＋</span><small>Ajustes</small></button>
+          <button type="button" data-ver-mas><span>＋</span><small>Más</small></button>
           <button type="button" class="fran-mas-cat oculto" data-nueva><span>✎</span><small>Nueva</small></button>
           <a class="fran-mas-cat oculto" href="#/ajustes/categorias"><span>⚙️</span><small>Categorías</small></a></div>
         <input type="text" class="fran-entrada oculto" name="nueva" placeholder="Nombre de la categoría nueva" autocomplete="off">`}
@@ -909,8 +943,8 @@ function renderAgregar(contenedor, id, clave, ctx) {
         <label class="fran-fecha-fila"><small>Fecha</small><input type="date" name="fecha" value="${ui.esc(ctx.hoy())}" aria-label="Fecha"></label>
         <div class="fran-escribir">
           <input type="text" name="texto" autocomplete="off" placeholder="${esTransfer ? '¿Cuánto?' : '¿Para qué y cuánto cuesta?'}" aria-label="Para qué y cuánto cuesta">
-          <button type="button" class="fran-mic oculto" aria-label="Dictar">🎤</button>
-          <button type="button" class="fran-mic" data-foto aria-label="Foto del recibo">📷</button>
+          <button type="button" class="fran-mic" data-mic aria-label="Dictar">🎤</button>
+          <button type="button" class="fran-mic${esTransfer ? ' oculto' : ''}" data-foto aria-label="Foto del recibo">📷</button>
           <input type="file" class="oculto" name="foto" accept="image/*" capture="environment" aria-hidden="true" tabindex="-1">
           <button type="submit" class="fran-enviar" aria-label="Guardar">✓</button>
         </div>
@@ -920,6 +954,7 @@ function renderAgregar(contenedor, id, clave, ctx) {
   </div>`);
   conectarChips(raiz);
   raiz.querySelectorAll('[data-cat]').forEach((b) => b.addEventListener('click', () => {
+    if (vaAOtroLibro(b.dataset.cat)) { ctx.navegar(vaAOtroLibro(b.dataset.cat)); return; }
     elegida = b.dataset.cat;
     raiz.querySelectorAll('[data-cat],[data-nueva]').forEach((x) => x.classList.toggle('activo', x === b));
     const n = raiz.querySelector('[name="nueva"]');
@@ -950,20 +985,23 @@ function renderAgregar(contenedor, id, clave, ctx) {
     } catch (error) { ui.toast(error.message); }
   });
   const texto = raiz.querySelector('[name="texto"]');
+  // En el iPhone el dictado de la página no funciona con la app instalada: se usa el del teclado.
   const Voz = window.SpeechRecognition || window.webkitSpeechRecognition;
-  if (Voz) {
-    const mic = raiz.querySelector('.fran-mic');
-    mic.classList.remove('oculto');
-    mic.addEventListener('click', () => {
-      try {
-        const r = new Voz();
-        r.lang = 'es-CO';
-        r.onresult = (e) => { texto.value = e.results[0][0].transcript; };
-        r.onerror = () => ui.toast('No se pudo dictar. Usa el micrófono del teclado.');
-        r.start();
-      } catch { ui.toast('No se pudo dictar. Usa el micrófono del teclado.'); }
-    });
-  }
+  const esIOS = /iP(hone|ad|od)/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+  const conTeclado = () => {
+    texto.placeholder = 'Toca el 🎤 del teclado y habla';
+    texto.focus();
+  };
+  raiz.querySelector('[data-mic]').addEventListener('click', () => {
+    if (esIOS || !Voz) { conTeclado(); return; }
+    try {
+      const r = new Voz();
+      r.lang = 'es-CO';
+      r.onresult = (e) => { texto.value = e.results[0][0].transcript; };
+      r.onerror = conTeclado;
+      r.start();
+    } catch { conTeclado(); }
+  });
   raiz.querySelector('form').addEventListener('submit', async (e) => {
     e.preventDefault();
     const form = e.target;
@@ -1007,7 +1045,7 @@ function renderRegistrar(contenedor, params, ctx) {
       ${tipo === 'nuevo' ? `<div><small>Tasa mensual</small>${chips('tasa', [['5', '5%'], ['10', '10%'], ['12', '12%'], ['15', '15%'], ['20', '20%'], ['0', 'Sin interés']], '', ui)}</div>` : ''}
       ${tipo === 'acuerdo' ? `<div><small>Cada cuánto</small>${chips('repite', [['', 'Fecha fija'], ['diario', 'Diario'], ['semanal', 'Semanal'], ['quincenal', 'Quincenal'], ['mensual', 'Mensual']], '', ui)}</div>` : `<label><small>${tipo === 'nuevo' ? 'Sale por' : 'Entra por'}</small><select name="medio"><option value="efectivo">Efectivo</option><option value="virtual">Virtual</option></select></label>`}
       <label><small>${tipo === 'acuerdo' ? 'Fecha del cobro' : 'Fecha'}</small><input type="date" name="fecha" value="${ui.esc(ctx.hoy())}"></label>
-      <label><small>Nota</small><input name="nota" autocomplete="off" placeholder="🎤 dictar…"></label>
+      <label><small>Nota</small><input name="nota" autocomplete="off" placeholder="Escribe o dicta con el teclado"></label>
       <button class="boton boton--primario fran-guardar">Guardar</button>
     </form>
   </div>`);
@@ -1129,6 +1167,40 @@ function renderFicha(contenedor, id, ctx) {
 
 function hecho(item, hoy) {
   return item.repite ? item.hechoEn === hoy : !!item.hecho;
+}
+
+// ---------- Propiedades ----------
+
+function arriendosDelAnio(ctx) {
+  const lista = deTipo(delLibro(asientos(ctx), 'arriendos'), 'ingreso');
+  if (!vista.anioPropiedad) vista.anioPropiedad = ctx.hoy().slice(0, 4);
+  return { lista, delAnio: vista.anioPropiedad === 'todo' ? lista : lista.filter((a) => a.fecha.startsWith(vista.anioPropiedad)) };
+}
+
+function renderPropiedades(contenedor, ctx) {
+  const { ui, dinero } = ctx;
+  const { lista, delAnio } = arriendosDelAnio(ctx);
+  const anios = [...new Set(lista.map((a) => a.fecha.slice(0, 4)))].sort().reverse();
+  const DUENA = Object.fromEntries((ctx.datos.estado.fran.propiedades || []).map((p) => [p.nombre, p.duena]));
+  const totales = new Map(Object.keys(DUENA).map((n) => [n, 0]));
+  for (const a of delAnio) totales.set(a.categoria, (totales.get(a.categoria) || 0) + a.valor);
+  const filas = [...totales].sort((x, y) => y[1] - x[1]);
+  const raiz = ui.el(`<div>
+    ${titular('arriendos', ctx, '#/libro/arriendos', 'Propiedades')}
+    <div class="fran-anios">${[...anios, 'todo'].map((x) => `<button type="button" data-anio="${x}" class="${x === vista.anioPropiedad ? 'activo' : ''}">${x === 'todo' ? 'Todo' : x}</button>`).join('')}</div>
+    <p class="fran-total"><strong class="numero">Total: <span class="fran-mas">${dinero.formatear(sumar(delAnio))}</span></strong></p>
+    <div class="fran-lista">${filas.map(([n, v]) => fila({
+      ui, icono: '🏢', titulo: n === 'Arriendos del mes' ? 'Sin repartir' : n,
+      sub: v || !DUENA[n] ? (NOTA_PROPIEDAD[n] || (/sin decir piso/.test(n) ? 'La anotación no dice el piso' : '') || DUENA[n] || '') : `${DUENA[n]} · sin ingresos este año`,
+      derecha: dinero.formatear(v), clase: v ? 'fran-mas' : '', ruta: `#/libro/arriendos/propiedad/${encodeURIComponent(n)}`,
+    })).join('')}</div>
+  </div>`);
+  raiz.querySelectorAll('[data-anio]').forEach((b) => b.addEventListener('click', () => {
+    vista.anioPropiedad = b.dataset.anio;
+    contenedor.innerHTML = '';
+    renderPropiedades(contenedor, ctx);
+  }));
+  contenedor.append(raiz);
 }
 
 // ---------- Plata virtual ----------
@@ -1355,6 +1427,12 @@ export async function render(contenedor, params, ctx) {
     case 'ficha': return renderFicha(contenedor, params.id, ctx);
     case 'agenda': return renderAgenda(contenedor, ctx);
     case 'virtual': return renderVirtual(contenedor, ctx);
+    case 'propiedades': return renderPropiedades(contenedor, ctx);
+    case 'propiedad': {
+      const { delAnio } = arriendosDelAnio(ctx);
+      const anio = vista.anioPropiedad === 'todo' ? '' : ` · ${vista.anioPropiedad}`;
+      return renderDetalle(contenedor, 'arriendos', `${params.nombre === 'Arriendos del mes' ? 'Sin repartir' : params.nombre}${anio}`, delAnio.filter((a) => a.categoria === params.nombre), '#/libro/arriendos/propiedades', ctx);
+    }
     case 'moverPension': return renderMoverPension(contenedor, params.accion, ctx);
     case 'personas': return renderPersonas(contenedor, ctx);
     case 'persona': {
