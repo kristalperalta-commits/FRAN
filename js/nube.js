@@ -110,6 +110,8 @@ export function fusionar(local, remoto) {
   if (!resultado.fran) resultado.fran = {};
   if (!Array.isArray(resultado.fran.asientos)) resultado.fran.asientos = [];
   unir(resultado.fran.asientos, remoto.fran && remoto.fran.asientos);
+  if (!Array.isArray(resultado.fran.virtualMov)) resultado.fran.virtualMov = [];
+  unir(resultado.fran.virtualMov, remoto.fran && remoto.fran.virtualMov);
   return resultado;
 }
 

@@ -150,6 +150,48 @@ describe('datos.js', () => {
     });
   });
 
+  describe('cuenta virtual', () => {
+    test('lo anotado se guarda, cruza exportar e importar y se puede quitar', async () => {
+      const m = await datos.agregarVirtual({ fecha: HOY, tipo: 'sale', concepto: 'tarjeta', valor: 50000 });
+      await datos.importarJSON(datos.exportarJSON());
+      assert.equal(datos.estado.fran.virtualMov[0].concepto, 'tarjeta');
+      await datos.eliminarVirtual(m.id);
+      assert.equal(datos.estado.fran.virtualMov.length, 0);
+    });
+
+    test('la cifra de las cuentas que ella cambió no la pisa la copia', async () => {
+      const copia = { fran: { asientos: [{ id: 'h', libro: 'personal', fecha: '2025-01-02', tipo: 'gasto', categoria: 'Agua', valor: 1, importado: true }], virtualCuentas: { valor: 107565, fecha: '2026-11-01' }, virtualHistorial: [{ mes: '2026-09', queda: -875000 }] } };
+      await datos.actualizarHistoricos(JSON.stringify(copia));
+      assert.equal(datos.estado.fran.virtualCuentas.valor, 107565);
+      await datos.actualizarFran({ virtualCuentas: { valor: 90000, fecha: HOY } });
+      await datos.actualizarHistoricos(JSON.stringify(copia));
+      assert.equal(datos.estado.fran.virtualCuentas.valor, 90000);
+      assert.equal(datos.estado.fran.virtualHistorial[0].queda, -875000);
+    });
+  });
+
+  describe('acuerdos que juntan préstamos', () => {
+    test('reemplaza los préstamos sueltos, conserva el detalle y respeta los que tienen pagos', async () => {
+      const c = await datos.agregarCliente({ nombre: 'Rosa' });
+      const conPlata = await datos.crearPrestamo({ clienteId: c.id, fecha: '2025-03-01', capital: 50000, tasa: 10, medio: 'efectivo' });
+      const base = JSON.parse(datos.exportarJSON());
+      const suelto = (id, capital) => ({ id, clienteId: c.id, fecha: '2025-01-01', capital, tasa: 0, medio: 'efectivo', fuentes: [{ origen: 'caja_efectivo', monto: capital, nota: '' }], creadoEn: HOY });
+      base.prestamos.push(suelto('a', 100000), suelto('b', 200000));
+      await datos.importarJSON(JSON.stringify(base));
+      await datos.actualizarHistoricos(JSON.stringify({
+        prestamosQuitar: ['a', 'b', conPlata.id],
+        prestamos: [{ ...suelto('acuerdo-rosa', 300000), actualizar: true, modalidad: 'capital_primero', totalPactado: 500000, detalle: [{ fecha: '2025-01-01', nombre: 'uno', capital: 100000 }], acuerdoTexto: 'cada mes' }],
+        fran: { asientos: [{ id: 'h', libro: 'personal', fecha: '2025-01-02', tipo: 'gasto', categoria: 'Agua', valor: 1, importado: true }] },
+      }));
+      assert.deepEqual(datos.estado.prestamos.map((p) => p.id).sort(), ['acuerdo-rosa', conPlata.id].sort());
+      await datos.importarJSON(datos.exportarJSON());
+      const p = datos.obtener('prestamos', 'acuerdo-rosa');
+      assert.equal(p.totalPactado, 500000);
+      assert.equal(p.detalle.length, 1);
+      assert.equal(p.acuerdoTexto, 'cada mes');
+    });
+  });
+
   describe('actualizar históricos', () => {
     const copia = {
       movimientos: [{ id: 'ini-v', fecha: '2026-11-01', caja: 'virtual', tipo: 'saldo_inicial', monto: 107565, signo: 1, creadoEn: '2026-11-02' }],

@@ -139,6 +139,7 @@ export function miPlata(ctx) {
     else if (cuenta.startsWith('Tarjeta')) tarjetas -= valor;
     else virtual += valor;
   };
+  for (const m of estado.fran.virtualMov || []) virtual += m.tipo === 'entra' ? m.valor : -m.valor;
   for (const a of estado.fran.asientos || []) {
     if (a.libro === 'terceros') continue;
     if (a.tipo === 'transferencia') { mover(a.cuenta, -a.valor); mover(a.destino, a.valor); }
@@ -187,14 +188,76 @@ function caja3(a, b, c, ctx) {
 
 function selectorMes(mes, ctx) {
   const { ui, fechas } = ctx;
-  return `<div class="fran-mes">
-    <button type="button" data-mes="-1" aria-label="Mes anterior">◀</button>
-    <span>${ui.esc(fechas.formatearMes(mes))}</span>
-    <button type="button" data-mes="1" aria-label="Mes siguiente">▶</button>
-  </div>`;
+  return `<div class="fran-mes"><button type="button" class="fran-mes__elegir" data-elegir-mes>${ui.esc(fechas.formatearMes(mes))} <i aria-hidden="true">▾</i></button></div>`;
+}
+
+/** Tira que se desliza con el dedo, de septiembre 2023 hasta hoy, como en Mis Gastos. */
+function tiraDeMeses(mes, lista, ctx) {
+  const { ui } = ctx;
+  const conDatos = lista.map((a) => a.fecha).filter((f) => f > '2001');
+  const primero = [...conDatos, `${mes}-01`].reduce((m, f) => (f < m ? f : m)).slice(0, 7);
+  const hoyMes = ctx.hoy().slice(0, 7);
+  const ultimo = mes > hoyMes ? mes : hoyMes;
+  const meses = [];
+  for (let m = primero; m <= ultimo; m = moverMes(m, 1, ctx)) meses.push(m);
+  return `<div class="fran-tira" role="tablist" aria-label="Meses">${meses.map((m) => `<button type="button" role="tab" class="${m === mes ? 'activo' : ''}" aria-selected="${m === mes}" data-ir-mes="${m}">${ui.esc(MESES_CORTOS[Number(m.slice(5, 7)) - 1])} ${m.slice(0, 4)}</button>`).join('')}</div>`;
+}
+
+function centrarTira(raiz) {
+  const tira = raiz.querySelector('.fran-tira');
+  const activo = tira && tira.querySelector('.activo');
+  if (activo) tira.scrollLeft = activo.offsetLeft - tira.offsetLeft - (tira.clientWidth - activo.offsetWidth) / 2;
+}
+
+const MESES_CORTOS = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sept', 'oct', 'nov', 'dic'];
+
+/** Ventana para elegir cualquier mes de una vez, igual a la de Mis Gastos. */
+function abrirMeses(mes, ctx, alElegir, permitidos = null) {
+  const { ui, fechas } = ctx;
+  const hoy = ctx.hoy();
+  let anio = Number(mes.slice(0, 4));
+  let elegido = mes;
+  const ultimo = Math.max(Number(hoy.slice(0, 4)) + 1, anio);
+  const anios = [];
+  for (let a = ultimo; a >= Math.min(2023, anio); a--) anios.push(a);
+  const fondo = ui.el(`<div class="fran-meses-fondo"><div class="fran-meses" role="dialog" aria-modal="true" aria-label="Elegir mes">
+    <h2></h2>
+    <div class="fran-meses__anio">
+      <select aria-label="Año">${anios.map((a) => `<option value="${a}">${a}</option>`).join('')}</select>
+      <span><button type="button" data-anio="-1" aria-label="Año anterior">‹</button><button type="button" data-anio="1" aria-label="Año siguiente">›</button></span>
+    </div>
+    <div class="fran-meses__lista"></div>
+    <div class="fran-meses__pie"><button type="button" data-cancelar>Cancelar</button><button type="button" data-confirmar>Confirmar</button></div>
+  </div></div>`);
+  const cerrar = () => fondo.remove();
+  const pintar = () => {
+    fondo.querySelector('h2').textContent = fechas.formatearMes(elegido).replace(/ (\d{4})$/, ' de $1');
+    fondo.querySelector('select').value = String(anio);
+    fondo.querySelector('[data-anio="-1"]').disabled = anio <= anios[anios.length - 1];
+    fondo.querySelector('[data-anio="1"]').disabled = anio >= anios[0];
+    fondo.querySelector('.fran-meses__lista').innerHTML = MESES_CORTOS.map((nombre, i) => {
+      const clave = `${anio}-${String(i + 1).padStart(2, '0')}`;
+      const clase = `${clave === elegido ? 'activo' : ''} ${clave === hoy.slice(0, 7) ? 'hoy' : ''}`;
+      return `<button type="button" class="${clase}" data-m="${clave}" ${permitidos && !permitidos.includes(clave) ? 'disabled' : ''}>${nombre}</button>`;
+    }).join('');
+  };
+  fondo.addEventListener('click', (e) => {
+    if (e.target === fondo || e.target.closest('[data-cancelar]')) { cerrar(); return; }
+    if (e.target.closest('[data-confirmar]')) { cerrar(); if (elegido !== mes) alElegir(elegido); return; }
+    const a = e.target.closest('[data-anio]');
+    if (a && !a.disabled) { anio += Number(a.dataset.anio); pintar(); return; }
+    const m = e.target.closest('[data-m]');
+    if (m && !m.disabled) { elegido = m.dataset.m; pintar(); }
+  });
+  fondo.querySelector('select').addEventListener('change', (e) => { anio = Number(e.target.value); pintar(); });
+  pintar();
+  document.body.append(fondo);
 }
 
 function conectarMes(raiz, mes, ctx, redibujar) {
+  raiz.querySelectorAll('[data-elegir-mes]').forEach((b) => b.addEventListener('click', () => {
+    abrirMeses(mes, ctx, (m) => { vista.mes = m; redibujar(); });
+  }));
   raiz.querySelectorAll('[data-mes]').forEach((b) => b.addEventListener('click', () => {
     vista.mes = moverMes(mes, Number(b.dataset.mes), ctx);
     redibujar();
@@ -275,10 +338,13 @@ function agendaDeHoy(ctx) {
 
 function renderPrincipal(contenedor, ctx) {
   reiniciarVista();
-  const { ui, dinero, datos } = ctx;
+  const { ui, dinero, datos, fechas } = ctx;
   const estado = datos.estado;
   const fran = estado.fran;
   const lista = asientos(ctx);
+  const verde = delLibro(lista, 'personal');
+  const mesVerde = ultimoMes(ctx, verde);
+  const mVerde = delMes(verde, mesVerde);
   const plata = miPlata(ctx);
   const c = clientesPorEstado(ctx);
   const estados = [['Por confirmar', c.por_confirmar], ['Al día', c.al_dia], ['Atrasados', c.atrasado], ['Congelados', c.congelado]].filter((x) => x[1]).map((x) => `${x[0]} ${x[1]}`).join(' · ');
@@ -298,19 +364,20 @@ function renderPrincipal(contenedor, ctx) {
 
   contenedor.append(ui.el(`<div class="fran-principal">
     <header class="fran-titulo fran-titulo--principal"><h1>Fran</h1><a href="#/ajustes" class="fran-yo" aria-label="Yo y ajustes"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10"/></svg></a></header>
-    <div class="fran-plata">
+    <a href="#/virtual" class="fran-plata">
       <small>Mi plata propia hoy</small>
       <strong class="numero">${dinero.formatear(plata.total)}</strong>
       <small>Efectivo ${dinero.formatear(plata.efectivo)} · Virtual ${fran.virtualPorDefinir ? 'por confirmar' : dinero.formatear(plata.virtual)} · Tarjetas −${dinero.formatear(plata.tarjetas)}</small>
-    </div>
+      ${fran.virtualCuentas ? `<small>En las cuentas hay ${dinero.formatear(fran.virtualCuentas.valor)} entre los dos. No es tuyo.</small>` : ''}
+    </a>
     ${sinDatos ? `<a href="#/ajustes" class="fran-aviso">Todavía no están tus datos en este aparato. Toca aquí y entra a la nube con tu correo.</a>` : ''}
     ${hoyAgenda.length ? `<a href="#/agenda" class="fran-aviso">⏰ Cobros de hoy: ${hoyAgenda.length}. Toca para ver.</a>` : ''}
     ${avisoAnotar ? '<a href="#/libro/personal/agregar/gasto" class="fran-aviso">📝 Hoy no has anotado nada. ¿Gastos o ingresos?</a>' : ""}
     <div class="fran-libros">
-      ${grande('personal', dinero.formatear(plata.efectivo + plata.virtual), 'Saldo del mes')}
+      ${grande('personal', dinero.formatear(sumar(deTipo(mVerde, 'ingreso')) - sumar(deTipo(mVerde, 'gasto'))), `Saldo de ${fechas.nombreMes(Number(mesVerde.slice(5, 7)))}`)}
       ${grande('prestamos', 'Cartera', estados || 'Al día · Atrasados · Congelados')}
       ${grande('pension', dinero.formatear(totalPension(fran)), `${dinero.formatear(usd)} USD + efectivo + carro`)}
-      ${grande('productos', dinero.formatear(sumar(inventario)), `Invertido · ${inventario.length} productos`)}
+      ${grande('productos', dinero.formatear(sumar(inventario.filter((a) => !a.enPago))), `Invertido · ${inventario.length} productos`)}
     </div>
     <div class="fran-libros-chicos">${chica('arriendos')}${chica('redes')}${chica('terceros')}</div>
   </div>`));
@@ -449,7 +516,7 @@ function renderProductos(contenedor, ctx, redibujar) {
   const lista = delLibro(asientos(ctx), 'productos');
   const mes = mesVisible(ctx, lista);
   const m = delMes(lista, mes);
-  const meti = sumar(deTipo(m, 'gasto'));
+  const meti = sumar(deTipo(m, 'gasto').filter((a) => !a.enPago));
   const vendi = sumar(deTipo(m, 'ingreso'));
   // Lo que está en inventario o en inversiones no es pérdida: solo restan los gastos del negocio.
   const gastosProductos = sumar(deTipo(m, 'gasto').filter((a) => a.categoria === 'Gasto de productos'));
@@ -553,20 +620,15 @@ function renderGraficos(contenedor, id, ctx) {
   const grupos = filas.slice(0, 4);
   if (filas.length > 4) grupos.push(['Otro', filas.slice(4).reduce((s, f) => s + f[1], 0)]);
   const pct = (v) => (total ? (v / total) * 100 : 0).toFixed(2).replace('.', ',');
-  const corto = (x) => fechas.nombreMes(Number(x.slice(5, 7)), true);
   const raiz = ui.el(`<div>
     <header class="fran-titulo"><a href="#/libro/${id}" class="fran-titulo__atras" aria-label="Volver">‹</a><h1>${LIBROS[id].icono} Gráficos</h1>${id === 'personal' ? '<a href="#/libro/personal/calendario" class="fran-titulo__der" aria-label="Calendario">📅</a>' : ''}</header>
     <div class="fran-segmento">
       <button type="button" data-tipo="gasto" class="${vista.tipo === 'gasto' ? 'activo' : ''}">Gastos</button>
       <button type="button" data-tipo="ingreso" class="${vista.tipo === 'ingreso' ? 'activo' : ''}">Ingresos</button>
     </div>
-    <div class="fran-mes fran-mes--tres">
-      <button type="button" data-mes="-1">${ui.esc(corto(moverMes(mes, -1, ctx)))}</button>
-      <strong>${ui.esc(fechas.formatearMes(mes))}</strong>
-      <button type="button" data-mes="1">${ui.esc(corto(moverMes(mes, 1, ctx)))}</button>
-    </div>
+    ${tiraDeMeses(mes, asientos(ctx), ctx)}
     ${avisoSinDetalle(m)}
-    ${total ? `<div class="fran-grafico">${dona(grupos, total)}</div>` : vacioConSalto(deTipo(lista, vista.tipo), ctx, `No hay ${vista.tipo === 'ingreso' ? 'ingresos' : 'gastos'} en este mes.`)}
+    ${total ? `<div class="fran-grafico fran-grafico--leyenda">${dona(grupos, total)}<div class="fran-grafico__leyenda">${grupos.map(([n, v], i) => `<p><i style="border-color:${COLORES[i % COLORES.length]}"></i><span>${ui.esc(n)}</span><b class="numero">${pct(v)}%</b></p>`).join('')}</div></div>` : vacioConSalto(deTipo(lista, vista.tipo), ctx, `No hay ${vista.tipo === 'ingreso' ? 'ingresos' : 'gastos'} en este mes.`)}
     <div class="fran-lista">${filas.map(([cat, v], i) => `<a href="#/libro/${id}/categoria/${vista.tipo}/${encodeURIComponent(cat)}" class="fran-barra-fila">
       <span class="fran-ico">${ui.esc(iconoDe(cat))}</span>
       <span class="fran-barra-fila__c">
@@ -578,6 +640,7 @@ function renderGraficos(contenedor, id, ctx) {
   raiz.querySelectorAll('[data-tipo]').forEach((b) => b.addEventListener('click', () => { vista.tipo = b.dataset.tipo; redibujar(); }));
   conectarMes(raiz, mes, ctx, redibujar);
   contenedor.append(raiz);
+  centrarTira(raiz);
 }
 
 /** Gráfica de línea del mes, día por día, como la de Mis Gastos. */
@@ -588,14 +651,13 @@ function graficaDelMes(lista, mes, ctx) {
   const maximo = Math.max(...porDia, 1);
   const x = (i) => 44 + (i * 286) / Math.max(1, dias - 1);
   const y = (v) => 110 - (v / maximo) * 100;
-  const puntos = porDia.map((v, i) => `${x(i).toFixed(1)},${y(v).toFixed(1)}`).join(' ');
   const corto = (v) => ctx.dinero.formatear(Math.round(v)).replace(/\s/g, '');
   return `<svg class="fran-linea" viewBox="0 0 340 128" role="img" aria-label="Movimientos por día">
     <line x1="44" y1="10" x2="44" y2="110" /><line x1="44" y1="110" x2="330" y2="110" />
     <text x="40" y="14" text-anchor="end">${corto(maximo)}</text><text x="40" y="64" text-anchor="end">${corto(maximo / 2)}</text><text x="40" y="114" text-anchor="end">0</text>
     ${[1, 8, 15, 22, 29].filter((d) => d <= dias).map((d) => `<text x="${x(d - 1).toFixed(1)}" y="124" text-anchor="middle">${d}</text>`).join('')}
-    <polyline points="${puntos}" />
-    ${porDia.map((v, i) => `<circle cx="${x(i).toFixed(1)}" cy="${y(v).toFixed(1)}" r="${v ? 3 : 1.6}" />`).join('')}
+    ${porDia.slice(1).map((v, i) => `<line class="fran-linea__tramo" style="stroke:${COLORES[i % COLORES.length]}" x1="${x(i).toFixed(1)}" y1="${y(porDia[i]).toFixed(1)}" x2="${x(i + 1).toFixed(1)}" y2="${y(v).toFixed(1)}" />`).join('')}
+    ${porDia.map((v, i) => `<circle style="fill:${COLORES[i % COLORES.length]}" cx="${x(i).toFixed(1)}" cy="${y(v).toFixed(1)}" r="${v ? 3 : 1.8}" />`).join('')}
   </svg>`;
 }
 
@@ -651,11 +713,11 @@ function verAsiento(contenedor, a, id, volver, ctx) {
   contenedor.append(raiz);
 }
 
-function renderDetalle(contenedor, id, tituloDetalle, lista, atras, ctx) {
+function renderDetalle(contenedor, id, tituloDetalle, lista, atras, ctx, conMes = null) {
   const { ui, dinero, fechas } = ctx;
   const total = sumar(lista);
   const meses = new Set(lista.map((a) => a.fecha.slice(0, 7)));
-  const mesUnico = meses.size === 1 ? [...meses][0] : '';
+  const mesUnico = conMes ? conMes.mes : (meses.size === 1 ? [...meses][0] : '');
   const diasMes = mesUnico ? new Date(Number(mesUnico.slice(0, 4)), Number(mesUnico.slice(5, 7)), 0).getDate() : 0;
   const dibujar = () => {
     contenedor.innerHTML = '';
@@ -663,7 +725,8 @@ function renderDetalle(contenedor, id, tituloDetalle, lista, atras, ctx) {
     const maximo = ordenada.reduce((m, a) => Math.max(m, a.valor), 1);
     const raiz = ui.el(`<div>
       ${titular(id, ctx, atras, tituloDetalle)}
-      <p class="fran-total"><strong class="numero">Total: ${dinero.formatear(total)}</strong>${mesUnico ? `<small class="numero">Promedio: ${dinero.formatear(Math.round(total / diasMes))}</small>` : ''}</p>
+      <p class="fran-total"><strong class="numero">Total: ${dinero.formatear(total)}</strong>${mesUnico ? `<small class="numero">Promedio: ${dinero.formatear(Math.floor(total / diasMes))}${total % diasMes ? `,${((total / diasMes) % 1).toFixed(2).slice(2)}` : ''}</small>` : ''}</p>
+      ${conMes ? selectorMes(conMes.mes, ctx) : ''}
       ${mesUnico ? graficaDelMes(lista, mesUnico, ctx) : ''}
       ${avisoSinDetalle(lista)}
       <div class="fran-segmento">
@@ -684,6 +747,7 @@ function renderDetalle(contenedor, id, tituloDetalle, lista, atras, ctx) {
       const asiento = lista.find((x) => x.id === b.dataset.ver);
       if (asiento) { verAsiento(contenedor, asiento, id, dibujar, ctx); window.scrollTo(0, 0); }
     }));
+    if (conMes) conectarMes(raiz, conMes.mes, ctx, conMes.redibujar);
     contenedor.append(raiz);
   };
   dibujar();
@@ -1026,8 +1090,11 @@ function renderFicha(contenedor, id, ctx) {
   const cuando = acuerdo && (acuerdo.repite ? `${acuerdo.repite}s` : (acuerdo.fecha ? fechas.formatear(acuerdo.fecha) : ''));
   const textoAcuerdo = acuerdo ? `Acuerdo: ${[acuerdo.monto ? `${dinero.formatear(acuerdo.monto)} ${acuerdo.repite ? cuando : ''}`.trim() : (acuerdo.repite ? cuando : ''), !acuerdo.repite && acuerdo.monto ? cuando : (!acuerdo.repite ? cuando : ''), acuerdo.nota].filter(Boolean).join(' · ')}` : '';
   const capitalPrimero = propios.some((p) => p.modalidad === 'capital_primero');
+  const conTexto = propios.find((p) => p.acuerdoTexto);
   const historial = [
-    ...propios.map((p) => ({ f: p.fecha, sinFecha: p.porConfirmar && p.porConfirmar.fecha, icono: '💵', t: 'Préstamo', v: `−${dinero.formatear(p.capital)}`, c: 'fran-menos', ruta: `#/prestamo/${encodeURIComponent(p.id)}` })),
+    ...propios.flatMap((p) => (p.detalle
+      ? p.detalle.map((d) => ({ f: d.fecha || '2000-01-01', sinFecha: d.fecha ? null : (d.texto || 'sin fecha'), icono: '💵', t: d.nombre || 'Préstamo', v: `−${dinero.formatear(d.capital)}`, c: 'fran-menos', ruta: `#/prestamo/${encodeURIComponent(p.id)}` }))
+      : [{ f: p.fecha, sinFecha: p.porConfirmar && p.porConfirmar.fecha, icono: '💵', t: 'Préstamo', v: `−${dinero.formatear(p.capital)}`, c: 'fran-menos', ruta: `#/prestamo/${encodeURIComponent(p.id)}` }])),
     ...pagos.map((g) => ({ f: g.fecha, icono: g.tipo === 'perdon' ? '🎁' : '↩️', t: g.tipo === 'perdon' ? 'Perdón de intereses' : (g.capital && !g.interes ? 'Abono a capital' : 'Pago'), v: `+${dinero.formatear(g.monto)}`, c: 'fran-mas' })),
     ...(estado.fran.asientos || []).filter((a) => a.clienteId === id || (a.persona && norm(a.persona) === norm(cliente.nombre))).map((a) => ({ f: a.fecha, textoFecha: a.textoFecha, icono: a.tipo === 'abono' ? '↩️' : '%', t: a.tipo === 'abono' ? 'Abono a capital' : 'Intereses', v: `+${dinero.formatear(a.valor)}`, c: 'fran-mas' })),
   ].sort((a, b) => b.f.localeCompare(a.f));
@@ -1037,7 +1104,7 @@ function renderFicha(contenedor, id, ctx) {
     ${titular('prestamos', ctx, '#/clientes', 'Cliente')}
     <div class="fran-cliente">
       <span class="fran-avatar">${ui.esc(cliente.nombre.charAt(0).toUpperCase())}</span>
-      <div><strong>${ui.esc(cliente.nombre)}</strong>${textoAcuerdo ? `<small>${ui.esc(textoAcuerdo)}</small>` : ''}</div>
+      <div><strong>${ui.esc(cliente.nombre)}</strong>${conTexto ? `<small>${ui.esc(`Acuerdo: ${conTexto.acuerdoTexto}`)}</small>` : (textoAcuerdo ? `<small>${ui.esc(textoAcuerdo)}</small>` : '')}</div>
       ${ui.chipEstado(r.estado)}
     </div>
     <div class="fran-dos">
@@ -1045,7 +1112,7 @@ function renderFicha(contenedor, id, ctx) {
       <div class="fran-tarjeta"><small>Capital pendiente</small><strong class="numero">${dinero.formatear(r.capitalPendiente)}</strong></div>
     </div>
     <div class="fran-progreso"><span style="width:${pct}%"></span></div>
-    <p class="fran-nota">${abonosPlan && !recuperado ? `Abono a capital anotado: ${dinero.formatear(abonosPlan)}. El saldo está por confirmar.` : `Recuperado ${dinero.formatear(recuperado)} de ${dinero.formatear(r.capitalPrestado)} de capital.`}${capitalPrimero ? ' Cuando llegue a 100%, todo lo que pague es ganancia.' : ''}</p>
+    <p class="fran-nota">${abonosPlan && !recuperado ? `Abono a capital anotado: ${dinero.formatear(abonosPlan)}.` : `Recuperado ${dinero.formatear(recuperado)} de ${dinero.formatear(r.capitalPrestado)} de capital.`}${capitalPrimero ? ' Cuando llegue a 100%, todo lo que pague es ganancia.' : ''}</p>
     <p class="fran-seccion">Historial</p>
     <div class="fran-lista">${historial.map((h) => fila({ ui, icono: h.icono, titulo: h.t, sub: h.sinFecha ? `Fecha por confirmar (${h.sinFecha})` : (h.textoFecha || fechas.formatear(h.f)), derecha: h.v, clase: h.c, ruta: h.ruta })).join('') || '<p class="fran-vacio">Sin movimientos.</p>'}</div>
     <div class="fran-tres">
@@ -1062,6 +1129,126 @@ function renderFicha(contenedor, id, ctx) {
 
 function hecho(item, hoy) {
   return item.repite ? item.hechoEn === hoy : !!item.hecho;
+}
+
+// ---------- Plata virtual ----------
+
+const CUENTA_NO_VIRTUAL = /^(efectivo|tarjeta)/i;
+
+/** Todo lo que entró o salió de mi cuenta virtual después del saldo de partida. */
+function filasVirtuales(ctx) {
+  const estado = ctx.datos.estado;
+  const filas = [];
+  const nombreDe = (prestamoId) => {
+    const p = estado.prestamos.find((x) => x.id === prestamoId);
+    const c = p && estado.clientes.find((x) => x.id === p.clienteId);
+    return c ? c.nombre : '';
+  };
+  for (const m of estado.movimientos) {
+    if (m.caja !== 'virtual' || m.tipo === 'saldo_inicial') continue;
+    filas.push({ fecha: m.fecha, concepto: m.nota || nombreDe(m.prestamoId) || m.tipo.replace(/_/g, ' '), valor: m.monto * m.signo });
+  }
+  for (const a of estado.fran.asientos) {
+    if (a.libro === 'terceros') continue;
+    const concepto = a.descripcion || a.categoria;
+    if (a.tipo === 'transferencia') {
+      if (a.cuenta && !CUENTA_NO_VIRTUAL.test(a.cuenta)) filas.push({ fecha: a.fecha, concepto, valor: -a.valor });
+      if (a.destino && !CUENTA_NO_VIRTUAL.test(a.destino)) filas.push({ fecha: a.fecha, concepto, valor: a.valor });
+    } else if (a.cuenta && !CUENTA_NO_VIRTUAL.test(a.cuenta)) {
+      filas.push({ fecha: a.fecha, concepto, valor: a.tipo === 'ingreso' ? a.valor : -a.valor });
+    }
+  }
+  for (const m of estado.fran.virtualMov) filas.push({ id: m.id, fecha: m.fecha, concepto: m.concepto || (m.tipo === 'entra' ? 'Entró' : 'Salió'), valor: m.tipo === 'entra' ? m.valor : -m.valor });
+  return filas;
+}
+
+function renderVirtual(contenedor, ctx) {
+  const { ui, dinero, fechas, datos, motor } = ctx;
+  const fran = datos.estado.fran;
+  const hoy = ctx.hoy();
+  const historial = fran.virtualHistorial;
+  const filas = filasVirtuales(ctx);
+  const partida = motor.saldoCaja(datos.estado.movimientos.filter((m) => m.tipo === 'saldo_inicial'), 'virtual');
+  const miSaldo = partida + filas.reduce((s, f) => s + f.valor, 0);
+  const desde = historial.length ? historial[historial.length - 1].mes : hoy.slice(0, 7);
+  const meses = [...historial.map((h) => h.mes)];
+  for (let m = fechas.sumarMeses ? fechas.sumarMeses(`${desde}-01`, 1).slice(0, 7) : desde; m <= hoy.slice(0, 7); m = fechas.sumarMeses(`${m}-01`, 1).slice(0, 7)) meses.push(m);
+  if (!meses.includes(hoy.slice(0, 7))) meses.push(hoy.slice(0, 7));
+  if (!vista.mesVirtual || !meses.includes(vista.mesVirtual)) vista.mesVirtual = meses[meses.length - 1];
+  const mes = vista.mesVirtual;
+  const guardado = historial.find((h) => h.mes === mes);
+  const anterior = guardado ? guardado.anterior : partida + filas.filter((f) => f.fecha.slice(0, 7) < mes).reduce((s, f) => s + f.valor, 0);
+  const delMesV = guardado ? (guardado.filas || []) : filas.filter((f) => f.fecha.slice(0, 7) === mes).sort((a, b) => b.fecha.localeCompare(a.fecha));
+  const entro = delMesV.filter((f) => f.valor > 0).reduce((s, f) => s + f.valor, 0);
+  const salio = delMesV.filter((f) => f.valor < 0).reduce((s, f) => s - f.valor, 0);
+  const queda = guardado ? guardado.queda : anterior + entro - salio;
+  const cuentas = fran.virtualCuentas;
+  const raiz = ui.el(`<div class="fran-virtual">
+    ${titular('personal', ctx, '#/inicio', 'Plata virtual')}
+    <div class="fran-tarjeta fran-virtual__mia"><small>Mi cuenta virtual</small><strong class="numero ${miSaldo < 0 ? 'fran-menos' : 'fran-mas'}">${dinero.formatear(miSaldo)}</strong><small>${miSaldo < 0 ? 'Debo esto: ya usé plata de mi pareja.' : 'Esto me queda.'}</small></div>
+    <div class="fran-tarjeta fran-virtual__cuentas"><small>Hay en las cuentas, entre los dos</small><strong class="numero">${cuentas ? dinero.formatear(cuentas.valor) : 'Sin anotar'}</strong>
+      <small>${cuentas ? `Al ${ui.esc(fechas.formatear(cuentas.fecha))}. ` : ''}No es mía. Es lo que mi pareja me puede prestar.</small>
+      <button type="button" class="fran-borrar" data-cuentas>Actualizar</button>
+      ${cuentas && cuentas.detalle && cuentas.detalle.length ? `<details class="fran-virtual__detalle"><summary>De dónde sale</summary>${cuentas.detalle.map((d) => `<p><span>${ui.esc(d.concepto)}</span><span class="numero">${dinero.formatear(d.valor)}</span></p>`).join('')}</details>` : ''}
+    </div>
+    <form class="fran-en-linea oculto" data-form-cuentas novalidate><input class="fran-entrada" name="valor" inputmode="numeric" autocomplete="off" placeholder="¿Cuánto hay hoy?" aria-label="Cuánto hay en las cuentas"><button class="boton boton--primario">Guardar</button></form>
+    ${selectorMes(mes, ctx)}
+    ${guardado && !guardado.filas ? `<div class="fran-tarjeta"><small>Saldo al final del mes</small><strong class="numero ${queda < 0 ? 'fran-menos' : ''}">${dinero.formatear(queda)}</strong></div>` : `<div class="fran-virtual__cuadro">
+      <p><span>Venía de antes</span><span class="numero">${dinero.formatear(anterior)}</span></p>
+      <p><span>Entró</span><span class="numero fran-mas">+${dinero.formatear(entro)}</span></p>
+      <p><span>Salió</span><span class="numero fran-menos">−${dinero.formatear(salio)}</span></p>
+      <p class="fran-virtual__queda"><span>Queda</span><span class="numero ${queda < 0 ? 'fran-menos' : ''}">${dinero.formatear(queda)}</span></p>
+    </div>`}
+    ${guardado ? '' : `<div class="fran-dos fran-virtual__botones"><button type="button" class="boton boton--primario" data-nuevo="entra">＋ Entró</button><button type="button" class="boton boton--secundario" data-nuevo="sale">− Salió</button></div>
+    <form class="fran-campos oculto" data-form-mov novalidate>
+      <label><small data-titulo>Entró</small><input name="concepto" autocomplete="off" placeholder="¿Quién o qué?"></label>
+      <label><small>Valor</small><input name="valor" inputmode="numeric" autocomplete="off" placeholder="0"></label>
+      <label><small>Fecha</small><input type="date" name="fecha" value="${ui.esc(mes === hoy.slice(0, 7) ? hoy : `${mes}-01`)}"></label>
+      <button class="boton boton--primario fran-guardar">Guardar</button>
+    </form>`}
+    <div class="fran-lista">${delMesV.map((f) => `<div class="fran-fila">
+      <span class="fran-fila__texto"><strong>${ui.esc(f.concepto)}</strong>${f.fecha ? `<small>${ui.esc(fechas.formatear(f.fecha))}</small>` : ''}</span>
+      <span class="fran-fila__valor numero ${f.valor < 0 ? 'fran-menos' : 'fran-mas'}">${f.valor > 0 ? '+' : '−'}${dinero.formatear(Math.abs(f.valor))}</span>
+      ${f.id ? `<button type="button" class="fran-borrar" data-quitar="${ui.esc(f.id)}">Quitar</button>` : ''}
+    </div>`).join('') || (guardado && !guardado.filas ? '' : '<p class="fran-vacio">Nada anotado este mes.</p>')}</div>
+  </div>`);
+  raiz.querySelector('[data-elegir-mes]').addEventListener('click', () => abrirMeses(mes, ctx, (m) => {
+    vista.mesVirtual = m;
+    contenedor.innerHTML = '';
+    renderVirtual(contenedor, ctx);
+  }, meses));
+  const formCuentas = raiz.querySelector('[data-form-cuentas]');
+  raiz.querySelector('[data-cuentas]').addEventListener('click', () => { formCuentas.classList.toggle('oculto'); formCuentas.elements.valor.focus(); });
+  formCuentas.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const texto = e.target.elements.valor.value.trim();
+    const valor = Number(texto.replace(/\D/g, ''));
+    if (!texto || !Number.isInteger(valor)) { ui.toast('Escribe cuánto hay.'); return; }
+    await datos.actualizarFran({ virtualCuentas: { valor, fecha: hoy, detalle: [] } });
+    ui.toast('Guardado.');
+  });
+  const formMov = raiz.querySelector('[data-form-mov]');
+  let tipoMov = 'entra';
+  raiz.querySelectorAll('[data-nuevo]').forEach((b) => b.addEventListener('click', () => {
+    tipoMov = b.dataset.nuevo;
+    formMov.querySelector('[data-titulo]').textContent = tipoMov === 'entra' ? 'Entró' : 'Salió';
+    formMov.classList.remove('oculto');
+    formMov.elements.concepto.focus();
+  }));
+  if (formMov) formMov.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const f = e.target.elements;
+    const valor = Number(f.valor.value.replace(/\D/g, ''));
+    if (!valor) { ui.toast('Escribe el valor.'); return; }
+    try {
+      await datos.agregarVirtual({ fecha: f.fecha.value || hoy, tipo: tipoMov, concepto: f.concepto.value, valor });
+      ui.toast('Guardado.');
+    } catch (error) { ui.toast(error.message); }
+  });
+  raiz.querySelectorAll('[data-quitar]').forEach((b) => b.addEventListener('click', async () => {
+    if (await ui.confirmar('¿Quitar este movimiento?', { aceptar: 'Sí, quitar', peligro: true })) await datos.eliminarVirtual(b.dataset.quitar);
+  }));
+  contenedor.append(raiz);
 }
 
 function renderAgenda(contenedor, ctx) {
@@ -1167,6 +1354,7 @@ export async function render(contenedor, params, ctx) {
     case 'registrar': return renderRegistrar(contenedor, params, ctx);
     case 'ficha': return renderFicha(contenedor, params.id, ctx);
     case 'agenda': return renderAgenda(contenedor, ctx);
+    case 'virtual': return renderVirtual(contenedor, ctx);
     case 'moverPension': return renderMoverPension(contenedor, params.accion, ctx);
     case 'personas': return renderPersonas(contenedor, ctx);
     case 'persona': {
@@ -1176,7 +1364,10 @@ export async function render(contenedor, params, ctx) {
     case 'categoria': {
       const mes = mesVisible(ctx, delLibro(asientos(ctx), id));
       const lista = deTipo(delMes(delLibro(asientos(ctx), id), mes), params.tipo).filter((a) => a.categoria === params.categoria);
-      return renderDetalle(contenedor, id, params.categoria, lista, `#/libro/${id}/graficos`, ctx);
+      return renderDetalle(contenedor, id, params.categoria, lista, `#/libro/${id}/graficos`, ctx, {
+        mes,
+        redibujar: () => { contenedor.innerHTML = ''; render(contenedor, params, ctx); },
+      });
     }
     default: throw new Error('Vista desconocida.');
   }

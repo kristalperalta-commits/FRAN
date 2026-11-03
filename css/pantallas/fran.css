@@ -300,3 +300,58 @@ body.con-candado .barra-inferior { display: none; }
 .fran-en-linea .fran-entrada { flex: 1; min-width: 0; margin: 0; }
 .fran-en-linea .boton { flex: none; min-height: 46px; }
 .fran-ajuste .fran-campos { margin-top: 12px; }
+
+/* Plata virtual */
+a.fran-plata { color: inherit; text-decoration: none; }
+.fran-virtual .fran-tarjeta strong { font-size: 1.7rem; }
+.fran-virtual__cuentas .fran-borrar { align-self: flex-start; margin-top: 4px; }
+.fran-virtual__detalle { margin-top: 6px; font-size: 0.86rem; color: var(--texto-suave); }
+.fran-virtual__detalle summary { cursor: pointer; font-weight: 700; }
+.fran-virtual__detalle p, .fran-virtual__cuadro p { display: flex; justify-content: space-between; gap: 12px; margin: 4px 0; }
+.fran-virtual__cuadro { padding: 10px 12px; margin-bottom: 12px; border-radius: 14px; background: var(--fondo-tarjeta); box-shadow: var(--sombra); }
+.fran-virtual__queda { padding-top: 6px; border-top: 1px solid var(--borde); font-weight: 800; }
+.fran-virtual__botones { margin-bottom: 12px; }
+.fran-menos { color: var(--peligro, #ef4444); }
+
+/* Elegir mes, como Mis Gastos */
+.fran-mes button.fran-mes__elegir { min-height: 40px; padding: 4px 16px; border: 1px solid var(--borde); border-radius: 20px; background: var(--fondo-tarjeta); color: var(--texto); font-weight: 700; font-size: 1rem; cursor: pointer; }
+.fran-mes__elegir i { font-style: normal; color: var(--texto-suave); }
+.fran-mes button.fran-mes__centro { color: var(--texto); font-size: 1rem; text-transform: none; }
+.fran-meses-fondo { position: fixed; inset: 0; z-index: 60; display: grid; place-items: center; padding: 16px; background: rgba(0, 0, 0, 0.55); }
+.fran-meses { width: min(100%, 360px); padding: 18px 16px 12px; border-radius: 18px; background: var(--fondo-tarjeta); color: var(--texto); box-shadow: 0 12px 40px rgba(0, 0, 0, 0.4); }
+.fran-meses h2 { margin: 0 0 14px; text-align: center; font-size: 1.15rem; }
+.fran-meses__anio { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+.fran-meses__anio select { min-height: 40px; padding: 4px 8px; border: 0; background: none; color: var(--texto); font-size: 16px; font-weight: 700; }
+.fran-meses__anio button { min-width: 44px; min-height: 44px; border: 0; background: none; color: var(--texto); font-size: 1.5rem; cursor: pointer; }
+.fran-meses__anio button:disabled, .fran-meses__lista button:disabled { opacity: 0.3; cursor: default; }
+.fran-meses__lista { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px 6px; margin-bottom: 12px; }
+.fran-meses__lista button { min-height: 46px; border: 1.5px solid transparent; border-radius: 23px; background: none; color: var(--texto); font: inherit; font-weight: 700; cursor: pointer; }
+.fran-meses__lista .hoy { border-color: var(--libro, var(--texto-suave)); }
+.fran-meses__lista .activo { background: var(--libro, var(--texto)); color: #111; }
+.fran-meses__pie { display: grid; grid-template-columns: 1fr 1fr; }
+.fran-meses__pie button { min-height: 48px; border: 0; background: none; color: var(--libro, var(--texto)); font: inherit; font-weight: 800; font-size: 1.05rem; cursor: pointer; }
+
+/* Tira de meses que se desliza, como Mis Gastos */
+.fran-tira { display: flex; gap: 2px; margin: 0 -16px 12px; padding: 0 8px; overflow-x: auto; -webkit-overflow-scrolling: touch; scroll-behavior: auto; scrollbar-width: none; border-bottom: 1px solid var(--borde); }
+.fran-tira::-webkit-scrollbar { display: none; }
+.fran-tira button { flex: none; min-height: 46px; padding: 8px 14px; border: 0; border-bottom: 3px solid transparent; background: none; color: var(--texto-suave); font: inherit; font-weight: 700; white-space: nowrap; cursor: pointer; }
+.fran-tira button.activo { color: var(--texto); border-bottom-color: var(--libro, var(--texto)); }
+
+/* Dona con los nombres al lado */
+.fran-grafico--leyenda { display: grid; grid-template-columns: 46% 1fr; align-items: center; gap: 12px; }
+.fran-grafico--leyenda .fran-dona { width: 100%; max-width: none; }
+.fran-grafico__leyenda { min-width: 0; }
+.fran-grafico__leyenda p { display: grid; grid-template-columns: 14px 1fr auto; align-items: center; gap: 6px; margin: 0 0 9px; font-size: 0.9rem; font-weight: 600; }
+.fran-grafico__leyenda i { width: 12px; height: 12px; border: 3px solid; border-radius: 50%; }
+.fran-grafico__leyenda span { min-width: 0; overflow-wrap: anywhere; line-height: 1.15; }
+.fran-grafico__leyenda b { font-weight: 800; }
+
+.fran-linea__tramo { stroke-width: 2; stroke-linecap: round; }
+.fran-version { margin: 14px 0 8px; color: var(--texto-suave); font-size: 0.86rem; text-align: center; }
+
+/* Entrada como el boceto 1 */
+.candado { background: #111214; }
+.candado__logo { position: relative; padding: 14px 8px; }
+.candado__logo::before, .candado__logo::after { content: ''; position: absolute; left: 0; right: 0; height: 1px; }
+.candado__logo::before { top: 0; background: linear-gradient(90deg, #22c55e, #3b82f6, #a855f7, #f97316); }
+.candado__logo::after { bottom: 0; background: rgba(255, 255, 255, 0.12); }

@@ -135,7 +135,7 @@ function pintar(html) {
     document.body.append(capa);
     document.body.classList.add('con-candado');
   }
-  colorBarra('#000000');
+  colorBarra('#111214');
   capa.innerHTML = `<div class="candado__caja"><p class="candado__logo">Fran</p>${html}</div>`;
   return capa;
 }

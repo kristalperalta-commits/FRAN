@@ -132,6 +132,9 @@ function franVacio() {
     categoriasOcultas: {},
     recurrentes: [],
     recordatorios: { cobros: '07:00', gastos: '19:00' },
+    virtualMov: [],
+    virtualHistorial: [],
+    virtualCuentas: null,
   };
 }
 
@@ -171,6 +174,9 @@ function completarFran(fran) {
       cobros: /^\d\d:\d\d$/.test(f.recordatorios && f.recordatorios.cobros) ? f.recordatorios.cobros : base.recordatorios.cobros,
       gastos: /^\d\d:\d\d$/.test(f.recordatorios && f.recordatorios.gastos) ? f.recordatorios.gastos : base.recordatorios.gastos,
     },
+    virtualMov: lista(f.virtualMov).filter((m) => m && m.id && esFechaValida(m.fecha) && Number.isInteger(m.valor) && m.valor > 0 && (m.tipo === 'entra' || m.tipo === 'sale')),
+    virtualHistorial: lista(f.virtualHistorial),
+    virtualCuentas: f.virtualCuentas && Number.isInteger(f.virtualCuentas.valor) ? f.virtualCuentas : null,
   };
 }
 
@@ -264,6 +270,8 @@ function completarEstado(estado) {
         : null,
       nota: limpiarTexto(p.nota),
       ...(p.porConfirmar && typeof p.porConfirmar === 'object' ? { porConfirmar: p.porConfirmar } : {}),
+      ...(Array.isArray(p.detalle) ? { detalle: p.detalle } : {}),
+      ...(p.acuerdoTexto ? { acuerdoTexto: limpiarTexto(p.acuerdoTexto) } : {}),
       creadoEn: esFechaValida(p.creadoEn) ? p.creadoEn : hoy(),
     });
   }
@@ -1353,6 +1361,22 @@ export const datos = {
     return asiento;
   },
 
+  // Mi cuenta virtual: lo que entró o salió que no está anotado en otro libro.
+  async agregarVirtual(m) {
+    exigirFecha(m.fecha, 'del movimiento');
+    exigirMonto(m.valor, 'valor del movimiento');
+    exigir(m.tipo === 'entra' || m.tipo === 'sale', 'Elige si entró o salió.');
+    const fila = { id: generarId(), fecha: m.fecha, tipo: m.tipo, concepto: limpiarTexto(m.concepto), valor: m.valor };
+    estadoActual.fran.virtualMov.push(fila);
+    await guardar();
+    return fila;
+  },
+
+  async eliminarVirtual(id) {
+    estadoActual.fran.virtualMov = estadoActual.fran.virtualMov.filter((m) => m.id !== id);
+    await guardar();
+  },
+
   async actualizarAsiento(id, cambios) {
     const i = estadoActual.fran.asientos.findIndex((a) => a.id === id);
     exigir(i >= 0, 'No encontré ese movimiento.');
@@ -1414,17 +1438,27 @@ export const datos = {
     const propios = estadoActual.fran.asientos.filter((a) => !a.importado);
     const agenda = [...estadoActual.fran.agenda];
     const ids = new Set(agenda.map((x) => x.id));
-    for (const x of nuevo.agenda) if (!ids.has(x.id)) agenda.push(x);
-    estadoActual.fran = { ...estadoActual.fran, asientos: [...nuevo.asientos.filter((a) => a.importado), ...propios], agenda, virtualPorDefinir: nuevo.virtualPorDefinir };
+    for (const x of nuevo.agenda) {
+      if (!ids.has(x.id)) { agenda.push(x); continue; }
+      const ya = agenda.find((y) => y.id === x.id);
+      if (x.clienteId && !ya.clienteId) ya.clienteId = x.clienteId;
+    }
+    estadoActual.fran = { ...estadoActual.fran, asientos: [...nuevo.asientos.filter((a) => a.importado), ...propios], agenda, virtualPorDefinir: nuevo.virtualPorDefinir, virtualHistorial: nuevo.virtualHistorial, virtualCuentas: estadoActual.fran.virtualCuentas || nuevo.virtualCuentas };
     // Préstamos que el plan corrige (marcados "actualizar") y pagos del plan: no tocan la caja.
     for (const p of Array.isArray(objeto.prestamos) ? objeto.prestamos : []) {
       if (!p.actualizar) continue;
       const i = estadoActual.prestamos.findIndex((x) => x.id === p.id);
-      if (i < 0) continue;
       const { actualizar, ...cambios } = p;
+      if (i < 0) {
+        if (String(p.id).startsWith('acuerdo-')) estadoActual.prestamos.push(cambios);
+        continue;
+      }
       const { porConfirmar, ...anterior } = estadoActual.prestamos[i];
       estadoActual.prestamos[i] = { ...anterior, ...cambios };
     }
+    // Los préstamos que quedaron dentro de un acuerdo. Si ya tienen un pago anotado, no se tocan.
+    const quitar = new Set(Array.isArray(objeto.prestamosQuitar) ? objeto.prestamosQuitar : []);
+    estadoActual.prestamos = estadoActual.prestamos.filter((x) => !quitar.has(x.id) || estadoActual.pagos.some((g) => g.prestamoId === x.id) || estadoActual.movimientos.some((m) => m.prestamoId === x.id));
     for (const g of Array.isArray(objeto.pagos) ? objeto.pagos : []) {
       if (!String(g.id).startsWith('plan-') || estadoActual.pagos.some((x) => x.id === g.id)) continue;
       if (estadoActual.prestamos.some((x) => x.id === g.prestamoId)) estadoActual.pagos.push(g);
