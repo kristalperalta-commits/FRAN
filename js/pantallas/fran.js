@@ -300,6 +300,7 @@ function vacioConSalto(lista, ctx, texto) {
 /** Explica de dónde sale un número cuando el mes todavía no tiene los movimientos uno por uno. */
 function avisoSinDetalle(lista) {
   if (!lista.some((a) => a.sinDetalle)) return '';
+  if (lista.every((a) => a.fecha.startsWith('2023'))) return '<p class="fran-explica">ⓘ De 2023 solo existe el total de cada mes.</p>';
   return '<p class="fran-explica">ⓘ Este mes solo tiene el total de cada categoría, tomado de Mis Gastos. Los movimientos uno por uno aparecen cuando se carguen los pantallazos de ese mes.</p>';
 }
 
