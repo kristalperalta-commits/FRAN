@@ -608,7 +608,7 @@ function plegable(icono, texto, seccion, ui) {
 }
 
 const LISTAS_CATEGORIAS = [
-  ['personal', 'gasto', 'gasto', 'Finanzas · Gastos'], ['personal', 'ingreso', 'ingreso', 'Finanzas · Ingresos'],
+  ['personal', 'gasto', 'gasto', 'Finanzas personales · Gastos'], ['personal', 'ingreso', 'ingreso', 'Finanzas personales · Ingresos'],
   ['arriendos', 'gasto', 'gasto', 'Arriendos · Gastos'], ['arriendos', 'ingreso', 'ingreso', 'Arriendos · Ingresos'],
   ['redes', 'gasto', 'gasto', 'Redes · Gastos'], ['redes', 'ingreso', 'ingreso', 'Redes · Ingresos'],
   ['productos', 'inversion', 'gasto', 'Productos · Inversión'], ['productos', 'gasto', 'gasto', 'Productos · Gastos'], ['productos', 'ingreso', 'ingreso', 'Productos · Ventas'],

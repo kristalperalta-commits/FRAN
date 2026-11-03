@@ -8,11 +8,11 @@ import { leerTexto } from '../texto.js';
 import { guardarFoto, leerFoto, reducirFoto } from '../fotos.js';
 
 export const LIBROS = {
-  personal: { nombre: 'Finanzas personales', corto: 'Finanzas', icono: '💚', color: '#22C55E' },
-  prestamos: { nombre: 'Préstamos', corto: 'Préstamos', icono: '💙', color: '#3B82F6' },
+  personal: { nombre: 'Finanzas personales', corto: 'Finanzas personales', icono: '💚', color: '#22C55E' },
+  prestamos: { nombre: 'Negocio de préstamos', corto: 'Negocio de préstamos', icono: '💙', color: '#3B82F6' },
   pension: { nombre: 'Pensión', corto: 'Pensión', icono: '💜', color: '#A855F7' },
-  productos: { nombre: 'Productos', corto: 'Productos', icono: '🧡', color: '#F97316' },
-  arriendos: { nombre: 'Arriendos', corto: 'Arriendos', icono: '💛', color: '#EAB308' },
+  productos: { nombre: 'Negocio tecnológico', corto: 'Negocio tecnológico', icono: '🧡', color: '#F97316' },
+  arriendos: { nombre: 'Negocio de arriendos', corto: 'Negocio de arriendos', icono: '💛', color: '#EAB308' },
   redes: { nombre: 'Redes y trabajos', corto: 'Redes y trabajos', icono: '🩷', color: '#EC4899' },
   terceros: { nombre: 'Plata de terceros', corto: 'Plata de terceros', icono: '🤍', color: '#64748B' },
 };
@@ -49,7 +49,7 @@ export const CATEGORIAS_BASE = {
 };
 
 const CUENTAS = ['Efectivo', 'Nequi propio', 'Nequi papá', 'Uno propio', 'Uno Garu', 'Bancolombia', 'Tarjeta comida', 'Tarjeta gasolina', 'Tarjeta Gold'];
-const COLORES = ['#22C55E', '#3B82F6', '#F97316', '#EC4899', '#A855F7', '#EAB308', '#14B8A6', '#94A3B8'];
+const COLORES = ['#BFE8A8', '#A9CDF5', '#F6C6A0', '#F4B8D2', '#CDB8F2', '#F2DE9B', '#A7E3D8', '#C5CCD6'];
 
 const ICONOS = [
   [/aliment|comida|mercado/, '🍎'], [/vivienda|hogar/, '🏠'], [/carro|auto/, '🚗'], [/gasolina|combustible/, '⛽'],
@@ -205,7 +205,7 @@ function caja3(a, b, c, ctx) {
     if (['Ingresos', 'Cobré capital', 'Intereses', 'Vendí'].includes(t)) return 'fran-mas';
     return String(v).startsWith('-') ? 'fran-menos' : 'fran-mas';
   };
-  return `<div class="fran-caja3">${[a, b, c].map(([t, v]) => `<div><small>${ui.esc(t)}</small><strong class="numero ${/\d/.test(v) ? clase(t, v) : ''}">${ui.esc(v)}</strong></div>`).join('')}</div>`;
+  return `<div class="fran-caja3">${[a, b, c].map(([t, v]) => `<div><small>${ui.esc(t)}</small><strong class="numero ${/\d/.test(v) ? clase(t, v) : ''}">${ui.esc(/\d/.test(v) ? String(v).replace(/^-/, '') : v)}</strong></div>`).join('')}</div>`;
 }
 
 function selectorMes(mes, ctx) {
@@ -307,7 +307,7 @@ function avisoSinDetalle(lista) {
 function fila({ icono, titulo: t, sub, derecha, clase = '', ruta, ui }) {
   const interior = `<span class="fran-ico">${ui.esc(icono)}</span>
     <span class="fran-fila__texto"><strong>${ui.esc(t)}</strong>${sub ? `<small>${ui.esc(sub)}</small>` : ''}</span>
-    <span class="fran-fila__valor numero ${clase}">${ui.esc(derecha)}</span>`;
+    <span class="fran-fila__valor numero ${clase}">${ui.esc(clase ? String(derecha).replace(/^[+−-]\s*/, '') : derecha)}</span>`;
   return ruta ? `<a class="fran-fila" href="${ui.esc(ruta)}">${interior}</a>` : `<div class="fran-fila">${interior}</div>`;
 }
 
@@ -320,7 +320,7 @@ function listaPorDia(lista, ctx) {
   for (const [dia, filas] of dias) {
     const g = sumar(deTipo(filas, 'gasto'));
     const i = sumar(deTipo(filas, 'ingreso'));
-    html += `<div class="fran-dia"><span>${ui.esc(fechaLinda(dia, ctx))}</span><span>${g ? `G: <b class="numero fran-menos">${dinero.formatear(g)}</b> ` : ''}${i ? `I: <b class="numero fran-mas">${dinero.formatear(i)}</b>` : ''}</span></div>`;
+    html += `<div class="fran-dia"><span>${ui.esc(fechaLinda(dia, ctx))}</span><span>${g ? `G: <b class="numero">${dinero.formatear(g)}</b> ` : ''}${i ? `I: <b class="numero">${dinero.formatear(i)}</b>` : ''}</span></div>`;
     for (const a of filas) {
       const signo = a.tipo === 'ingreso' ? '+' : (a.tipo === 'gasto' ? '−' : '');
       html += fila({ ui, icono: iconoDe(a.categoria), titulo: a.categoria, sub: a.descripcion, derecha: `${signo}${dinero.formatear(a.valor)}`, clase: a.tipo === 'ingreso' ? 'fran-mas' : (a.tipo === 'gasto' ? 'fran-menos' : '') });
@@ -1126,7 +1126,7 @@ function renderFicha(contenedor, id, ctx) {
   const recuperado = Math.max(0, r.capitalPrestado - r.capitalPendiente);
   const abonosPlan = estado.fran.asientos.filter((x) => x.clienteId === id && x.tipo === 'abono').reduce((s, x) => s + x.valor, 0);
   const pct = r.capitalPrestado ? Math.min(100, (recuperado / r.capitalPrestado) * 100) : 0;
-  const acuerdo = (estado.fran.agenda || []).find((x) => x.clienteId === id || norm(x.nombre) === norm(cliente.nombre));
+  const acuerdo = (estado.fran.agenda || []).find((x) => (x.fecha || x.repite) && (x.clienteId === id || norm(x.nombre) === norm(cliente.nombre)));
   const cuando = acuerdo && (acuerdo.repite ? `${acuerdo.repite}s` : (acuerdo.fecha ? fechas.formatear(acuerdo.fecha) : ''));
   const textoAcuerdo = acuerdo ? `Acuerdo: ${[acuerdo.monto ? `${dinero.formatear(acuerdo.monto)} ${acuerdo.repite ? cuando : ''}`.trim() : (acuerdo.repite ? cuando : ''), !acuerdo.repite && acuerdo.monto ? cuando : (!acuerdo.repite ? cuando : ''), acuerdo.nota].filter(Boolean).join(' · ')}` : '';
   const capitalPrimero = propios.some((p) => p.modalidad === 'capital_primero');
@@ -1269,9 +1269,9 @@ function renderVirtual(contenedor, ctx) {
     ${selectorMes(mes, ctx)}
     ${guardado && !guardado.filas ? `<div class="fran-tarjeta"><small>Saldo al final del mes</small><strong class="numero ${queda < 0 ? 'fran-menos' : ''}">${dinero.formatear(queda)}</strong></div>` : `<div class="fran-virtual__cuadro">
       <p><span>Venía de antes</span><span class="numero">${dinero.formatear(anterior)}</span></p>
-      <p><span>Entró</span><span class="numero fran-mas">+${dinero.formatear(entro)}</span></p>
-      <p><span>Salió</span><span class="numero fran-menos">−${dinero.formatear(salio)}</span></p>
-      <p class="fran-virtual__queda"><span>Queda</span><span class="numero ${queda < 0 ? 'fran-menos' : ''}">${dinero.formatear(queda)}</span></p>
+      <p><span>Entró</span><span class="numero fran-mas">${dinero.formatear(entro)}</span></p>
+      <p><span>Salió</span><span class="numero fran-menos">${dinero.formatear(salio)}</span></p>
+      <p class="fran-virtual__queda"><span>Queda</span><span class="numero ${queda < 0 ? 'fran-menos' : ''}">${dinero.formatear(Math.abs(queda))}</span></p>
     </div>`}
     ${guardado ? '' : `<div class="fran-dos fran-virtual__botones"><button type="button" class="boton boton--primario" data-nuevo="entra">＋ Entró</button><button type="button" class="boton boton--secundario" data-nuevo="sale">− Salió</button></div>
     <form class="fran-campos oculto" data-form-mov novalidate>
@@ -1282,7 +1282,7 @@ function renderVirtual(contenedor, ctx) {
     </form>`}
     <div class="fran-lista">${delMesV.map((f) => `<div class="fran-fila">
       <span class="fran-fila__texto"><strong>${ui.esc(f.concepto)}</strong>${f.fecha ? `<small>${ui.esc(fechas.formatear(f.fecha))}</small>` : ''}</span>
-      <span class="fran-fila__valor numero ${f.valor < 0 ? 'fran-menos' : 'fran-mas'}">${f.valor > 0 ? '+' : '−'}${dinero.formatear(Math.abs(f.valor))}</span>
+      <span class="fran-fila__valor numero ${f.valor < 0 ? 'fran-menos' : 'fran-mas'}">${dinero.formatear(Math.abs(f.valor))}</span>
       ${f.id ? `<button type="button" class="fran-borrar" data-quitar="${ui.esc(f.id)}">Quitar</button>` : ''}
     </div>`).join('') || (guardado && !guardado.filas ? '' : '<p class="fran-vacio">Nada anotado este mes.</p>')}</div>
   </div>`);
@@ -1334,13 +1334,14 @@ function renderAgenda(contenedor, ctx) {
   const conFecha = propia.filter((x) => !x.repite && x.fecha).sort((a, b) => a.fecha.localeCompare(b.fecha));
   const semana = conFecha.filter((x) => x.fecha <= fin);
   const despues = conFecha.filter((x) => x.fecha > fin);
+  const sinFecha = propia.filter((x) => !x.repite && !x.fecha);
   const delMotor = motor.agendaCobros(datos.estado, hoy, 7);
   const linea = (x) => {
     const legal = /denuncia|legal/i.test(x.nota || '');
     const icono = x.repite ? '🔁' : (legal ? '⚖️' : '⏰');
     const cuando = x.repite
       ? (x.repite === 'diario' ? (x.desde ? `Desde ${fechas.nombreMes(Number(x.desde.slice(5, 7)), true)} ${Number(x.desde.slice(8))}`.replace(/^Desde (\S+) (\d+)$/, 'Desde $2 $1') : 'Todos los días') : `${x.repite[0].toUpperCase()}${x.repite.slice(1)}`)
-      : fechaLinda(x.fecha, ctx).replace(/^(.+) · (\S+)$/, '$2 $1');
+      : !x.fecha ? '' : fechaLinda(x.fecha, ctx).replace(/^(.+) · (\S+)$/, '$2 $1');
     return `<div class="fran-fila">
       <span class="fran-ico${x.repite ? ' fran-ico--verde' : (legal ? ' fran-ico--rojo' : '')}">${icono}</span>
       <span class="fran-fila__texto"><strong>${ui.esc(x.nombre)}</strong><small>${ui.esc([cuando, x.nota].filter(Boolean).join(' · '))}</small></span>
@@ -1356,6 +1357,7 @@ function renderAgenda(contenedor, ctx) {
       ${!semana.length && !repetidos.length && !delMotor.length ? '<p class="fran-vacio">No hay cobros esta semana. Con el botón + agregas un acuerdo de pago.</p>' : ''}
     </div>
     ${despues.length ? `<p class="fran-seccion">Más adelante</p><div class="fran-lista">${despues.map(linea).join('')}</div>` : ''}
+    ${sinFecha.length ? `<p class="fran-seccion">Sin fecha</p><div class="fran-lista">${sinFecha.map(linea).join('')}</div>` : ''}
   </div>`);
   raiz.querySelectorAll('[data-hecho]').forEach((b) => b.addEventListener('click', async () => {
     const item = (datos.estado.fran.agenda || []).find((x) => x.id === b.dataset.hecho);

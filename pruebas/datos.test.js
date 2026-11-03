@@ -192,6 +192,18 @@ describe('datos.js', () => {
     });
   });
 
+  describe('agenda en los históricos', () => {
+    test('agrega lo nuevo, completa la nota vacía y no revive lo ya cobrado', async () => {
+      await datos.actualizarFran({ agenda: [{ id: 'a', nombre: 'Rosa', fecha: '2026-11-03', nota: '', hecho: true }] });
+      const fran = { asientos: [{ id: 'h', libro: 'personal', fecha: '2025-01-02', tipo: 'gasto', categoria: 'Agua', valor: 1, importado: true }], agenda: [{ id: 'a', nombre: 'Rosa', fecha: '2026-11-03', nota: 'Recoger tarjeta' }, { id: 'b', nombre: 'Marta', nota: 'Escribirle' }] };
+      await datos.actualizarHistoricos(JSON.stringify({ fran }));
+      const a = datos.estado.fran.agenda.find((x) => x.id === 'a');
+      assert.equal(a.nota, 'Recoger tarjeta');
+      assert.equal(a.hecho, true);
+      assert.equal(datos.estado.fran.agenda.length, 2);
+    });
+  });
+
   describe('origen de la pensión', () => {
     test('llega con los históricos, no borra la tasa y cruza exportar e importar', async () => {
       await datos.actualizarFran({ pension: { tasa: 4000, cuentas: [], otros: [] } });

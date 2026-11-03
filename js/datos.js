@@ -1445,6 +1445,7 @@ export const datos = {
       if (!ids.has(x.id)) { agenda.push(x); continue; }
       const ya = agenda.find((y) => y.id === x.id);
       if (x.clienteId && !ya.clienteId) ya.clienteId = x.clienteId;
+      if (x.nota && !ya.nota) ya.nota = x.nota;
     }
     estadoActual.fran = { ...estadoActual.fran, asientos: [...nuevo.asientos.filter((a) => a.importado), ...propios], agenda, propiedades: nuevo.propiedades, pension: { ...estadoActual.fran.pension, origen: nuevo.pension.origen || estadoActual.fran.pension.origen }, virtualPorDefinir: nuevo.virtualPorDefinir, virtualHistorial: nuevo.virtualHistorial, virtualCuentas: estadoActual.fran.virtualCuentas || nuevo.virtualCuentas };
     // Préstamos que el plan corrige (marcados "actualizar") y pagos del plan: no tocan la caja.

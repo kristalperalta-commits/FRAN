@@ -11,7 +11,7 @@
 
 import * as ui from './ui.js';
 
-const VERSION_APP = '3.6.3';
+const VERSION_APP = '3.7.0';
 const contenedor = document.getElementById('pantalla');
 
 // ---------- Rutas (sección 7 de la especificación) ----------
@@ -102,7 +102,7 @@ function navegar(ruta) {
 
 // La barra es la de Mis Gastos: Inicio, Gráficos, +, Informes y Yo, siempre del libro actual.
 let libroActual = 'personal';
-const COLOR_LIBRO = { personal: '#22C55E', prestamos: '#3B82F6', pension: '#A855F7', productos: '#F97316', arriendos: '#EAB308', redes: '#EC4899', terceros: '#64748B' };
+const COLOR_LIBRO = { personal: '#BFE8A8', prestamos: '#A9CDF5', pension: '#CDB8F2', productos: '#F6C6A0', arriendos: '#F2DE9B', redes: '#F4B8D2', terceros: '#C5CCD6' };
 
 const DEGRADADO_LIBRO = {
   personal: ['#15803d', '#14532d'], prestamos: ['#2563eb', '#1e3a8a'], pension: ['#9333ea', '#581c87'], productos: ['#c2410c', '#7c2d12'],

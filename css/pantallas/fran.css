@@ -356,7 +356,6 @@ a.fran-plata { color: inherit; text-decoration: none; }
 .fran-dia b { font-weight: 800; }
 
 /* Letra blanca sobre el color del libro */
-.fran-segmento .activo, .fran-anios .activo, .fran-chips .activo, .fran-guardar, .pestana--mas span, .fran-enviar { background: var(--libro-g2, var(--libro)); border-color: var(--libro-g2, var(--libro)); color: #fff; }
 .pestana--activa { color: var(--texto); font-weight: 800; }
 .fran-libro__nombre, .fran-libro__valor, .fran-libro__detalle, .fran-libro-chico span { text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5); }
 .fran-libro__detalle { opacity: 1; }
@@ -368,14 +367,24 @@ a.fran-plata { color: inherit; text-decoration: none; }
 .fran-libro--redes, .fran-libro-chico.fran-libro--redes { background: linear-gradient(145deg, #be185d, #831843); }
 .fran-libro--terceros, .fran-libro-chico.fran-libro--terceros { background: linear-gradient(145deg, #475569, #1e293b); }
 
-/* Letras y números siempre del color del texto. El rojo y el verde van en el fondo del renglón. */
+/* Minimalista: letras y números blancos. El gasto y el ingreso se ven por un símbolo + o −, en tono clarito. */
 .fran-mas, .fran-menos { color: inherit; font-weight: 800; }
-:root { --renglon-gasto: rgba(220, 38, 38, 0.34); --renglon-ingreso: rgba(22, 163, 74, 0.34); --marca-gasto: #ef4444; --marca-ingreso: #22c55e; }
-.fran-fila:has(.fran-mas), .fran-fila:has(.fran-menos),
-.fran-barra-fila:has(.numero.fran-mas), .fran-barra-fila:has(.numero.fran-menos) { padding: 8px 10px; margin-bottom: 5px; border-bottom: 0; border-left: 4px solid transparent; border-radius: 12px; }
-.fran-fila:has(.fran-mas), .fran-barra-fila:has(.numero.fran-mas), .fran-caja3 > div:has(.fran-mas), .fran-virtual__cuadro p:has(.fran-mas), .fran-tarjeta:has(strong.fran-mas), .fran-plata:has(strong.fran-mas) { background: var(--renglon-ingreso); border-left-color: var(--marca-ingreso); }
-.fran-fila:has(.fran-menos), .fran-barra-fila:has(.numero.fran-menos), .fran-caja3 > div:has(.fran-menos), .fran-virtual__cuadro p:has(.fran-menos), .fran-tarjeta:has(strong.fran-menos), .fran-plata:has(strong.fran-menos) { background: var(--renglon-gasto); border-left-color: var(--marca-gasto); }
-.fran-caja3 > div { padding: 5px 2px; border-radius: 10px; }
-.fran-virtual__cuadro p:has(.fran-mas), .fran-virtual__cuadro p:has(.fran-menos) { padding: 5px 8px; border-radius: 8px; }
-.fran-tarjeta:has(strong.fran-mas), .fran-tarjeta:has(strong.fran-menos), .fran-plata:has(strong.fran-mas), .fran-plata:has(strong.fran-menos) { border-left-width: 4px; border-left-style: solid; }
-.fran-total .fran-mas { background: none; }
+.fran-fila__valor.fran-mas::before, .fran-fila__valor.fran-menos::before,
+.fran-barra-fila .numero.fran-mas::before, .fran-barra-fila .numero.fran-menos::before,
+.fran-caja3 strong.fran-mas::before, .fran-caja3 strong.fran-menos::before,
+.fran-virtual__cuadro .fran-mas::before, .fran-virtual__cuadro .fran-menos::before {
+  display: inline-flex; align-items: center; justify-content: center; width: 1.15em; height: 1.15em; margin-right: 0.35em;
+  border: 1.5px solid; border-radius: 50%; font-size: 0.82em; font-weight: 800; line-height: 1; vertical-align: 0.06em;
+}
+.fran-fila__valor.fran-mas::before, .fran-barra-fila .numero.fran-mas::before, .fran-caja3 strong.fran-mas::before, .fran-virtual__cuadro .fran-mas::before { content: '+'; color: #bfe8a8; }
+.fran-fila__valor.fran-menos::before, .fran-barra-fila .numero.fran-menos::before, .fran-caja3 strong.fran-menos::before, .fran-virtual__cuadro .fran-menos::before { content: '−'; color: #f5b5b0; }
+[data-tema="claro"] .fran-fila__valor.fran-mas::before, [data-tema="claro"] .fran-barra-fila .numero.fran-mas::before, [data-tema="claro"] .fran-caja3 strong.fran-mas::before, [data-tema="claro"] .fran-virtual__cuadro .fran-mas::before { color: #3f8f4f; }
+[data-tema="claro"] .fran-fila__valor.fran-menos::before, [data-tema="claro"] .fran-barra-fila .numero.fran-menos::before, [data-tema="claro"] .fran-caja3 strong.fran-menos::before, [data-tema="claro"] .fran-virtual__cuadro .fran-menos::before { color: #c2554d; }
+
+/* Colores claritos: el color del libro es un toque, no un relleno */
+.fran-ico, .fran-avatar, .fran-opciones a span { background: color-mix(in srgb, var(--libro) 20%, var(--fondo-tarjeta)); color: var(--texto); }
+.fran-caja3, .fran-segmento, .fran-escribir, .fran-opciones a, .fran-check { border-width: 1px; }
+.fran-segmento .activo, .fran-anios .activo, .fran-chips .activo, .fran-guardar, .fran-enviar { background: color-mix(in srgb, var(--libro) 28%, var(--fondo-tarjeta)); border-color: var(--libro); color: var(--texto); }
+.pestana--mas span { background: color-mix(in srgb, var(--libro) 35%, var(--fondo-tarjeta)); border: 1.5px solid var(--libro); color: var(--texto); }
+.fran-hero { background: color-mix(in srgb, var(--libro) 12%, var(--fondo-tarjeta)); }
+.pestana--activa { color: var(--texto); font-weight: 800; }
