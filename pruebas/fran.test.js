@@ -1,7 +1,7 @@
 // Categorías de Agregar y nombres de los ingresos en Finanzas.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { categoriasDe, delLibro, INGRESOS_DE_OTRO_LIBRO } from '../js/pantallas/fran.js';
+import { adivinarCategoria, categoriasDe, delLibro, evaluarMonto, INGRESOS_DE_OTRO_LIBRO } from '../js/pantallas/fran.js';
 
 const vacio = { categoriasExtra: {}, categoriasOcultas: {} };
 const gasto = (categoria, fecha) => ({ libro: 'personal', tipo: 'gasto', categoria, fecha, valor: 1 });
@@ -37,4 +37,24 @@ test('Finanzas muestra los intereses como ganancia, sin cambiar el libro de pré
   ];
   assert.deepEqual(delLibro(lista, 'personal').map((a) => a.categoria), ['Ganancia de préstamos', 'Arriendos']);
   assert.equal(delLibro(lista, 'prestamos')[0].categoria, 'Intereses cobrados');
+});
+
+test('el teclado suma y resta', () => {
+  assert.equal(evaluarMonto('9500'), 9500);
+  assert.equal(evaluarMonto('12000+500−200'), 12300);
+  assert.equal(evaluarMonto('1000+'), 1000);
+  assert.equal(evaluarMonto(''), 0);
+});
+
+test('sugiere la categoría ya usada y no se inventa una', () => {
+  const lista = [
+    { libro: 'personal', tipo: 'gasto', categoria: 'Alimentos', descripcion: 'pollo' },
+    { libro: 'personal', tipo: 'gasto', categoria: 'Alimentos', descripcion: 'pollo asado' },
+    { libro: 'personal', tipo: 'gasto', categoria: 'Compras', descripcion: 'cinta' },
+  ];
+  const ok = ['Alimentos', 'Compras'];
+  assert.equal(adivinarCategoria(lista, 'personal', 'gasto', 'Pollo', ok), 'Alimentos');
+  assert.equal(adivinarCategoria(lista, 'personal', 'gasto', 'pollo ara', ok), 'Alimentos');
+  assert.equal(adivinarCategoria(lista, 'personal', 'gasto', 'zapatos', ok), null);
+  assert.equal(adivinarCategoria(lista, 'personal', 'ingreso', 'pollo', ok), null);
 });

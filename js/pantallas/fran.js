@@ -920,15 +920,42 @@ export function categoriasDe(fran, id, clave, tipo) {
   return { todas, visibles: todas.filter((c) => !ocultas.includes(c)), ocultas };
 }
 
+/** Suma lo marcado en el teclado: "12000+500-200" da 12300. */
+export function evaluarMonto(expresion) {
+  const partes = String(expresion || '').match(/[+−]?\d+/g);
+  if (!partes) return 0;
+  return partes.reduce((s, p) => (p[0] === '−' ? s - Number(p.slice(1)) : s + Number(p.replace('+', ''))), 0);
+}
+
+/** La categoría que ella ya usó para algo parecido. Solo la deja marcada: ella confirma con ✓. */
+export function adivinarCategoria(asientos, libro, tipo, descripcion, permitidas) {
+  const buscada = norm(descripcion);
+  if (!buscada) return null;
+  const palabras = buscada.split(/\s+/).filter((p) => p.length >= 4);
+  const iguales = {};
+  const parecidas = {};
+  for (const a of asientos) {
+    if (a.libro !== libro || a.tipo !== tipo || a.sinDetalle || !permitidas.includes(a.categoria)) continue;
+    const d = norm(a.descripcion);
+    if (d === buscada) iguales[a.categoria] = (iguales[a.categoria] || 0) + 1;
+    else if (palabras.some((p) => d.split(/\s+/).includes(p))) parecidas[a.categoria] = (parecidas[a.categoria] || 0) + 1;
+  }
+  const mejor = (o) => Object.keys(o).sort((x, y) => o[y] - o[x])[0] || null;
+  return mejor(iguales) || mejor(parecidas);
+}
+
 function renderAgregar(contenedor, id, clave, ctx) {
-  const { ui, datos } = ctx;
+  const { ui, datos, dinero, fechas } = ctx;
   const tipos = TIPOS[id] || TIPOS.personal;
   const def = tipos.find((t) => t[1] === clave) || tipos[0];
   const tipo = def[2];
   const esTransfer = tipo === 'transferencia';
   const categorias = categoriasDe(datos.estado.fran, id, def[1], tipo).visibles;
   const vaAOtroLibro = (c) => (id === 'personal' && clave === 'ingreso' ? INGRESOS_DE_OTRO_LIBRO[c] : null);
-  let elegida = categorias.find((c) => !vaAOtroLibro(c)) || 'Otros';
+  const hoy = ctx.hoy();
+  let elegida = null;
+  let expresion = '';
+  const FOTO = '<button type="button" class="fran-mic" data-foto aria-label="Foto del recibo">📷</button>';
   const raiz = ui.el(`<div class="fran-agregar">
     <header class="fran-agregar__cabeza"><a href="#/libro/${id}">Cancelar</a><strong>Agregar</strong><a class="fran-agregar__repite" href="#/ajustes/recurrentes" aria-label="Transacciones recurrentes">↻</a></header>
     <div class="fran-segmento">${tipos.map((t) => `<a href="#/libro/${id}/agregar/${t[1]}" class="${t === def ? 'activo' : ''}">${ui.esc(t[0])}</a>`).join('')}</div>
@@ -936,57 +963,104 @@ function renderAgregar(contenedor, id, clave, ctx) {
       ${esTransfer ? `
         <p class="fran-seccion">Sale de</p>${chips('cuenta', CUENTAS, 'Efectivo', ui)}
         <p class="fran-seccion">Entra a</p>${chips('destino', CUENTAS, 'Nequi propio', ui)}` : `
-        <div class="fran-iconos">${categorias.map((c, i) => `<button type="button" class="${c === elegida ? 'activo' : ''}${i >= 11 ? ' fran-mas-cat oculto' : ''}" data-cat="${ui.esc(c)}"><span>${ui.esc(iconoDe(c))}</span><small>${ui.esc(c.replace(' públicos', ''))}</small></button>`).join('')}
+        <div class="fran-iconos">${categorias.map((c, i) => `<button type="button" class="${i >= 11 ? 'fran-mas-cat oculto' : ''}" data-cat="${ui.esc(c)}"><span>${ui.esc(iconoDe(c))}</span><small>${ui.esc(c.replace(' públicos', ''))}</small></button>`).join('')}
           <button type="button" data-ver-mas><span>＋</span><small>Más</small></button>
           <button type="button" class="fran-mas-cat oculto" data-nueva><span>✎</span><small>Nueva</small></button>
-          <a class="fran-mas-cat oculto" href="#/ajustes/categorias"><span>⚙️</span><small>Categorías</small></a></div>
-        <input type="text" class="fran-entrada oculto" name="nueva" placeholder="Nombre de la categoría nueva" autocomplete="off">`}
+          <a class="fran-mas-cat oculto" href="#/ajustes/categorias"><span>⚙️</span><small>Categorías</small></a></div>`}
+      <input type="file" class="oculto" name="foto" accept="image/*" capture="environment" aria-hidden="true" tabindex="-1">
       <div class="fran-agregar__pie">
-        <label class="fran-fecha-fila"><small>Fecha</small><input type="date" name="fecha" value="${ui.esc(ctx.hoy())}" aria-label="Fecha"></label>
-        <div class="fran-escribir">
-          <input type="text" name="texto" autocomplete="off" placeholder="${esTransfer ? '¿Cuánto?' : '¿Para qué y cuánto cuesta?'}" aria-label="Para qué y cuánto cuesta">
+        ${esTransfer ? '' : `<div class="fran-escribir" data-rapido>
+          <input type="text" name="texto" autocomplete="off" placeholder="¿Para qué y cuánto cuesta?" aria-label="Para qué y cuánto cuesta">
           <button type="button" class="fran-mic" data-mic aria-label="Dictar">🎤</button>
-          <button type="button" class="fran-mic${esTransfer ? ' oculto' : ''}" data-foto aria-label="Foto del recibo">📷</button>
-          <input type="file" class="oculto" name="foto" accept="image/*" capture="environment" aria-hidden="true" tabindex="-1">
-          <button type="submit" class="fran-enviar" aria-label="Guardar">✓</button>
+          ${FOTO}
+          <button type="submit" class="fran-enviar" aria-label="Seguir">✓</button>
+        </div>`}
+        <div class="fran-teclado${esTransfer ? '' : ' oculto'}" data-teclado>
+          <input type="text" class="fran-entrada oculto" name="nueva" placeholder="Nombre de la categoría nueva" autocomplete="off">
+          <div class="fran-teclado__valor">
+            ${esTransfer || id === 'terceros' ? '<span></span>' : `<label class="fran-cuenta"><small>${tipo === 'ingreso' ? 'Entra por' : 'Pagado con'}</small><select name="cuenta">${CUENTAS.map((c) => `<option>${ui.esc(c)}</option>`).join('')}</select></label>`}
+            <output class="numero" data-monto aria-live="polite">0</output>
+          </div>
+          <label class="fran-nota-campo"><span>Nota:</span><input type="text" name="nota" autocomplete="off" placeholder="Introduce una nota…" aria-label="Nota">${esTransfer ? '' : FOTO}</label>
+          <div class="fran-teclas">
+            ${['7', '8', '9'].map((k) => `<button type="button" data-k="${k}">${k}</button>`).join('')}
+            <label class="fran-tecla-fecha"><span data-fecha-texto>Hoy</span><input type="date" name="fecha" value="${ui.esc(hoy)}" aria-label="Fecha"></label>
+            ${['4', '5', '6'].map((k) => `<button type="button" data-k="${k}">${k}</button>`).join('')}
+            <button type="button" data-k="+" aria-label="Sumar">+</button>
+            ${['1', '2', '3'].map((k) => `<button type="button" data-k="${k}">${k}</button>`).join('')}
+            <button type="button" data-k="−" aria-label="Restar">−</button>
+            <button type="button" data-k="0">0</button>
+            <button type="button" data-k="00">00</button>
+            <button type="button" data-k="borrar" aria-label="Borrar">⌫</button>
+            <button type="button" class="fran-tecla-ok" data-ok aria-label="Guardar">✓</button>
+          </div>
         </div>
-        ${esTransfer || id === 'terceros' ? '' : `<p class="fran-pagado">${tipo === 'ingreso' ? 'Entra por' : 'Pagado con'}:</p>${chips('cuenta', CUENTAS, 'Efectivo', ui).replace('fran-chips', 'fran-chips fran-chips--texto')}`}
       </div>
     </form>
   </div>`);
   conectarChips(raiz);
+  const teclado = raiz.querySelector('[data-teclado]');
+  const rapido = raiz.querySelector('[data-rapido]');
+  const montoVista = raiz.querySelector('[data-monto]');
+  const botonOk = raiz.querySelector('[data-ok]');
+  const texto = raiz.querySelector('[name="texto"]');
+  const nota = raiz.querySelector('[name="nota"]');
+  const nueva = raiz.querySelector('[name="nueva"]');
+  const campoFecha = raiz.querySelector('[name="fecha"]');
+  const botonNueva = raiz.querySelector('[data-nueva]');
+
+  const pintarMonto = () => {
+    const vista = expresion.replace(/\d+/g, (n) => dinero.formatear(Number(n))).replace(/([+−])/g, ' $1 ');
+    montoVista.textContent = vista || '0';
+    botonOk.textContent = /\d[+−]\d/.test(expresion) ? '=' : '✓';
+  };
+  const abrirTeclado = () => {
+    teclado.classList.remove('oculto');
+    if (rapido) rapido.classList.add('oculto');
+  };
+  const marcar = (boton) => raiz.querySelectorAll('[data-cat],[data-nueva]').forEach((x) => x.classList.toggle('activo', x === boton));
+
   raiz.querySelectorAll('[data-cat]').forEach((b) => b.addEventListener('click', () => {
     if (vaAOtroLibro(b.dataset.cat)) { ctx.navegar(vaAOtroLibro(b.dataset.cat)); return; }
     elegida = b.dataset.cat;
-    raiz.querySelectorAll('[data-cat],[data-nueva]').forEach((x) => x.classList.toggle('activo', x === b));
-    const n = raiz.querySelector('[name="nueva"]');
-    if (n) { n.classList.add('oculto'); n.value = ''; }
+    marcar(b);
+    nueva.classList.add('oculto');
+    nueva.value = '';
+    abrirTeclado();
   }));
   const verMas = raiz.querySelector('[data-ver-mas]');
   if (verMas) verMas.addEventListener('click', () => {
     raiz.querySelectorAll('.fran-mas-cat').forEach((x) => x.classList.remove('oculto'));
     verMas.remove();
   });
-  const botonNueva = raiz.querySelector('[data-nueva]');
   if (botonNueva) botonNueva.addEventListener('click', () => {
-    raiz.querySelectorAll('[data-cat],[data-nueva]').forEach((x) => x.classList.toggle('activo', x === botonNueva));
-    const n = raiz.querySelector('[name="nueva"]');
-    n.classList.remove('oculto');
-    n.focus();
+    elegida = null;
+    marcar(botonNueva);
+    abrirTeclado();
+    nueva.classList.remove('oculto');
+    nueva.focus();
   });
+
+  campoFecha.addEventListener('change', () => {
+    const f = campoFecha.value || hoy;
+    let t = fechas.formatear(f).replace(/ \d{4}$/, f.slice(0, 4) === hoy.slice(0, 4) ? '' : '$&');
+    if (f === hoy) t = 'Hoy';
+    else if (f === fechas.sumarDias(hoy, -1)) t = 'Ayer';
+    raiz.querySelector('[data-fecha-texto]').textContent = t;
+  });
+
   let foto = null;
-  const botonFoto = raiz.querySelector('[data-foto]');
   const entradaFoto = raiz.querySelector('[name="foto"]');
-  botonFoto.addEventListener('click', () => entradaFoto.click());
+  raiz.querySelectorAll('[data-foto]').forEach((b) => b.addEventListener('click', () => entradaFoto.click()));
   entradaFoto.addEventListener('change', async () => {
     if (!entradaFoto.files[0]) return;
     try {
       foto = await reducirFoto(entradaFoto.files[0]);
-      botonFoto.classList.add('activo');
+      raiz.querySelectorAll('[data-foto]').forEach((b) => b.classList.add('activo'));
       ui.toast('Foto lista.');
     } catch (error) { ui.toast(error.message); }
   });
-  const texto = raiz.querySelector('[name="texto"]');
+
   // En el iPhone el dictado de la página no funciona con la app instalada: se usa el del teclado.
   const Voz = window.SpeechRecognition || window.webkitSpeechRecognition;
   const esIOS = /iP(hone|ad|od)/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
@@ -994,7 +1068,8 @@ function renderAgregar(contenedor, id, clave, ctx) {
     texto.placeholder = 'Toca el 🎤 del teclado y habla';
     texto.focus();
   };
-  raiz.querySelector('[data-mic]').addEventListener('click', () => {
+  const botonMic = raiz.querySelector('[data-mic]');
+  if (botonMic) botonMic.addEventListener('click', () => {
     if (esIOS || !Voz) { conTeclado(); return; }
     try {
       const r = new Voz();
@@ -1004,24 +1079,65 @@ function renderAgregar(contenedor, id, clave, ctx) {
       r.start();
     } catch { conTeclado(); }
   });
-  raiz.querySelector('form').addEventListener('submit', async (e) => {
-    e.preventDefault();
-    const form = e.target;
-    const { descripcion, valor } = leerTexto(texto.value);
-    if (!valor) { ui.toast('Escribe cuánto: por ejemplo, almuerzo 15000.'); texto.focus(); return; }
-    const fecha = raiz.querySelector('[name="fecha"]').value || ctx.hoy();
+
+  const guardarMovimiento = async () => {
+    const valor = evaluarMonto(expresion);
+    if (!(valor > 0)) { ui.toast('Marca el valor en el teclado.'); return; }
+    const form = raiz.querySelector('form');
     const cuenta = form.elements.cuenta ? form.elements.cuenta.value : '';
     const destino = form.elements.destino ? form.elements.destino.value : '';
     if (esTransfer && cuenta === destino) { ui.toast('Elige dos cuentas distintas.'); return; }
-    const nueva = form.elements.nueva ? form.elements.nueva.value.trim() : '';
-    if (botonNueva && botonNueva.classList.contains('activo') && !nueva) { ui.toast('Escribe el nombre de la categoría.'); return; }
+    const categoriaNueva = nueva.value.trim();
+    if (botonNueva && botonNueva.classList.contains('activo') && !categoriaNueva) { ui.toast('Escribe el nombre de la categoría.'); nueva.focus(); return; }
+    if (!esTransfer && !elegida && !categoriaNueva) { ui.toast('Elige la categoría.'); return; }
+    const fecha = campoFecha.value || hoy;
     try {
-      const asiento = await datos.agregarAsiento({ libro: id, fecha, tipo, categoria: esTransfer ? 'Transferencia' : (nueva || elegida), descripcion, valor, cuenta, destino, conFoto: !!foto });
+      const asiento = await datos.agregarAsiento({ libro: id, fecha, tipo, categoria: esTransfer ? 'Transferencia' : (categoriaNueva || elegida), descripcion: nota.value, valor, cuenta, destino, conFoto: !!foto });
       if (foto) await guardarFoto(asiento.id, foto).catch(() => ui.toast('El movimiento quedó, pero la foto no se pudo guardar.'));
       ui.toast('Guardado.');
       vista.mes = fecha.slice(0, 7);
       ctx.navegar(`/libro/${id}`);
     } catch (error) { ui.toast(error.message); }
+  };
+
+  raiz.querySelectorAll('[data-k]').forEach((b) => b.addEventListener('click', () => {
+    const k = b.dataset.k;
+    if (k === 'borrar') expresion = expresion.slice(0, -1);
+    else if (k === '+' || k === '−') {
+      if (expresion) expresion = expresion.replace(/[+−]$/, '') + k;
+    } else if (!(k.startsWith('0') && !/[1-9]\d*$/.test(expresion)) && (expresion.match(/\d+$/) || [''])[0].length < 12) expresion += k;
+    pintarMonto();
+  }));
+  botonOk.addEventListener('click', () => {
+    if (/\d[+−]\d/.test(expresion)) {
+      const total = evaluarMonto(expresion);
+      expresion = total > 0 ? String(total) : '';
+      if (!(total > 0)) ui.toast('La cuenta no da un valor mayor que cero.');
+      pintarMonto();
+      return;
+    }
+    guardarMovimiento();
+  });
+
+  // Escribir o dictar: "pollo 12000" llena el teclado; ella revisa y confirma con ✓.
+  raiz.querySelector('form').addEventListener('submit', (e) => {
+    e.preventDefault();
+    if (rapido && !rapido.classList.contains('oculto')) {
+      const { descripcion, valor } = leerTexto(texto.value);
+      if (!valor) { ui.toast('Escribe cuánto: por ejemplo, almuerzo 15000.'); texto.focus(); return; }
+      expresion = String(valor);
+      nota.value = descripcion;
+      pintarMonto();
+      abrirTeclado();
+      const sugerida = adivinarCategoria(datos.estado.fran.asientos, id, tipo, descripcion, categorias.filter((c) => !vaAOtroLibro(c)));
+      if (sugerida) {
+        elegida = sugerida;
+        const boton = [...raiz.querySelectorAll('[data-cat]')].find((x) => x.dataset.cat === sugerida);
+        if (boton) { boton.classList.remove('oculto'); marcar(boton); }
+      } else ui.toast('Elige la categoría.');
+      return;
+    }
+    botonOk.click();
   });
   contenedor.append(raiz);
 }
