@@ -1336,3 +1336,19 @@ describe('dinero.leer y dinero.formatear', () => {
     assert.equal(dinero.leer('.5'), null);
   });
 });
+
+test('quien ya devolvió el capital y debe intereses queda como solo intereses', () => {
+  const cliente = { id: 'c', nombre: 'Rosa', tipo: 'cliente' };
+  const prestamo = { id: 'p', clienteId: 'c', fecha: '2025-01-01', capital: 686000, tasa: 0, modalidad: 'capital_primero', totalPactado: 1745000 };
+  const pago = (id, monto) => ({ id, prestamoId: 'p', clienteId: 'c', fecha: '2026-11-03', tipo: 'pago', monto, interes: 0, capital: monto, medio: 'efectivo' });
+  const antes = modMotor.resumenCliente(cliente, [prestamo], [pago('a', 80000)], '2026-11-03');
+  assert.equal(antes.soloIntereses, false);
+  const r = modMotor.resumenCliente(cliente, [prestamo], [pago('a', 80000), pago('b', 1000000)], '2026-11-03');
+  assert.equal(r.capitalPendiente, 0);
+  assert.equal(r.deudaCliente, 665000);
+  assert.equal(r.soloIntereses, true);
+  const pagado = modMotor.resumenCliente(cliente, [prestamo], [pago('a', 1745000)], '2026-11-03');
+  assert.equal(pagado.soloIntereses, false);
+  const congelado = modMotor.resumenCliente(cliente, [{ ...prestamo, estadoManual: 'congelado' }], [pago('a', 1000000)], '2026-11-03');
+  assert.equal(congelado.soloIntereses, false);
+});

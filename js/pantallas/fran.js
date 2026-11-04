@@ -169,13 +169,13 @@ export function miPlata(ctx) {
 function clientesPorEstado(ctx) {
   const { datos, motor } = ctx;
   const estado = datos.estado;
-  const conteo = { al_dia: 0, por_confirmar: 0, atrasado: 0, congelado: 0, legal: 0, perdido: 0 };
+  const conteo = { al_dia: 0, por_confirmar: 0, atrasado: 0, congelado: 0, legal: 0, perdido: 0, solo_intereses: 0 };
   for (const c of estado.clientes) {
     if (c.tipo === 'familia') continue;
     const propios = estado.prestamos.filter((p) => p.clienteId === c.id);
     if (!propios.length) continue;
     const r = motor.resumenCliente(c, propios, estado.pagos.filter((g) => g.clienteId === c.id), ctx.hoy());
-    const e = r.estado === 'vencido' ? 'atrasado' : r.estado;
+    const e = r.soloIntereses ? 'solo_intereses' : (r.estado === 'vencido' ? 'atrasado' : r.estado);
     if (e in conteo) conteo[e] += 1;
   }
   return conteo;
@@ -371,7 +371,7 @@ function renderPrincipal(contenedor, ctx) {
   const mVerde = delMes(verde, mesVerde);
   const plata = miPlata(ctx);
   const c = clientesPorEstado(ctx);
-  const estados = [['Por confirmar', c.por_confirmar], ['Al día', c.al_dia], ['Atrasados', c.atrasado], ['Congelados', c.congelado]].filter((x) => x[1]).map((x) => `${x[0]} ${x[1]}`).join(' · ');
+  const estados = [['Por confirmar', c.por_confirmar], ['Al día', c.al_dia], ['Atrasados', c.atrasado], ['Congelados', c.congelado], ['Solo intereses', c.solo_intereses]].filter((x) => x[1]).map((x) => `${x[0]} ${x[1]}`).join(' · ');
   const usd = fran.pension.cuentas.reduce((s, x) => s + x.usd, 0);
   const inventario = deTipo(delLibro(lista, 'productos'), 'gasto').filter((a) => a.categoria === 'Inventario sin vender');
   const hoyAgenda = agendaDeHoy(ctx);
@@ -524,6 +524,7 @@ function renderPrestamos(contenedor, ctx, redibujar) {
       ${pastilla('Atrasados', c.atrasado, 'amarillo')}
       ${pastilla('Congelados', c.congelado, 'gris')}
       ${pastilla('Legal', c.legal, 'rojo')}
+      ${c.solo_intereses ? pastilla('Solo intereses', c.solo_intereses, 'gris') : ''}
     </div>
     <div class="fran-accesos">
       <a href="#/clientes">👥 Clientes</a>
@@ -1282,14 +1283,14 @@ function renderFicha(contenedor, id, ctx) {
     <div class="fran-cliente">
       <span class="fran-avatar">${ui.esc(cliente.nombre.charAt(0).toUpperCase())}</span>
       <div><strong>${ui.esc(cliente.nombre)}</strong>${conTexto ? `<small>${ui.esc(`Acuerdo: ${conTexto.acuerdoTexto}`)}</small>` : (textoAcuerdo ? `<small>${ui.esc(textoAcuerdo)}</small>` : '')}</div>
-      ${ui.chipEstado(r.estado)}
+      ${r.soloIntereses ? '<span class="fran-solo">Solo intereses</span>' : ui.chipEstado(r.estado)}
     </div>
     <div class="fran-dos">
       <div class="fran-tarjeta"><small>Debe total</small><strong class="numero">${dinero.formatear(r.deudaCliente)}</strong></div>
       <div class="fran-tarjeta"><small>Capital pendiente</small><strong class="numero">${dinero.formatear(r.capitalPendiente)}</strong></div>
     </div>
     <div class="fran-progreso"><span style="width:${pct}%"></span></div>
-    <p class="fran-nota">${abonosPlan && !recuperado ? `Abono a capital anotado: ${dinero.formatear(abonosPlan)}.` : `Recuperado ${dinero.formatear(recuperado)} de ${dinero.formatear(r.capitalPrestado)} de capital.`}${capitalPrimero ? ' Cuando llegue a 100%, todo lo que pague es ganancia.' : ''}</p>
+    <p class="fran-nota">${abonosPlan && !recuperado ? `Abono a capital anotado: ${dinero.formatear(abonosPlan)}.` : `Recuperado ${dinero.formatear(recuperado)} de ${dinero.formatear(r.capitalPrestado)} de capital.`}${capitalPrimero ? (r.capitalPendiente === 0 ? ' Ya recuperó todo el capital: lo que pague es ganancia.' : ' Cuando llegue a 100%, todo lo que pague es ganancia.') : ''}</p>
     <p class="fran-seccion">Historial</p>
     <div class="fran-lista">${historial.map((h) => fila({ ui, icono: h.icono, titulo: h.t, sub: h.sinFecha ? `Fecha por confirmar (${h.sinFecha})` : (h.textoFecha || fechas.formatear(h.f)), derecha: h.v, clase: h.c, ruta: h.ruta })).join('') || '<p class="fran-vacio">Sin movimientos.</p>'}</div>
     <div class="fran-tres">

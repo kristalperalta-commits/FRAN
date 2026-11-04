@@ -19,6 +19,7 @@ const FILTROS = [
   { clave: 'al_dia', texto: 'Al día' },
   { clave: 'atrasados', texto: 'Atrasados' },
   { clave: 'perdidos', texto: 'Perdidos' },
+  { clave: 'solo_intereses', texto: 'Solo intereses' },
   { clave: 'familia', texto: 'Familia' },
 ];
 
@@ -122,10 +123,12 @@ function ordenarPorEstado(lista) {
 function pasaFiltro(entrada, filtro) {
   const { cliente, resumen } = entrada;
   switch (filtro) {
+    case 'solo_intereses':
+      return resumen.soloIntereses;
     case 'al_dia':
-      return resumen.estado === 'al_dia' && cliente.tipo !== 'familia';
+      return resumen.estado === 'al_dia' && cliente.tipo !== 'familia' && !resumen.soloIntereses;
     case 'atrasados':
-      return resumen.estado === 'atrasado' || resumen.estado === 'vencido';
+      return (resumen.estado === 'atrasado' || resumen.estado === 'vencido') && !resumen.soloIntereses;
     case 'perdidos':
       return resumen.estado === 'perdido';
     case 'familia':
@@ -154,7 +157,7 @@ function filaCliente(entrada, ctx) {
     if (atraso) detalles.push(ui.esc(atraso));
     else detalles.push(ui.esc(textoCantidad(resumen.prestamosActivos, 'préstamo activo', 'préstamos activos')));
   }
-  const chip = resumen.prestamos > 0 || cliente.tipo === 'familia' ? ui.chipEstado(resumen.estado) : '';
+  const chip = resumen.soloIntereses ? '<span class="fran-solo">Solo intereses</span>' : (resumen.prestamos > 0 || cliente.tipo === 'familia' ? ui.chipEstado(resumen.estado) : '');
   return `
     <a class="fila cliente-fila" href="#/cliente/${encodeURIComponent(cliente.id)}">
       <div class="fila__principal">
@@ -269,14 +272,22 @@ function renderLista(contenedor, ctx) {
       return;
     }
 
-    const deudaTotal = visibles.reduce((suma, e) => suma + e.resumen.deudaCliente, 0);
+    // En "Todos" y en la búsqueda, quien solo debe intereses va aparte, abajo y cerrado.
+    const aparte = filtroActual === 'solo_intereses' ? [] : visibles.filter((e) => e.resumen.soloIntereses);
+    const principales = visibles.filter((e) => !aparte.includes(e));
+    const suma = (lista) => lista.reduce((s, e) => s + e.resumen.deudaCliente, 0);
     zonaLista.innerHTML = `
-      <p class="clientes-conteo suave">
-        ${ui.esc(textoCantidad(visibles.length, 'cliente', 'clientes'))} · deben ${ctx.dinero.formatear(deudaTotal)}
+      ${principales.length ? `<p class="clientes-conteo suave">
+        ${ui.esc(textoCantidad(principales.length, 'cliente', 'clientes'))} · deben ${ctx.dinero.formatear(suma(principales))}
       </p>
       <ul class="lista">
-        ${visibles.map((e) => `<li>${filaCliente(e, ctx)}</li>`).join('')}
-      </ul>`;
+        ${principales.map((e) => `<li>${filaCliente(e, ctx)}</li>`).join('')}
+      </ul>` : ''}
+      ${aparte.length ? `<details class="clientes-aparte"${principales.length ? '' : ' open'}>
+        <summary>Solo deben intereses · ${aparte.length} · ${ctx.dinero.formatear(suma(aparte))}</summary>
+        <p class="suave">Ya devolvieron todo el capital. Lo que paguen es ganancia.</p>
+        <ul class="lista">${aparte.map((e) => `<li>${filaCliente(e, ctx)}</li>`).join('')}</ul>
+      </details>` : ''}`;
   }
 
   pintarLista();

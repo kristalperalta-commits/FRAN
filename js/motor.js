@@ -563,6 +563,9 @@ export function resumenCliente(cliente, prestamosDelCliente, pagos, hoy) {
     }
   }
   if (estado) resumen.estado = estado;
+  // Ya devolvió todo el capital y solo le quedan intereses: pesa menos que quien debe capital.
+  resumen.soloIntereses = resumen.prestamos > 0 && resumen.capitalPendiente === 0 && resumen.deudaCliente > 0
+    && !['perdido', 'legal', 'congelado', 'familia', 'pagado'].includes(resumen.estado);
   return resumen;
 }
 
