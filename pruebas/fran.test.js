@@ -1,7 +1,7 @@
 // Categorías de Agregar y nombres de los ingresos en Finanzas.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { adivinarCategoria, categoriasDe, delLibro, evaluarMonto, INGRESOS_DE_OTRO_LIBRO } from '../js/pantallas/fran.js';
+import { adivinarCategoria, categoriasDe, delLibro, evaluarMonto, INGRESOS_DE_OTRO_LIBRO, repartirPagos } from '../js/pantallas/fran.js';
 
 const vacio = { categoriasExtra: {}, categoriasOcultas: {} };
 const gasto = (categoria, fecha) => ({ libro: 'personal', tipo: 'gasto', categoria, fecha, valor: 1 });
@@ -57,4 +57,19 @@ test('sugiere la categoría ya usada y no se inventa una', () => {
   assert.equal(adivinarCategoria(lista, 'personal', 'gasto', 'pollo ara', ok), 'Alimentos');
   assert.equal(adivinarCategoria(lista, 'personal', 'gasto', 'zapatos', ok), null);
   assert.equal(adivinarCategoria(lista, 'personal', 'ingreso', 'pollo', ok), null);
+});
+
+test('en capital primero lo que pasa del capital es ganancia', () => {
+  const prestamos = [{ id: 'p', modalidad: 'capital_primero', capital: 686000 }, { id: 'q', modalidad: 'interes_mensual', capital: 100 }];
+  const pagos = [
+    { id: 'a', prestamoId: 'p', fecha: '2026-10-31', monto: 80000, interes: 0, capital: 80000 },
+    { id: 'b', prestamoId: 'p', fecha: '2026-11-03', monto: 1000000, interes: 0, capital: 1000000 },
+    { id: 'c', prestamoId: 'p', fecha: '2026-11-04', monto: 40000, interes: 0, capital: 40000 },
+    { id: 'd', prestamoId: 'q', fecha: '2026-11-04', monto: 10, interes: 7, capital: 3 },
+  ];
+  const r = repartirPagos(prestamos, pagos);
+  assert.deepEqual(r.get('a'), { capital: 80000, interes: 0 });
+  assert.deepEqual(r.get('b'), { capital: 606000, interes: 394000 });
+  assert.deepEqual(r.get('c'), { capital: 0, interes: 40000 });
+  assert.deepEqual(r.get('d'), { interes: 7, capital: 3 });
 });

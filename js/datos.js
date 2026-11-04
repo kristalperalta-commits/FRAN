@@ -831,7 +831,11 @@ function armarPrestamo(datosPrestamo, existente) {
   const creadoEn = datosPrestamo.creadoEn ?? existente?.creadoEn ?? hoy();
   exigirFecha(creadoEn, 'de creación del préstamo');
 
+  const acuerdoTexto = limpiarTexto(datosPrestamo.acuerdoTexto ?? existente?.acuerdoTexto);
+  const detalle = datosPrestamo.detalle ?? existente?.detalle;
   return {
+    ...(acuerdoTexto ? { acuerdoTexto } : {}),
+    ...(Array.isArray(detalle) ? { detalle } : {}),
     id: limpiarTexto(datosPrestamo.id) || existente?.id || generarId(),
     clienteId,
     fecha,
@@ -1042,7 +1046,7 @@ function insertarPerdon(datosPerdon) {
   exigir(datosPerdon && typeof datosPerdon === 'object', 'Faltan los datos del perdón.');
   const prestamo = buscar('prestamos', limpiarTexto(datosPerdon.prestamoId));
   exigir(prestamo, 'El perdón debe pertenecer a un préstamo existente.');
-  exigir(prestamo.modalidad === 'interes_mensual', 'Solo se pueden perdonar intereses en préstamos con interés mensual.');
+  exigir(prestamo.modalidad === 'interes_mensual' || prestamo.modalidad === 'capital_primero', 'Solo se pueden perdonar intereses en préstamos con interés mensual.');
   exigirFecha(datosPerdon.fecha, 'del perdón');
   exigir(datosPerdon.fecha >= prestamo.fecha, `El perdón no puede ser anterior a la fecha del préstamo (${prestamo.fecha}).`);
   exigirMonto(datosPerdon.monto, 'monto perdonado');
@@ -1370,6 +1374,35 @@ export const datos = {
     estadoActual.fran.asientos.push(asiento);
     await guardar();
     return asiento;
+  },
+
+  // Lo que ella dictó por el chat. Cada operación lleva un id fijo: nunca se anota dos veces.
+  async aplicarDictado(operaciones) {
+    let anotadas = 0;
+    let yaEstaban = 0;
+    const faltan = [];
+    for (const o of operaciones) {
+      if (o.op === 'asiento') {
+        if (estadoActual.fran.asientos.some((a) => a.id === o.id || (a.fecha === o.fecha && a.valor === o.valor && a.tipo === o.tipo && a.libro === o.libro))) { yaEstaban++; continue; }
+        exigirFecha(o.fecha, 'del movimiento');
+        exigirMonto(o.valor, 'valor del movimiento');
+        estadoActual.fran.asientos.push({ id: o.id, libro: o.libro, fecha: o.fecha, tipo: o.tipo, categoria: o.categoria, descripcion: limpiarTexto(o.descripcion), valor: o.valor, cuenta: limpiarTexto(o.cuenta), destino: '', creadoEn: o.creadoEn });
+      } else if (o.op === 'prestamo') {
+        if (buscar('prestamos', o.id) || estadoActual.prestamos.some((p) => p.clienteId === o.clienteId && p.fecha === o.fecha && p.capital === o.capital)) { yaEstaban++; continue; }
+        if (!buscar('clientes', o.clienteId)) { faltan.push(o.id); continue; }
+        insertarPrestamo(o);
+      } else if (o.op === 'pago' || o.op === 'perdon') {
+        const prestamo = estadoActual.prestamos.find((p) => p.id === o.prestamoId || (p.clienteId === o.clienteId && p.modalidad === o.modalidad));
+        if (!prestamo) { faltan.push(o.id); continue; }
+        const esPerdon = o.op === 'perdon';
+        if (buscar('pagos', o.id) || estadoActual.pagos.some((g) => g.prestamoId === prestamo.id && g.fecha === o.fecha && g.monto === o.monto && (g.tipo === 'perdon') === esPerdon)) { yaEstaban++; continue; }
+        if (o.op === 'pago') insertarPago({ id: o.id, prestamoId: prestamo.id, fecha: o.fecha, monto: o.monto, interes: 0, capital: o.monto, medio: o.medio, nota: o.nota });
+        else insertarPerdon({ id: o.id, prestamoId: prestamo.id, fecha: o.fecha, monto: o.monto, nota: o.nota });
+      } else continue;
+      anotadas++;
+    }
+    if (anotadas) await guardar();
+    return { anotadas, yaEstaban, faltan };
   },
 
   // Mi cuenta virtual: lo que entró o salió que no está anotado en otro libro.

@@ -90,11 +90,36 @@ function nombreCliente(ctx, id) {
   return c ? c.nombre : 'Cliente';
 }
 
+/**
+ * Reparte cada pago en capital e interés. En capital primero todo va al capital hasta recuperarlo;
+ * lo que pasa de ahí es ganancia. El resto de los préstamos ya trae su reparto guardado.
+ */
+export function repartirPagos(prestamos, pagos) {
+  const porId = new Map(prestamos.map((p) => [p.id, p]));
+  const recibido = new Map();
+  const orden = [...pagos].sort((a, b) => a.fecha.localeCompare(b.fecha));
+  const reparto = new Map();
+  for (const g of orden) {
+    const p = porId.get(g.prestamoId);
+    if (g.tipo === 'perdon' || !p || p.modalidad !== 'capital_primero') { reparto.set(g.id, { interes: g.interes, capital: g.capital }); continue; }
+    const antes = recibido.get(p.id) || 0;
+    const aCapital = Math.min(g.monto, Math.max(0, p.capital - antes));
+    recibido.set(p.id, antes + g.monto);
+    reparto.set(g.id, { capital: aCapital, interes: g.monto - aCapital });
+  }
+  return reparto;
+}
+
+const pagosRepartidos = (estado) => {
+  const r = repartirPagos(estado.prestamos, estado.pagos);
+  return estado.pagos.map((g) => ({ ...g, ...r.get(g.id) }));
+};
+
 /** Movimientos de los libros, más los intereses de los pagos registrados en la app. */
 function asientos(ctx) {
   const estado = ctx.datos.estado;
   const propios = (estado.fran && estado.fran.asientos) || [];
-  const deIntereses = estado.pagos.filter((g) => g.tipo !== 'perdon' && g.interes > 0).map((g) => ({
+  const deIntereses = pagosRepartidos(estado).filter((g) => g.tipo !== 'perdon' && g.interes > 0).map((g) => ({
     id: `pago-${g.id}`, libro: 'prestamos', fecha: g.fecha, tipo: 'ingreso', categoria: 'Intereses cobrados',
     descripcion: nombreCliente(ctx, g.clienteId), valor: g.interes, persona: nombreCliente(ctx, g.clienteId), importado: true,
   }));
@@ -495,7 +520,7 @@ function renderPrestamos(contenedor, ctx, redibujar) {
   const mes = mesVisible(ctx, lista);
   const enMes = (f) => f.slice(0, 7) === mes;
   const prestamos = estado.prestamos.filter((p) => enMes(p.fecha));
-  const pagos = estado.pagos.filter((g) => g.tipo !== 'perdon' && enMes(g.fecha));
+  const pagos = pagosRepartidos(estado).filter((g) => g.tipo !== 'perdon' && enMes(g.fecha));
   const abonos = deTipo(delMes(lista, mes), 'abono');
   const capital = pagos.reduce((s, g) => s + g.capital, 0) + sumar(abonos);
   const intereses = sumar(deTipo(delMes(lista, mes), 'ingreso'));
@@ -1259,7 +1284,7 @@ function renderFicha(contenedor, id, ctx) {
     return;
   }
   const propios = estado.prestamos.filter((p) => p.clienteId === id);
-  const pagos = estado.pagos.filter((g) => g.clienteId === id);
+  const pagos = pagosRepartidos(estado).filter((g) => g.clienteId === id);
   const r = motor.resumenCliente(cliente, propios, pagos, ctx.hoy());
   const recuperado = Math.max(0, r.capitalPrestado - r.capitalPendiente);
   const abonosPlan = estado.fran.asientos.filter((x) => x.clienteId === id && x.tipo === 'abono').reduce((s, x) => s + x.valor, 0);
@@ -1273,7 +1298,7 @@ function renderFicha(contenedor, id, ctx) {
     ...propios.flatMap((p) => (p.detalle
       ? p.detalle.map((d) => ({ f: d.fecha || '2000-01-01', sinFecha: d.fecha ? null : (d.texto || 'sin fecha'), icono: '💵', t: d.nombre || 'Préstamo', v: `−${dinero.formatear(d.capital)}`, c: 'fran-menos', ruta: `#/prestamo/${encodeURIComponent(p.id)}` }))
       : [{ f: p.fecha, sinFecha: p.porConfirmar && p.porConfirmar.fecha, icono: '💵', t: 'Préstamo', v: `−${dinero.formatear(p.capital)}`, c: 'fran-menos', ruta: `#/prestamo/${encodeURIComponent(p.id)}` }])),
-    ...pagos.map((g) => ({ f: g.fecha, icono: g.tipo === 'perdon' ? '🎁' : '↩️', t: g.tipo === 'perdon' ? 'Perdón de intereses' : (g.capital && !g.interes ? 'Abono a capital' : 'Pago'), v: `+${dinero.formatear(g.monto)}`, c: 'fran-mas' })),
+    ...pagos.map((g) => ({ f: g.fecha, icono: g.tipo === 'perdon' ? '🎁' : '↩️', t: g.tipo === 'perdon' ? 'Perdón de intereses' : (g.capital && !g.interes ? 'Abono a capital' : (g.capital && g.interes ? `Pago: ${dinero.formatear(g.capital)} capital, ${dinero.formatear(g.interes)} ganancia` : 'Pago')), v: `+${dinero.formatear(g.monto)}`, c: 'fran-mas' })),
     ...(estado.fran.asientos || []).filter((a) => a.clienteId === id || (a.persona && norm(a.persona) === norm(cliente.nombre))).map((a) => ({ f: a.fecha, textoFecha: a.textoFecha, icono: a.tipo === 'abono' ? '↩️' : '%', t: a.tipo === 'abono' ? 'Abono a capital' : 'Intereses', v: `+${dinero.formatear(a.valor)}`, c: 'fran-mas' })),
   ].sort((a, b) => b.f.localeCompare(a.f));
   const tel = soloDigitos(cliente.telefono);

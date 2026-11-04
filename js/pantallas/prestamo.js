@@ -292,7 +292,7 @@ function renderFicha(contenedor, params, ctx) {
     filaDato('Cliente', `<a href="${rutaDelCliente}">${ui.esc(nombre)}</a>`),
     filaDato('Fecha', ui.esc(prestamo.porConfirmar && prestamo.porConfirmar.fecha ? `Por confirmar. En el Excel dice: ${prestamo.porConfirmar.fecha}` : fechas.formatear(prestamo.fecha))),
     filaDato('Capital prestado', ui.esc(pesos(ctx, prestamo.capital))),
-    esMensual ? filaDato('Tasa', prestamo.porConfirmar ? ui.esc(prestamo.porConfirmar.tasa) : `${ui.esc(prestamo.tasa)} % mensual`) : '',
+    esMensual ? filaDato('Tasa', prestamo.porConfirmar ? ui.esc(prestamo.porConfirmar.tasa) : `${ui.esc(Math.round(prestamo.tasa * 100) / 100)} % mensual`) : '',
     filaDato('Modalidad', ui.esc(TEXTO_MODALIDAD[prestamo.modalidad] || prestamo.modalidad)),
     prestamo.totalPactado ? filaDato('Total pactado', ui.esc(pesos(ctx, prestamo.totalPactado))) : '',
     prestamo.plazoMeses

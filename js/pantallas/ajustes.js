@@ -750,7 +750,18 @@ function seccionHistoricos(ctx) {
     const archivo = entrada.files && entrada.files[0];
     if (!archivo) return;
     try {
-      const r = await datos.actualizarHistoricos(await leerArchivoComoTexto(archivo));
+      const texto = await leerArchivoComoTexto(archivo);
+      const dictado = JSON.parse(texto).dictado;
+      if (Array.isArray(dictado)) {
+        // Lo que ella dictó por el chat: solo agrega, no reemplaza nada.
+        const d = await datos.aplicarDictado(dictado);
+        const partes = [`Anoté ${d.anotadas}`];
+        if (d.yaEstaban) partes.push(`${d.yaEstaban} ya estaban`);
+        if (d.faltan.length) partes.push(`${d.faltan.length} no pude anotar`);
+        ui.toast(`${partes.join('. ')}.`, 7000);
+        return;
+      }
+      const r = await datos.actualizarHistoricos(texto);
       ui.toast(`Históricos actualizados. Se conservaron ${r.propios} movimientos tuyos.`, 5000);
     } catch (error) {
       ui.toast(`No se pudo actualizar: ${textoError(error)}`, 6000);

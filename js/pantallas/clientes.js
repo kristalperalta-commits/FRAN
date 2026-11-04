@@ -388,7 +388,7 @@ function renderFicha(contenedor, cliente, ctx) {
     for (const prestamo of ordenados) {
       const r = resultadosPorId.get(prestamo.id);
       const modalidad = prestamo.modalidad === 'interes_mensual'
-        ? `${prestamo.tasa}% mensual`
+        ? `${Math.round(prestamo.tasa * 100) / 100}% mensual`
         : (TEXTO_MODALIDAD[prestamo.modalidad] || prestamo.modalidad);
       const detalles = [modalidad];
       if (r && r.mesesAtrasados > 0) detalles.push(textoAtraso(r.mesesAtrasados));

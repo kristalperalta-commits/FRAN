@@ -213,6 +213,35 @@ describe('datos.js', () => {
     });
   });
 
+  describe('lo dictado por el chat', () => {
+    test('se anota una sola vez, cuadra la caja y cruza exportar e importar', async () => {
+      const c = await datos.agregarCliente({ nombre: 'Rosa' });
+      const o = await datos.agregarCliente({ nombre: 'Marta' });
+      const p = await datos.crearPrestamo({ clienteId: c.id, fecha: '2025-01-01', capital: 686000, tasa: 0, modalidad: 'capital_primero', totalPactado: 1745000, medio: 'efectivo' });
+      const ops = [
+        { op: 'asiento', id: 'd1', libro: 'personal', fecha: '2026-11-02', tipo: 'gasto', categoria: 'Alimentos', descripcion: 'pollo', valor: 9500, cuenta: 'Tarjeta comida' },
+        { op: 'pago', id: 'd2', clienteId: c.id, modalidad: 'capital_primero', fecha: '2026-11-03', monto: 1000000, medio: 'efectivo', nota: '' },
+        { op: 'perdon', id: 'd3', clienteId: c.id, modalidad: 'capital_primero', fecha: '2026-11-03', monto: 5000, nota: 'Perdón' },
+        { op: 'prestamo', id: 'd4', clienteId: o.id, fecha: '2026-11-03', capital: 2600000, tasa: 300000 / 26000, modalidad: 'interes_mensual', medio: 'efectivo', nota: 'x', acuerdoTexto: 'Para ella son 3.000.000' },
+        { op: 'prestamo', id: 'd5', clienteId: 'no-existe', fecha: '2026-11-03', capital: 1000, tasa: 10, modalidad: 'interes_mensual', medio: 'efectivo' },
+      ];
+      const r = await datos.aplicarDictado(ops);
+      assert.equal(r.anotadas, 4);
+      assert.deepEqual(r.faltan, ['d5']);
+      assert.equal((await datos.aplicarDictado(ops)).anotadas, 0);
+      const repetido = await datos.aplicarDictado([
+        { op: 'asiento', id: 'otro1', libro: 'personal', fecha: '2026-11-02', tipo: 'gasto', categoria: 'Alimentos', descripcion: 'a mano', valor: 9500, cuenta: '' },
+        { op: 'pago', id: 'otro2', clienteId: c.id, modalidad: 'capital_primero', fecha: '2026-11-03', monto: 1000000, medio: 'efectivo', nota: '' },
+      ]);
+      assert.deepEqual([repetido.anotadas, repetido.yaEstaban], [0, 2]);
+      assert.equal(datos.estado.pagos.filter((g) => g.prestamoId === p.id).length, 2);
+      await datos.importarJSON(datos.exportarJSON());
+      assert.equal(datos.obtener('prestamos', 'd4').acuerdoTexto, 'Para ella son 3.000.000');
+      assert.equal(datos.obtener('pagos', 'd3').tipo, 'perdon');
+      assert.equal(datos.estado.fran.asientos.find((a) => a.id === 'd1').valor, 9500);
+    });
+  });
+
   describe('agenda en los históricos', () => {
     test('agrega lo nuevo, completa la nota vacía y no revive lo ya cobrado', async () => {
       await datos.actualizarFran({ agenda: [{ id: 'a', nombre: 'Rosa', fecha: '2026-11-03', nota: '', hecho: true }] });
