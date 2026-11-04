@@ -1,7 +1,7 @@
 // Categorías de Agregar y nombres de los ingresos en Finanzas.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { adivinarCategoria, categoriasDe, delLibro, evaluarMonto, INGRESOS_DE_OTRO_LIBRO, repartirPagos } from '../js/pantallas/fran.js';
+import { adivinarCategoria, categoriasDe, delLibro, evaluarMonto, INGRESOS_DE_OTRO_LIBRO, repartirPagos, gananciasDe, cobrosDeCliente } from '../js/pantallas/fran.js';
 
 const vacio = { categoriasExtra: {}, categoriasOcultas: {} };
 const gasto = (categoria, fecha) => ({ libro: 'personal', tipo: 'gasto', categoria, fecha, valor: 1 });
@@ -72,4 +72,32 @@ test('en capital primero lo que pasa del capital es ganancia', () => {
   assert.deepEqual(r.get('b'), { capital: 606000, interes: 394000 });
   assert.deepEqual(r.get('c'), { capital: 0, interes: 40000 });
   assert.deepEqual(r.get('d'), { interes: 7, capital: 3 });
+});
+
+test('la ganancia junta los negocios y deja por fuera lo personal y lo de terceros', () => {
+  const lista = [
+    { libro: 'prestamos', tipo: 'ingreso', valor: 10, fecha: '2026-11-03' },
+    { libro: 'arriendos', tipo: 'ingreso', valor: 20, fecha: '2026-11-03' },
+    { libro: 'personal', tipo: 'ingreso', valor: 30, fecha: '2026-11-03' },
+    { libro: 'terceros', tipo: 'ingreso', valor: 40, fecha: '2026-11-03' },
+    { libro: 'productos', tipo: 'ingreso', valor: 50, fecha: '2026-11-03', soloLibro: true },
+    { libro: 'ganancias', tipo: 'retiro', valor: 4, fecha: '2026-11-03' },
+  ];
+  const g = gananciasDe(lista);
+  assert.equal(g.entradas.reduce((s, a) => s + a.valor, 0), 30);
+  assert.equal(g.retiros.length, 1);
+  assert.equal(delLibro(lista, 'personal').some((a) => a.libro === 'ganancias'), false);
+});
+
+test('el cobro dice capital, interés y nota, y no inventa lo que no se sabe', () => {
+  const cliente = { nombre: 'Rosa' };
+  const [pago, perdon, viejo, conNota] = cobrosDeCliente(
+    [{ id: 'a', tipo: 'abono', valor: 100, fecha: '2026-10-31', descripcion: 'Rosa' }, { id: 'b', tipo: 'ingreso', valor: 7, fecha: '2026-10-31', descripcion: 'Rosa pago' }],
+    [{ id: 'g', fecha: '2026-11-03', monto: 1000, capital: 600, interes: 400, medio: 'efectivo', nota: 'Listo', prestamoId: 'p' }, { id: 'h', tipo: 'perdon', fecha: '2026-11-03', monto: 5, capital: 0, interes: 5, prestamoId: 'p' }],
+    cliente,
+  );
+  assert.deepEqual([pago.titulo, pago.capital, pago.interes, pago.medio, pago.nota], ['Pago', 600, 400, 'Efectivo', 'Listo']);
+  assert.deepEqual([perdon.titulo, perdon.perdon, perdon.interes], ['Perdón de intereses', true, 0]);
+  assert.deepEqual([viejo.titulo, viejo.capital, viejo.medio, viejo.nota, viejo.prestamoId], ['Abono a capital', 100, '', '', '']);
+  assert.equal(conNota.nota, 'Rosa pago');
 });

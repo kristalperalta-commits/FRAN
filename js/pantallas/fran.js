@@ -126,6 +126,16 @@ function asientos(ctx) {
   return [...propios, ...deIntereses];
 }
 
+const NEGOCIOS = ['prestamos', 'arriendos', 'productos', 'redes'];
+
+/** Lo que entró como ganancia en los negocios y lo que ella sacó para sí. */
+export function gananciasDe(lista) {
+  return {
+    entradas: lista.filter((a) => a.tipo === 'ingreso' && !a.soloLibro && NEGOCIOS.includes(a.libro)),
+    retiros: lista.filter((a) => a.libro === 'ganancias' && a.tipo === 'retiro'),
+  };
+}
+
 const NOMBRE_EN_FINANZAS = { prestamos: 'Ganancia de préstamos', arriendos: 'Arriendos' };
 
 export function delLibro(lista, libro) {
@@ -403,6 +413,10 @@ function renderPrincipal(contenedor, ctx) {
   const sinDatos = !estado.clientes.length && !fran.asientos.length;
   const ahora = new Date();
   const horaAhora = `${String(ahora.getHours()).padStart(2, '0')}:${String(ahora.getMinutes()).padStart(2, '0')}`;
+  const { entradas, retiros } = gananciasDe(lista);
+  const mesHoy = ctx.hoy().slice(0, 7);
+  const gananciaMes = sumar(delMes(entradas, mesHoy));
+  const sacadoMes = sumar(delMes(retiros, mesHoy));
   const avisoAnotar = !sinDatos && horaAhora >= fran.recordatorios.gastos && !fran.asientos.some((x) => x.fecha === ctx.hoy());
   const grande = (id, valor, detalle) => `<a href="#/libro/${id}" class="fran-libro fran-libro--${id}">
     <span class="fran-libro__nombre"><i>${LIBROS[id].icono}</i>${ui.esc(id === 'personal' ? 'Finanzas personales' : LIBROS[id].corto)}</span>
@@ -419,6 +433,11 @@ function renderPrincipal(contenedor, ctx) {
       <small>Efectivo ${dinero.formatear(plata.efectivo)} · Virtual ${fran.virtualPorDefinir ? 'por confirmar' : dinero.formatear(plata.virtual)} · Tarjetas −${dinero.formatear(plata.tarjetas)}</small>
       ${fran.virtualCuentas ? `<small>En las cuentas hay ${dinero.formatear(fran.virtualCuentas.valor)} entre los dos. No es tuyo.</small>` : ''}
     </a>
+    ${sinDatos ? '' : `<a href="#/ganancias" class="fran-plata">
+      <small>Ganancia de hoy en mis negocios</small>
+      <strong class="numero">${dinero.formatear(sumar(entradas.filter((a) => a.fecha === ctx.hoy())))}</strong>
+      <small>${ui.esc(fechas.nombreMes(Number(mesHoy.slice(5, 7))))}: ${dinero.formatear(gananciaMes)} · Saqué ${dinero.formatear(sacadoMes)} · Para reinvertir ${dinero.formatear(gananciaMes - sacadoMes)}</small>
+    </a>`}
     ${sinDatos ? `<a href="#/ajustes" class="fran-aviso">Todavía no están tus datos en este aparato. Toca aquí y entra a la nube con tu correo.</a>` : ''}
     ${hoyAgenda.length ? `<a href="#/agenda" class="fran-aviso">⏰ Cobros de hoy: ${hoyAgenda.length}. Toca para ver.</a>` : ''}
     ${avisoAnotar ? '<a href="#/libro/personal/agregar/gasto" class="fran-aviso">📝 Hoy no has anotado nada. ¿Gastos o ingresos?</a>' : ""}
@@ -430,6 +449,54 @@ function renderPrincipal(contenedor, ctx) {
     </div>
     <div class="fran-libros-chicos">${chica('arriendos')}${chica('redes')}${chica('terceros')}</div>
   </div>`));
+}
+
+// ---------- Ganancia de los negocios, día a día ----------
+
+function renderGanancias(contenedor, ctx) {
+  const { ui, dinero, datos, fechas } = ctx;
+  const { entradas, retiros } = gananciasDe(asientos(ctx));
+  const hoy = ctx.hoy();
+  const mes = vista.mes || hoy.slice(0, 7);
+  const enMes = delMes(entradas, mes);
+  const sacados = delMes(retiros, mes);
+  const total = sumar(enMes);
+  const sacado = sumar(sacados);
+  const dibujar = () => { contenedor.innerHTML = ''; renderGanancias(contenedor, ctx); window.scrollTo(0, 0); };
+  const dias = [...new Set([...enMes, ...sacados].map((a) => a.fecha))].sort().reverse();
+  const filasDia = (dia) => [
+    ...enMes.filter((a) => a.fecha === dia).map((a) => fila({ ui, icono: LIBROS[a.libro].icono, titulo: a.persona || a.descripcion || a.categoria, sub: LIBROS[a.libro].corto, derecha: `+${dinero.formatear(a.valor)}`, clase: 'fran-mas', ver: a.id })),
+    ...sacados.filter((a) => a.fecha === dia).map((a) => fila({ ui, icono: '💰', titulo: a.categoria, sub: a.descripcion, derecha: `−${dinero.formatear(a.valor)}`, clase: 'fran-menos', ver: a.id })),
+  ].join('');
+  const raiz = ui.el(`<div>
+    <header class="fran-titulo"><a href="#/inicio" class="fran-titulo__atras" aria-label="Volver">‹</a><h1>Ganancias</h1></header>
+    ${selectorMes(mes, ctx)}
+    <div class="fran-reparto">
+      <div class="fran-tarjeta"><small>Ganancia</small><strong class="numero">${dinero.formatear(total)}</strong></div>
+      <div class="fran-tarjeta"><small>Saqué</small><strong class="numero">${dinero.formatear(sacado)}</strong></div>
+      <div class="fran-tarjeta"><small>Para reinvertir</small><strong class="numero">${dinero.formatear(total - sacado)}</strong></div>
+    </div>
+    <p class="fran-seccion">Por negocio</p>
+    <div class="fran-lista">${NEGOCIOS.map((id) => [id, sumar(enMes.filter((a) => a.libro === id))]).filter((x) => x[1]).map(([id, v]) => fila({ ui, icono: LIBROS[id].icono, titulo: LIBROS[id].corto, derecha: `+${dinero.formatear(v)}`, clase: 'fran-mas', ruta: `#/libro/${id}` })).join('') || '<p class="fran-vacio">Sin ganancias este mes.</p>'}</div>
+    <form class="fran-campos" novalidate>
+      <label><small>Saqué para mí</small><input name="valor" inputmode="numeric" autocomplete="off" placeholder="0"></label>
+      <label><small>Fecha</small><input type="date" name="fecha" value="${ui.esc(hoy)}"></label>
+      <button class="boton boton--primario fran-guardar">Anotar</button>
+    </form>
+    <p class="fran-seccion">Día a día</p>
+    ${dias.map((d) => `<div class="fran-dia"><span>${ui.esc(fechaLinda(d, ctx))}</span><span>Ganancia <b class="numero">${dinero.formatear(sumar(enMes.filter((a) => a.fecha === d)))}</b></span></div><div class="fran-lista">${filasDia(d)}</div>`).join('') || '<p class="fran-vacio">Nada todavía.</p>'}
+  </div>`);
+  conectarMes(raiz, mes, ctx, dibujar);
+  conectarVer(raiz, [...enMes, ...sacados], contenedor, 'ganancias', dibujar, ctx);
+  raiz.querySelector('form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const f = e.target.elements;
+    try {
+      await datos.agregarAsiento({ libro: 'ganancias', fecha: f.fecha.value, tipo: 'retiro', categoria: 'Saqué para mí', descripcion: '', valor: Number(f.valor.value.replace(/\D/g, '')), cuenta: '', destino: '' });
+      ui.toast('Anotado.');
+    } catch (error) { ui.toast(error.message); }
+  });
+  contenedor.append(raiz);
 }
 
 // ---------- Otros libros (boceto 14) ----------
@@ -723,6 +790,8 @@ function conectarVer(raiz, lista, contenedor, id, volver, ctx) {
 }
 
 function cuandoSeAnoto(iso, ctx) {
+  // Algunos solo guardan el día: sin hora no se puede convertir, porque cambia de fecha.
+  if (/^\d{4}-\d{2}-\d{2}$/.test(iso)) return `Anotado el ${ctx.fechas.formatear(iso)}`;
   const f = new Date(iso);
   if (Number.isNaN(f.getTime())) return '';
   const dia = `${f.getFullYear()}-${String(f.getMonth() + 1).padStart(2, '0')}-${String(f.getDate()).padStart(2, '0')}`;
@@ -737,7 +806,7 @@ function verAsiento(contenedor, visto, id, volver, ctx) {
   const a = real || visto;
   const editable = !!real && !a.sinDetalle;
   contenedor.innerHTML = '';
-  const NOMBRE_TIPO = { gasto: 'Gasto', ingreso: 'Ingreso', abono: 'Abono a capital', transferencia: 'Transferencia', uso: 'Uso' };
+  const NOMBRE_TIPO = { gasto: 'Gasto', ingreso: 'Ingreso', abono: 'Abono a capital', transferencia: 'Transferencia', uso: 'Uso', retiro: 'Saqué para mí' };
   const raiz = ui.el(`<div class="fran-detalles">
     <header class="fran-titulo"><button type="button" class="fran-titulo__atras" data-volver aria-label="Volver">‹</button><h1>Detalles</h1></header>
     <div class="fran-detalles__cabeza"><span class="fran-ico">${ui.esc(iconoDe(a.categoria))}</span><strong>${ui.esc(a.categoria)}</strong></div>
@@ -1275,6 +1344,79 @@ function soloDigitos(t) {
   return d;
 }
 
+const NOMBRE_MEDIO = { efectivo: 'Efectivo', virtual: 'Virtual' };
+
+/** Todo lo que el cliente pagó, con lo que se sabe de cada cobro. Lo que no se sabe queda vacío. */
+export function cobrosDeCliente(asientosCliente, pagos, cliente) {
+  const propia = (texto) => (texto && texto !== cliente.nombre ? texto : '');
+  return [
+    ...pagos.map((g) => ({ clave: `g-${g.id}`, id: g.id, esPago: true, perdon: g.tipo === 'perdon', fecha: g.fecha, titulo: g.tipo === 'perdon' ? 'Perdón de intereses' : (g.capital && !g.interes ? 'Abono a capital' : 'Pago'), valor: g.monto, capital: g.tipo === 'perdon' ? 0 : g.capital, interes: g.tipo === 'perdon' ? 0 : g.interes, medio: NOMBRE_MEDIO[g.medio] || '', nota: g.nota || '', prestamoId: g.prestamoId, creadoEn: g.creadoEn })),
+    ...asientosCliente.map((a) => ({ clave: `a-${a.id}`, id: a.id, esPago: false, perdon: false, fecha: a.fecha, textoFecha: a.textoFecha, titulo: a.tipo === 'abono' ? 'Abono a capital' : 'Intereses', valor: a.valor, capital: a.tipo === 'abono' ? a.valor : 0, interes: a.tipo === 'abono' ? 0 : a.valor, medio: NOMBRE_MEDIO[a.medio] || a.cuenta || '', medioGuardado: a.medio || '', nota: a.nota || (a.descripcion === a.persona ? '' : propia(a.descripcion)), prestamoId: a.prestamoId || '', creadoEn: a.creadoEn })),
+  ];
+}
+
+function textoPrestamo(p, ctx) {
+  const { dinero, fechas } = ctx;
+  const delExcel = p.porConfirmar && /(\d+(?:[.,]\d+)?)\s*%/.exec(p.porConfirmar.tasa || '');
+  const tasa = p.tasa > 0 ? `al ${Math.round(p.tasa * 100) / 100} %` : (delExcel ? `al ${delExcel[1]} % según el Excel` : '');
+  const fecha = p.porConfirmar && p.porConfirmar.fecha ? 'fecha por confirmar' : `del ${fechas.formatear(p.fecha)}`;
+  return [dinero.formatear(p.capital), tasa, fecha].filter(Boolean).join(' · ');
+}
+
+/** Pantalla Detalles de un cobro del historial del cliente. */
+function verCobro(contenedor, m, cobros, cliente, volver, ctx) {
+  const { ui, dinero, fechas, datos } = ctx;
+  const propios = datos.estado.prestamos.filter((p) => p.clienteId === cliente.id);
+  const prestamo = propios.find((p) => p.id === m.prestamoId);
+  const deEseDia = cobros.filter((x) => x.fecha === m.fecha && !x.perdon);
+  const nombreInteres = prestamo && prestamo.modalidad === 'capital_primero' ? 'Ganancia' : 'A intereses';
+  const raiz = ui.el(`<div class="fran-detalles">
+    <header class="fran-titulo"><button type="button" class="fran-titulo__atras" data-volver aria-label="Volver">‹</button><h1>Detalles</h1></header>
+    <div class="fran-detalles__cabeza"><span class="fran-ico">${m.perdon ? '🎁' : '↩️'}</span><strong>${ui.esc(m.titulo)}</strong></div>
+    <dl>
+      <dt>Cliente</dt><dd>${ui.esc(cliente.nombre)}</dd>
+      <dt>Importe</dt><dd class="numero">${dinero.formatear(m.valor)}</dd>
+      <dt>Fecha</dt><dd>${ui.esc(m.textoFecha || fechas.formatear(m.fecha))}${m.creadoEn ? `<small class="fran-detalles__cuando">${ui.esc(cuandoSeAnoto(m.creadoEn, ctx))}</small>` : ''}</dd>
+      ${m.perdon ? '' : `<dt>A capital</dt><dd class="numero">${dinero.formatear(m.capital)}</dd>
+      <dt>${nombreInteres}</dt><dd class="numero">${dinero.formatear(m.interes)}</dd>
+      <dt>Forma de pago</dt><dd>${ui.esc(m.medio || 'Por confirmar')}</dd>`}
+      <dt>Préstamo</dt><dd>${prestamo ? `<a href="#/prestamo/${encodeURIComponent(prestamo.id)}">${ui.esc(textoPrestamo(prestamo, ctx))}</a>` : 'Por confirmar'}</dd>
+      <dt>Nota</dt><dd>${ui.esc(m.nota || 'Sin nota')}</dd>
+    </dl>
+    ${deEseDia.length > 1 ? `<p class="fran-seccion">Ese día pagó en total ${dinero.formatear(deEseDia.reduce((s, x) => s + x.valor, 0))}</p>
+    <div class="fran-lista">${deEseDia.map((x) => fila({ ui, icono: '↩️', titulo: x.titulo, derecha: `+${dinero.formatear(x.valor)}`, clase: 'fran-mas' })).join('')}</div>` : ''}
+    <div class="fran-detalles__botones">
+      <button type="button" class="boton boton--primario" data-editar>Editar</button>
+      <button type="button" class="boton boton--secundario" data-eliminar>Eliminar</button>
+    </div>
+  </div>`);
+  raiz.querySelector('[data-volver]').addEventListener('click', volver);
+  raiz.querySelector('[data-eliminar]').addEventListener('click', async () => {
+    if (!await ui.confirmar('¿Borrar este movimiento?', { aceptar: 'Sí, borrar', peligro: true })) return;
+    if (m.esPago) await datos.eliminarPago(m.id); else await datos.eliminarAsiento(m.id);
+  });
+  raiz.querySelector('[data-editar]').addEventListener('click', () => {
+    raiz.querySelector('dl').replaceWith(ui.el(`<form class="fran-campos" novalidate>
+      <label><small>Nota: qué se pagó, qué préstamo se recogió</small><input name="nota" autocomplete="off" value="${ui.esc(m.nota)}"></label>
+      ${m.esPago ? '' : `<label><small>Forma de pago</small><select name="medio"><option value="">Por confirmar</option>${Object.entries(NOMBRE_MEDIO).map(([k, v]) => `<option value="${k}"${m.medioGuardado === k ? ' selected' : ''}>${v}</option>`).join('')}</select></label>
+      <label><small>Préstamo</small><select name="prestamoId"><option value="">Por confirmar</option>${propios.map((p) => `<option value="${ui.esc(p.id)}"${p.id === m.prestamoId ? ' selected' : ''}>${ui.esc(textoPrestamo(p, ctx))}</option>`).join('')}</select></label>`}
+      <button class="boton boton--primario fran-guardar">Guardar</button>
+    </form>`));
+    raiz.querySelector('.fran-detalles__botones').remove();
+    raiz.querySelector('form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const f = e.target.elements;
+      try {
+        await datos.detallarCobro(m.id, { nota: f.nota.value, medio: f.medio ? f.medio.value : '', prestamoId: f.prestamoId ? f.prestamoId.value : '' });
+        ui.toast('Guardado.');
+      } catch (error) { ui.toast(error.message); }
+    });
+  });
+  contenedor.innerHTML = '';
+  contenedor.append(raiz);
+  window.scrollTo(0, 0);
+}
+
 function renderFicha(contenedor, id, ctx) {
   const { ui, dinero, datos, motor, fechas } = ctx;
   const estado = datos.estado;
@@ -1294,12 +1436,13 @@ function renderFicha(contenedor, id, ctx) {
   const textoAcuerdo = acuerdo ? `Acuerdo: ${[acuerdo.monto ? `${dinero.formatear(acuerdo.monto)} ${acuerdo.repite ? cuando : ''}`.trim() : (acuerdo.repite ? cuando : ''), !acuerdo.repite && acuerdo.monto ? cuando : (!acuerdo.repite ? cuando : ''), acuerdo.nota].filter(Boolean).join(' · ')}` : '';
   const capitalPrimero = propios.some((p) => p.modalidad === 'capital_primero');
   const conTexto = propios.find((p) => p.acuerdoTexto);
+  const asientosCliente = (estado.fran.asientos || []).filter((a) => a.clienteId === id || (a.persona && norm(a.persona) === norm(cliente.nombre)));
+  const cobros = cobrosDeCliente(asientosCliente, pagos, cliente);
   const historial = [
     ...propios.flatMap((p) => (p.detalle
       ? p.detalle.map((d) => ({ f: d.fecha || '2000-01-01', sinFecha: d.fecha ? null : (d.texto || 'sin fecha'), icono: '💵', t: d.nombre || 'Préstamo', v: `−${dinero.formatear(d.capital)}`, c: 'fran-menos', ruta: `#/prestamo/${encodeURIComponent(p.id)}` }))
       : [{ f: p.fecha, sinFecha: p.porConfirmar && p.porConfirmar.fecha, icono: '💵', t: 'Préstamo', v: `−${dinero.formatear(p.capital)}`, c: 'fran-menos', ruta: `#/prestamo/${encodeURIComponent(p.id)}` }])),
-    ...pagos.map((g) => ({ f: g.fecha, icono: g.tipo === 'perdon' ? '🎁' : '↩️', t: g.tipo === 'perdon' ? 'Perdón de intereses' : (g.capital && !g.interes ? 'Abono a capital' : (g.capital && g.interes ? `Pago: ${dinero.formatear(g.capital)} capital, ${dinero.formatear(g.interes)} ganancia` : 'Pago')), v: `+${dinero.formatear(g.monto)}`, c: 'fran-mas' })),
-    ...(estado.fran.asientos || []).filter((a) => a.clienteId === id || (a.persona && norm(a.persona) === norm(cliente.nombre))).map((a) => ({ f: a.fecha, textoFecha: a.textoFecha, icono: a.tipo === 'abono' ? '↩️' : '%', t: a.tipo === 'abono' ? 'Abono a capital' : 'Intereses', v: `+${dinero.formatear(a.valor)}`, c: 'fran-mas' })),
+    ...cobros.map((m) => ({ f: m.fecha, textoFecha: m.textoFecha, icono: m.perdon ? '🎁' : (m.titulo === 'Intereses' ? '%' : '↩️'), t: m.titulo, v: `+${dinero.formatear(m.valor)}`, c: 'fran-mas', ver: m.clave })),
   ].sort((a, b) => b.f.localeCompare(a.f));
   const tel = soloDigitos(cliente.telefono);
   const editar = `#/cliente/${encodeURIComponent(id)}/editar`;
@@ -1317,7 +1460,7 @@ function renderFicha(contenedor, id, ctx) {
     <div class="fran-progreso"><span style="width:${pct}%"></span></div>
     <p class="fran-nota">${abonosPlan && !recuperado ? `Abono a capital anotado: ${dinero.formatear(abonosPlan)}.` : `Recuperado ${dinero.formatear(recuperado)} de ${dinero.formatear(r.capitalPrestado)} de capital.`}${capitalPrimero ? (r.capitalPendiente === 0 ? ' Ya recuperó todo el capital: lo que pague es ganancia.' : ' Cuando llegue a 100%, todo lo que pague es ganancia.') : ''}</p>
     <p class="fran-seccion">Historial</p>
-    <div class="fran-lista">${historial.map((h) => fila({ ui, icono: h.icono, titulo: h.t, sub: h.sinFecha ? `Fecha por confirmar (${h.sinFecha})` : (h.textoFecha || fechas.formatear(h.f)), derecha: h.v, clase: h.c, ruta: h.ruta })).join('') || '<p class="fran-vacio">Sin movimientos.</p>'}</div>
+    <div class="fran-lista">${historial.map((h) => fila({ ui, icono: h.icono, titulo: h.t, sub: h.sinFecha ? `Fecha por confirmar (${h.sinFecha})` : (h.textoFecha || fechas.formatear(h.f)), derecha: h.v, clase: h.c, ruta: h.ruta, ver: h.ver })).join('') || '<p class="fran-vacio">Sin movimientos.</p>'}</div>
     <div class="fran-tres">
       <a class="azul" href="${tel ? `tel:+${tel}` : editar}">📞 ${tel ? 'Llamar' : 'Poner teléfono'}</a>
       <a class="verde" href="${tel ? `https://wa.me/${tel}` : editar}"${tel ? ' target="_blank" rel="noopener"' : ''}>💬 WhatsApp</a>
@@ -1325,6 +1468,11 @@ function renderFicha(contenedor, id, ctx) {
     </div>
     <a class="fran-enlace-suave" href="${editar}">Editar datos del cliente</a>
   </div>`);
+  const volver = () => { contenedor.innerHTML = ''; renderFicha(contenedor, id, ctx); window.scrollTo(0, 0); };
+  raiz.querySelectorAll('[data-ver]').forEach((b) => b.addEventListener('click', () => {
+    const m = cobros.find((x) => x.clave === b.dataset.ver);
+    if (m) verCobro(contenedor, m, cobros, cliente, volver, ctx);
+  }));
   contenedor.append(raiz);
 }
 
@@ -1594,6 +1742,7 @@ export async function render(contenedor, params, ctx) {
     case 'ficha': return renderFicha(contenedor, params.id, ctx);
     case 'agenda': return renderAgenda(contenedor, ctx);
     case 'virtual': return renderVirtual(contenedor, ctx);
+    case 'ganancias': return renderGanancias(contenedor, ctx);
     case 'propiedades': return renderPropiedades(contenedor, ctx);
     case 'propiedad': {
       const { delAnio } = arriendosDelAnio(ctx);

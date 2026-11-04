@@ -11,7 +11,7 @@
 
 import * as ui from './ui.js';
 
-const VERSION_APP = '3.11.0';
+const VERSION_APP = '3.12.0';
 const contenedor = document.getElementById('pantalla');
 
 // ---------- Rutas (sección 7 de la especificación) ----------
@@ -47,6 +47,7 @@ const RUTAS = [
   { patron: '/caja/movimiento/:tipo', pantalla: 'caja', vista: 'movimiento', pestana: 'informes', libro: 'prestamos' },
   { patron: '/agenda', pantalla: 'fran', vista: 'agenda', pestana: 'inicio', libro: 'prestamos' },
   { patron: '/virtual', pantalla: 'fran', vista: 'virtual', pestana: 'inicio', libro: 'personal' },
+  { patron: '/ganancias', pantalla: 'fran', vista: 'ganancias', pestana: 'inicio', libro: 'personal' },
   { patron: '/ajustes', pantalla: 'ajustes', vista: 'ajustes', pestana: 'yo' },
   { patron: '/ajustes/:seccion', pantalla: 'ajustes', vista: 'ajustes', pestana: 'yo' }
 ];

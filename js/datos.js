@@ -1421,6 +1421,23 @@ export const datos = {
     await guardar();
   },
 
+  // Nota, forma de pago y préstamo de un cobro. A un pago solo se le cambia la nota: su forma de pago mueve la caja.
+  async detallarCobro(id, cambios) {
+    const pago = buscar('pagos', id);
+    if (pago) {
+      pago.nota = limpiarTexto(cambios.nota);
+    } else {
+      const i = estadoActual.fran.asientos.findIndex((a) => a.id === id);
+      exigir(i >= 0, 'No encontré ese movimiento.');
+      const anterior = estadoActual.fran.asientos[i];
+      estadoActual.fran.asientos[i] = {
+        ...anterior, ...(anterior.importado ? { huella: anterior.huella || huellaAsiento(anterior) } : {}),
+        nota: limpiarTexto(cambios.nota), medio: limpiarTexto(cambios.medio), prestamoId: limpiarTexto(cambios.prestamoId),
+      };
+    }
+    await guardar();
+  },
+
   async actualizarAsiento(id, cambios) {
     const i = estadoActual.fran.asientos.findIndex((a) => a.id === id);
     exigir(i >= 0, 'No encontré ese movimiento.');

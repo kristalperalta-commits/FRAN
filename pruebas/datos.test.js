@@ -214,6 +214,17 @@ describe('datos.js', () => {
   });
 
   describe('lo dictado por el chat', () => {
+    test('la nota de un cobro histórico sobrevive a actualizar históricos', async () => {
+      const fran = { asientos: [{ id: 'h1', libro: 'prestamos', fecha: '2026-10-31', tipo: 'abono', categoria: 'Abono a capital', descripcion: 'X', valor: 100, importado: true }] };
+      await datos.actualizarHistoricos(JSON.stringify({ fran }));
+      await datos.detallarCobro('h1', { nota: 'Recogió otro préstamo', medio: 'efectivo', prestamoId: '' });
+      await datos.actualizarHistoricos(JSON.stringify({ fran }));
+      const iguales = datos.estado.fran.asientos.filter((x) => x.descripcion === 'X');
+      assert.equal(iguales.length, 1);
+      assert.equal(iguales[0].nota, 'Recogió otro préstamo');
+      assert.equal(iguales[0].medio, 'efectivo');
+    });
+
     test('se anota una sola vez, cuadra la caja y cruza exportar e importar', async () => {
       const c = await datos.agregarCliente({ nombre: 'Rosa' });
       const o = await datos.agregarCliente({ nombre: 'Marta' });

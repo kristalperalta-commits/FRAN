@@ -434,3 +434,9 @@ a.fran-plata { color: inherit; text-decoration: none; }
 .clientes-aparte summary { min-height: 44px; display: flex; align-items: center; color: var(--texto-suave); font-size: 0.92rem; font-weight: 500; cursor: pointer; }
 .clientes-aparte p { margin: 0 0 8px; font-size: 0.84rem; }
 .clientes-aparte .fila__monto { font-weight: 500; }
+
+/* Ganancias: reparto del mes en tres. */
+.fran-reparto { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; margin-bottom: 12px; }
+.fran-reparto .fran-tarjeta { padding: 10px; min-width: 0; }
+.fran-reparto strong { display: block; font-size: 1rem; overflow-wrap: anywhere; }
+.fran-detalles dd a { color: inherit; text-decoration: underline; }
