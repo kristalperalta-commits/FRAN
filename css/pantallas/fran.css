@@ -422,3 +422,8 @@ a.fran-plata { color: inherit; text-decoration: none; }
 .fran-teclas .fran-tecla-ok { background: color-mix(in srgb, var(--libro) 30%, var(--fondo-tarjeta)); }
 .fran-iconos small { font-size: 0.76rem; overflow-wrap: normal; }
 .fran-teclas button, .fran-tecla-fecha { min-height: 48px; }
+
+/* Tocar un movimiento abre Detalles */
+.fran-fila[role="button"] { cursor: pointer; }
+.fran-fila[role="button"]:active { background: var(--fondo-suave); }
+.fran-detalles__cuando { display: block; margin-top: 3px; color: var(--texto-suave); font-size: 0.82rem; }

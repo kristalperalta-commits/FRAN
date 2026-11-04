@@ -192,6 +192,27 @@ describe('datos.js', () => {
     });
   });
 
+  describe('corregir históricos', () => {
+    const fila = (id, descripcion, valor) => ({ id, libro: 'personal', fecha: '2025-01-02', tipo: 'gasto', categoria: 'Agua', descripcion, valor, importado: true });
+    test('lo editado y lo borrado no vuelve al cargar otra vez, aunque cambien los números internos', async () => {
+      await datos.actualizarHistoricos(JSON.stringify({ fran: { asientos: [fila('mg1', 'a', 1000), fila('mg2', 'b', 2000), fila('mg3', 'c', 3000)] } }));
+      await datos.actualizarAsiento('mg1', { fecha: '2025-01-03', valor: 1500, categoria: 'Compras', descripcion: 'a2' });
+      await datos.eliminarAsiento('mg2');
+      await datos.importarJSON(datos.exportarJSON());
+      await datos.actualizarHistoricos(JSON.stringify({ fran: { asientos: [fila('mg7', 'a', 1000), fila('mg8', 'b', 2000), fila('mg9', 'c', 3000), fila('mg10', 'd', 4000)] } }));
+      const v = datos.estado.fran.asientos.map((a) => a.valor).sort((x, y) => x - y);
+      assert.deepEqual(v, [1500, 3000, 4000]);
+      assert.equal(datos.estado.fran.asientos.find((a) => a.valor === 1500).descripcion, 'a2');
+    });
+
+    test('si hay dos iguales y borra uno, el otro se queda', async () => {
+      await datos.actualizarHistoricos(JSON.stringify({ fran: { asientos: [fila('mg1', 'pollo', 1000), fila('mg2', 'pollo', 1000)] } }));
+      await datos.eliminarAsiento('mg1');
+      await datos.actualizarHistoricos(JSON.stringify({ fran: { asientos: [fila('mg1', 'pollo', 1000), fila('mg2', 'pollo', 1000)] } }));
+      assert.equal(datos.estado.fran.asientos.length, 1);
+    });
+  });
+
   describe('agenda en los históricos', () => {
     test('agrega lo nuevo, completa la nota vacía y no revive lo ya cobrado', async () => {
       await datos.actualizarFran({ agenda: [{ id: 'a', nombre: 'Rosa', fecha: '2026-11-03', nota: '', hecho: true }] });

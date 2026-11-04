@@ -11,7 +11,7 @@
 
 import * as ui from './ui.js';
 
-const VERSION_APP = '3.8.0';
+const VERSION_APP = '3.9.0';
 const contenedor = document.getElementById('pantalla');
 
 // ---------- Rutas (sección 7 de la especificación) ----------
@@ -260,6 +260,16 @@ async function renderizar({ conservarScroll = false } = {}) {
 
 // ---------- Service worker ----------
 
+// La app no se agranda como una foto: Safari ignora el permiso de la página y hay que frenar el gesto.
+function bloquearZoom() {
+  for (const gesto of ['gesturestart', 'gesturechange', 'gestureend']) {
+    document.addEventListener(gesto, (e) => e.preventDefault(), { passive: false });
+  }
+  document.addEventListener('touchmove', (e) => {
+    if (e.touches.length > 1) e.preventDefault();
+  }, { passive: false });
+}
+
 function registrarServiceWorker() {
   const protocolo = window.location.protocol;
   if (protocolo !== 'http:' && protocolo !== 'https:') return;
@@ -285,6 +295,7 @@ function registrarServiceWorker() {
 // ---------- Arranque ----------
 
 async function arrancar() {
+  bloquearZoom();
   const fallos = await cargarModulosBase();
   if (fallos.length > 0) {
     const lista = fallos.map((f) => `${f.nombre}.js: ${f.error && f.error.message ? f.error.message : f.error}`).join('\n');

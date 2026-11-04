@@ -304,10 +304,11 @@ function avisoSinDetalle(lista) {
   return '<p class="fran-explica">ⓘ Este mes solo tiene el total de cada categoría, tomado de Mis Gastos. Los movimientos uno por uno aparecen cuando se carguen los pantallazos de ese mes.</p>';
 }
 
-function fila({ icono, titulo: t, sub, derecha, clase = '', ruta, ui }) {
+function fila({ icono, titulo: t, sub, derecha, clase = '', ruta, ui, ver }) {
   const interior = `<span class="fran-ico">${ui.esc(icono)}</span>
     <span class="fran-fila__texto"><strong>${ui.esc(t)}</strong>${sub ? `<small>${ui.esc(sub)}</small>` : ''}</span>
     <span class="fran-fila__valor numero ${clase}">${ui.esc(clase ? String(derecha).replace(/^[+−-]\s*/, '') : derecha)}</span>`;
+  if (ver) return `<div class="fran-fila" role="button" tabindex="0" data-ver="${ui.esc(ver)}">${interior}</div>`;
   return ruta ? `<a class="fran-fila" href="${ui.esc(ruta)}">${interior}</a>` : `<div class="fran-fila">${interior}</div>`;
 }
 
@@ -323,7 +324,7 @@ function listaPorDia(lista, ctx) {
     html += `<div class="fran-dia"><span>${ui.esc(fechaLinda(dia, ctx))}</span><span>${g ? `G: <b class="numero">${dinero.formatear(g)}</b> ` : ''}${i ? `I: <b class="numero">${dinero.formatear(i)}</b>` : ''}</span></div>`;
     for (const a of filas) {
       const signo = a.tipo === 'ingreso' ? '+' : (a.tipo === 'gasto' ? '−' : '');
-      html += fila({ ui, icono: iconoDe(a.categoria), titulo: a.categoria, sub: a.descripcion, derecha: `${signo}${dinero.formatear(a.valor)}`, clase: a.tipo === 'ingreso' ? 'fran-mas' : (a.tipo === 'gasto' ? 'fran-menos' : '') });
+      html += fila({ ui, ver: a.id, icono: iconoDe(a.categoria), titulo: a.categoria, sub: a.descripcion, derecha: `${signo}${dinero.formatear(a.valor)}`, clase: a.tipo === 'ingreso' ? 'fran-mas' : (a.tipo === 'gasto' ? 'fran-menos' : '') });
     }
   }
   return html || `<p class="fran-vacio">No hay movimientos en este mes.</p>`;
@@ -461,6 +462,7 @@ function renderLibro(contenedor, id, ctx) {
     ${m.length ? `<div class="fran-lista">${listaPorDia(m, ctx)}</div>` : vacioConSalto(lista, ctx, 'No hay movimientos en este mes.')}
   </div>`);
   conectarMes(raiz, mes, ctx, redibujar);
+  conectarVer(raiz, m, contenedor, id, redibujar, ctx);
   contenedor.append(raiz);
 }
 
@@ -547,7 +549,7 @@ function renderProductos(contenedor, ctx, redibujar) {
   const inventario = lista.filter((a) => a.tipo === 'gasto' && a.categoria === 'Inventario sin vender');
   const inversiones = lista.filter((a) => a.tipo === 'gasto' && a.categoria === 'Inversiones');
   const vendido = deTipo(lista, 'ingreso').sort((a, b) => b.fecha.localeCompare(a.fecha));
-  const filas = (l, signo) => l.map((a) => fila({ ui, icono: iconoDe(a.categoria), titulo: a.descripcion || a.categoria, sub: a.textoFecha || fechas.formatear(a.fecha), derecha: `${signo}${dinero.formatear(a.valor)}`, clase: signo === '+' ? 'fran-mas' : '' })).join('');
+  const filas = (l, signo) => l.map((a) => fila({ ui, ver: a.id, icono: iconoDe(a.categoria), titulo: a.descripcion || a.categoria, sub: a.textoFecha || fechas.formatear(a.fecha), derecha: `${signo}${dinero.formatear(a.valor)}`, clase: signo === '+' ? 'fran-mas' : '' })).join('');
   const raiz = ui.el(`<div>
     ${titular('productos', ctx, '#/inicio')}
     ${caja3(['Metí yo', dinero.formatear(meti)], ['Vendí', dinero.formatear(vendi)], ['Ganancia', dinero.formatear(vendi - gastosProductos)], ctx)}
@@ -557,6 +559,7 @@ function renderProductos(contenedor, ctx, redibujar) {
     <p class="fran-seccion">Vendido</p><div class="fran-lista">${filas(vendido, '+') || '<p class="fran-vacio">Todavía sin ventas.</p>'}</div>
   </div>`);
   conectarMes(raiz, mes, ctx, redibujar);
+  conectarVer(raiz, lista, contenedor, 'productos', redibujar, ctx);
   contenedor.append(raiz);
 }
 
@@ -686,9 +689,27 @@ function graficaDelMes(lista, mes, ctx) {
   </svg>`;
 }
 
+function conectarVer(raiz, lista, contenedor, id, volver, ctx) {
+  raiz.querySelectorAll('[data-ver]').forEach((b) => b.addEventListener('click', () => {
+    const asiento = lista.find((x) => x.id === b.dataset.ver);
+    if (asiento) { verAsiento(contenedor, asiento, id, volver, ctx); window.scrollTo(0, 0); }
+  }));
+}
+
+function cuandoSeAnoto(iso, ctx) {
+  const f = new Date(iso);
+  if (Number.isNaN(f.getTime())) return '';
+  const dia = `${f.getFullYear()}-${String(f.getMonth() + 1).padStart(2, '0')}-${String(f.getDate()).padStart(2, '0')}`;
+  return `Anotado el ${ctx.fechas.formatear(dia)}, ${String(f.getHours()).padStart(2, '0')}:${String(f.getMinutes()).padStart(2, '0')}`;
+}
+
 /** Pantalla Detalles de un movimiento: tipo, importe, fecha y nota, con Editar y Eliminar. */
-function verAsiento(contenedor, a, id, volver, ctx) {
+function verAsiento(contenedor, visto, id, volver, ctx) {
   const { ui, dinero, fechas, datos } = ctx;
+  // Se trabaja con el movimiento guardado: en Finanzas algunos se muestran con otro nombre.
+  const real = datos.estado.fran.asientos.find((x) => x.id === visto.id);
+  const a = real || visto;
+  const editable = !!real && !a.sinDetalle;
   contenedor.innerHTML = '';
   const NOMBRE_TIPO = { gasto: 'Gasto', ingreso: 'Ingreso', abono: 'Abono a capital', transferencia: 'Transferencia', uso: 'Uso' };
   const raiz = ui.el(`<div class="fran-detalles">
@@ -697,12 +718,12 @@ function verAsiento(contenedor, a, id, volver, ctx) {
     <dl>
       <dt>Tipo</dt><dd>${ui.esc(NOMBRE_TIPO[a.tipo] || a.tipo)}</dd>
       <dt>Importe</dt><dd class="numero">${dinero.formatear(a.valor)}</dd>
-      <dt>Fecha</dt><dd>${ui.esc(a.textoFecha || fechas.formatear(a.fecha))}</dd>
+      <dt>Fecha</dt><dd>${ui.esc(a.textoFecha || fechas.formatear(a.fecha))}${a.creadoEn ? `<small class="fran-detalles__cuando">${ui.esc(cuandoSeAnoto(a.creadoEn, ctx))}</small>` : ''}</dd>
       ${a.descripcion ? `<dt>Nota</dt><dd>${ui.esc(a.descripcion)}</dd>` : ''}
       ${a.cuenta ? `<dt>Cuenta</dt><dd>${ui.esc(a.cuenta)}</dd>` : ''}
     </dl>
     ${a.conFoto ? '<img class="fran-recibo oculto" alt="Foto del recibo"><p class="fran-nota oculto" data-sin-foto>La foto quedó en el aparato donde la tomaste.</p>' : ''}
-    ${a.importado ? '<p class="fran-nota">Viene de tu historial de Mis Gastos.</p>' : `<div class="fran-detalles__botones">
+    ${!editable ? `<p class="fran-nota">${a.sinDetalle ? 'Es un total del mes: no tiene movimientos para editar.' : 'Este pago se corrige desde el préstamo del cliente.'}</p>` : `<div class="fran-detalles__botones">
       <button type="button" class="boton boton--primario" data-editar>Editar</button>
       <button type="button" class="boton boton--secundario" data-eliminar>Eliminar</button>
     </div>`}

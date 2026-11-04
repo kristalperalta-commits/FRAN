@@ -136,7 +136,13 @@ function franVacio() {
     virtualMov: [],
     virtualHistorial: [],
     virtualCuentas: null,
+    historicosBorrados: [],
   };
+}
+
+/** Identifica un movimiento de Mis Gastos aunque cambie su número al cargar otros meses. */
+function huellaAsiento(a) {
+  return [a.fecha, a.libro, a.tipo, a.categoria, a.descripcion || '', a.valor].join('|');
 }
 
 /** Siguiente fecha de un movimiento recurrente. El día del mes se conserva cuando el mes lo tiene. */
@@ -180,6 +186,7 @@ function completarFran(fran) {
     virtualMov: lista(f.virtualMov).filter((m) => m && m.id && esFechaValida(m.fecha) && Number.isInteger(m.valor) && m.valor > 0 && (m.tipo === 'entra' || m.tipo === 'sale')),
     virtualHistorial: lista(f.virtualHistorial),
     virtualCuentas: f.virtualCuentas && Number.isInteger(f.virtualCuentas.valor) ? f.virtualCuentas : null,
+    historicosBorrados: lista(f.historicosBorrados).filter((h) => typeof h === 'string'),
   };
 }
 
@@ -1359,6 +1366,7 @@ export const datos = {
       valor: a.valor, cuenta: limpiarTexto(a.cuenta), destino: limpiarTexto(a.destino),
     };
     if (a.conFoto === true) asiento.conFoto = true;
+    asiento.creadoEn = new Date().toISOString();
     estadoActual.fran.asientos.push(asiento);
     await guardar();
     return asiento;
@@ -1385,8 +1393,9 @@ export const datos = {
     exigir(i >= 0, 'No encontré ese movimiento.');
     exigirFecha(cambios.fecha, 'del movimiento');
     exigirMonto(cambios.valor, 'valor del movimiento');
+    const anterior = estadoActual.fran.asientos[i];
     estadoActual.fran.asientos[i] = {
-      ...estadoActual.fran.asientos[i], fecha: cambios.fecha, valor: cambios.valor,
+      ...anterior, ...(anterior.importado ? { huella: anterior.huella || huellaAsiento(anterior) } : {}), fecha: cambios.fecha, valor: cambios.valor,
       categoria: limpiarTexto(cambios.categoria) || 'Otros', descripcion: limpiarTexto(cambios.descripcion),
     };
     await guardar();
@@ -1428,6 +1437,8 @@ export const datos = {
   },
 
   async eliminarAsiento(id) {
+    const borrado = estadoActual.fran.asientos.find((a) => a.id === id);
+    if (borrado && borrado.importado) estadoActual.fran.historicosBorrados.push(borrado.huella || huellaAsiento(borrado));
     estadoActual.fran.asientos = estadoActual.fran.asientos.filter((a) => a.id !== id);
     await guardar();
   },
@@ -1447,7 +1458,17 @@ export const datos = {
       if (x.clienteId && !ya.clienteId) ya.clienteId = x.clienteId;
       if (x.nota && !ya.nota) ya.nota = x.nota;
     }
-    estadoActual.fran = { ...estadoActual.fran, asientos: [...nuevo.asientos.filter((a) => a.importado), ...propios], agenda, propiedades: nuevo.propiedades, pension: { ...estadoActual.fran.pension, origen: nuevo.pension.origen || estadoActual.fran.pension.origen }, virtualPorDefinir: nuevo.virtualPorDefinir, virtualHistorial: nuevo.virtualHistorial, virtualCuentas: estadoActual.fran.virtualCuentas || nuevo.virtualCuentas };
+    // Lo que ella borró o corrigió de los históricos sigue así aunque se vuelvan a cargar.
+    const corregidos = estadoActual.fran.asientos.filter((a) => a.importado && a.huella);
+    const yaCorregidos = [...estadoActual.fran.historicosBorrados, ...corregidos.map((a) => a.huella)];
+    const importados = nuevo.asientos.filter((a) => {
+      if (!a.importado) return false;
+      const i = yaCorregidos.indexOf(huellaAsiento(a));
+      if (i < 0) return true;
+      yaCorregidos.splice(i, 1);
+      return false;
+    });
+    estadoActual.fran = { ...estadoActual.fran, asientos: [...importados, ...corregidos, ...propios], agenda, propiedades: nuevo.propiedades, pension: { ...estadoActual.fran.pension, origen: nuevo.pension.origen || estadoActual.fran.pension.origen }, virtualPorDefinir: nuevo.virtualPorDefinir, virtualHistorial: nuevo.virtualHistorial, virtualCuentas: estadoActual.fran.virtualCuentas || nuevo.virtualCuentas };
     // Préstamos que el plan corrige (marcados "actualizar") y pagos del plan: no tocan la caja.
     for (const p of Array.isArray(objeto.prestamos) ? objeto.prestamos : []) {
       if (!p.actualizar) continue;
