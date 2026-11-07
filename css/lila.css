@@ -401,3 +401,7 @@ html body .fran-campos--grande > label.oculto { display: none; }
 .fran-tachados > summary { min-height: 48px; display: flex; align-items: center; color: var(--text-2); font-size: 14px; cursor: pointer; }
 .fran-tachados .fran-campos--grande > label { background: var(--tile); box-shadow: none; }
 .fran-tachados .fran-campos--grande { padding-bottom: 12px; }
+
+/* ---------- Tamaño de la letra en Yo ---------- */
+html body .ajustes-letra__titulo { display: block; margin: 0 0 10px; color: var(--text); font-size: 15px; }
+.ajustes-letra__muestra { color: var(--text); line-height: 1; }

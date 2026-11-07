@@ -1384,6 +1384,9 @@ export const datos = {
     };
     if (a.conFoto === true) asiento.conFoto = true;
     if (a.persona) asiento.persona = limpiarTexto(a.persona);
+    // Plata de un negocio compartido: se ve en su libro, pero no entra a sus cuentas ni a Finanzas.
+    if (a.soloLibro === true) asiento.soloLibro = true;
+    if (a.textoFecha) asiento.textoFecha = limpiarTexto(a.textoFecha);
     asiento.creadoEn = new Date().toISOString();
     estadoActual.fran.asientos.push(asiento);
     await guardar();

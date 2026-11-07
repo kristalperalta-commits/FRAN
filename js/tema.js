@@ -51,4 +51,30 @@
 
   window.Tema = { lista: LISTA, actual, elegir };
   aplicar(actual());
+
+  // Tamaño de la letra: agranda toda la app por igual (letras, números, botones y cuadros).
+  const CLAVE_LETRA = 'fran-letra';
+  const LETRAS = [
+    { id: 'normal', nombre: 'Normal', zoom: 1 },
+    { id: 'grande', nombre: 'Grande', zoom: 1.12 },
+    { id: 'muy-grande', nombre: 'Muy grande', zoom: 1.25 },
+    { id: 'enorme', nombre: 'Enorme', zoom: 1.38 }
+  ];
+  const buscarLetra = (id) => LETRAS.find((l) => l.id === id) || LETRAS[0];
+  function letraActual() {
+    try { return buscarLetra(window.localStorage.getItem(CLAVE_LETRA)).id; } catch (_error) { return 'normal'; }
+  }
+  function aplicarLetra(id) {
+    const letra = buscarLetra(id);
+    document.documentElement.style.zoom = letra.zoom === 1 ? '' : String(letra.zoom);
+    document.documentElement.setAttribute('data-letra', letra.id);
+    return letra.id;
+  }
+  function elegirLetra(id) {
+    const elegida = aplicarLetra(id);
+    try { window.localStorage.setItem(CLAVE_LETRA, elegida); } catch (_error) { /* dura hasta cerrar la app */ }
+    return elegida;
+  }
+  window.Letra = { lista: LETRAS, actual: letraActual, elegir: elegirLetra };
+  aplicarLetra(letraActual());
 })();

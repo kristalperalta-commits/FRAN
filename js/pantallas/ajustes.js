@@ -127,6 +127,27 @@ function seccionTemas(ctx) {
   return seccion;
 }
 
+/** Tamaño de la letra: se ve el cambio enseguida, en este aparato. */
+function seccionLetra(ctx) {
+  const { ui } = ctx;
+  const letra = window.Letra;
+  if (!letra) return document.createDocumentFragment();
+  const seccion = ui.el(`
+    <section class="tarjeta ajustes-seccion">
+      <h2 class="ajustes-letra__titulo">🔠 Tamaño de la letra</h2>
+      <div class="ajustes-temas">
+        ${letra.lista.map((l) => `<button type="button" class="ajustes-tema" data-letra-opcion="${ui.esc(l.id)}" aria-pressed="${l.id === letra.actual()}"><span class="ajustes-letra__muestra" style="font-size:${Math.round(13 * l.zoom)}px">Aa</span><span class="ajustes-tema__nombre">${ui.esc(l.nombre)}</span></button>`).join('')}
+      </div>
+    </section>
+  `);
+  const botones = [...seccion.querySelectorAll('[data-letra-opcion]')];
+  botones.forEach((boton) => boton.addEventListener('click', () => {
+    const elegida = letra.elegir(boton.dataset.letraOpcion);
+    botones.forEach((otro) => otro.setAttribute('aria-pressed', String(otro.dataset.letraOpcion === elegida)));
+  }));
+  return seccion;
+}
+
 function seccionNombre(ctx) {
   const { ui, datos } = ctx;
   const nombreActual = (datos.estado.config && datos.estado.config.nombreNegocio) || 'Mis Préstamos';
@@ -781,6 +802,7 @@ export async function render(contenedor, params, ctx) {
   if (saltar) { abiertos.clear(); abiertos.add(irA); }
   contenedor.append(ui.el(`<header class="fran-titulo"><a href="#/inicio" class="fran-titulo__atras" aria-label="Volver">‹</a><h1>Yo</h1></header>`));
   contenedor.append(seccionTemas(ctx));
+  contenedor.append(seccionLetra(ctx));
   contenedor.append(ui.el('<p class="fran-seccion">Ajustes</p>'));
   contenedor.append(plegable('⚙️', 'Categorías', seccionCategorias(ctx), ui));
   contenedor.append(ui.el('<a class="fran-enlace" href="#/libro/pension"><span>💱</span>Moneda COP · tasa USD</a>'));
