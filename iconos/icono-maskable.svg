@@ -4,7 +4,7 @@
     <linearGradient id="oro" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#FDE68A"/><stop offset="1" stop-color="#F59E0B"/></linearGradient>
   </defs>
   <rect width="512" height="512" fill="url(#g)"/>
-  <g transform="translate(256 256) scale(.8) translate(-256 -256)"><path d="M206 132c18 12 82 12 100 0l-22 54h-56z" fill="#fff"/>
+  <g transform="translate(256 262) scale(1.02) translate(-262 -273)"><path d="M206 132c18 12 82 12 100 0l-22 54h-56z" fill="#fff"/>
   <path d="M228 186h56c78 40 120 108 104 166-12 44-62 62-132 62s-120-18-132-62c-16-58 26-126 104-166z" fill="#fff"/>
   <rect x="218" y="176" width="76" height="20" rx="10" fill="#6EE7B7"/>
   <rect x="222" y="244" width="34" height="122" rx="17" fill="#6A3DE8"/>
