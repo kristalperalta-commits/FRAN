@@ -16,6 +16,7 @@
 
 import { CATEGORIAS_BASE, INGRESOS_DE_OTRO_LIBRO, LIBROS, categoriasDe, iconoDe } from './fran.js';
 import { calendarioIcs } from '../recordatorios.js';
+import { abrirApariencia } from '../apariencia.js';
 
 export const titulo = 'Yo';
 
@@ -801,8 +802,9 @@ export async function render(contenedor, params, ctx) {
   ultimoSalto = irA || '';
   if (saltar) { abiertos.clear(); abiertos.add(irA); }
   contenedor.append(ui.el(`<header class="fran-titulo"><a href="#/inicio" class="fran-titulo__atras" aria-label="Volver">‹</a><h1>Yo</h1></header>`));
-  contenedor.append(seccionTemas(ctx));
-  contenedor.append(seccionLetra(ctx));
+  const apariencia = ui.el('<button type="button" class="fran-enlace fran-enlace--boton"><span>🎨</span>Apariencia: temas y tamaño de la letra</button>');
+  apariencia.addEventListener('click', () => abrirApariencia(''));
+  contenedor.append(apariencia);
   contenedor.append(ui.el('<p class="fran-seccion">Ajustes</p>'));
   contenedor.append(plegable('⚙️', 'Categorías', seccionCategorias(ctx), ui));
   contenedor.append(ui.el('<a class="fran-enlace" href="#/libro/pension"><span>💱</span>Moneda COP · tasa USD</a>'));

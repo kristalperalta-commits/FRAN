@@ -39,42 +39,65 @@
     return tema.id;
   }
 
+  // Cada libro puede tener su propio tema; si no tiene, usa el de toda la app.
+  const CLAVE_LIBROS = 'fran-tema-libros';
+  let libroVisible = null;
+  function temasLibros() {
+    try { return JSON.parse(window.localStorage.getItem(CLAVE_LIBROS)) || {}; } catch (_error) { return {}; }
+  }
+  function temaDeLibro(libro) {
+    const t = libro ? temasLibros()[libro] : null;
+    return t && LISTA.some((x) => x.id === t) ? t : null;
+  }
+  function aplicarPara(libro) {
+    libroVisible = libro || null;
+    return aplicar(temaDeLibro(libroVisible) || actual());
+  }
   function elegir(id) {
-    const elegido = aplicar(id);
+    const elegido = buscar(id).id;
     try {
       window.localStorage.setItem(CLAVE, elegido);
     } catch (_error) {
       // Sin almacenamiento el tema dura hasta cerrar la app.
     }
+    aplicarPara(libroVisible);
     return elegido;
   }
+  function elegirParaLibro(libro, id) {
+    const mapa = temasLibros();
+    if (id) mapa[libro] = buscar(id).id; else delete mapa[libro];
+    try { window.localStorage.setItem(CLAVE_LIBROS, JSON.stringify(mapa)); } catch (_error) { /* dura hasta cerrar */ }
+    aplicarPara(libroVisible);
+  }
 
-  window.Tema = { lista: LISTA, actual, elegir };
+  window.Tema = { lista: LISTA, actual, elegir, temaDeLibro, elegirParaLibro, aplicarPara, libroVisible: () => libroVisible };
   aplicar(actual());
 
-  // Tamaño de la letra: agranda toda la app por igual (letras, números, botones y cuadros).
+  // Tamaño de la letra en porcentaje: agranda toda la app por igual (letras, números, botones y cuadros).
   const CLAVE_LETRA = 'fran-letra';
-  const LETRAS = [
-    { id: 'normal', nombre: 'Normal', zoom: 1 },
-    { id: 'grande', nombre: 'Grande', zoom: 1.12 },
-    { id: 'muy-grande', nombre: 'Muy grande', zoom: 1.25 },
-    { id: 'enorme', nombre: 'Enorme', zoom: 1.38 }
-  ];
-  const buscarLetra = (id) => LETRAS.find((l) => l.id === id) || LETRAS[0];
+  const VIEJOS = { normal: 100, grande: 112, 'muy-grande': 125, enorme: 138 };
+  const MIN = 85;
+  const MAX = 150;
+  const limitar = (n) => Math.min(MAX, Math.max(MIN, Math.round(n)));
   function letraActual() {
-    try { return buscarLetra(window.localStorage.getItem(CLAVE_LETRA)).id; } catch (_error) { return 'normal'; }
+    try {
+      const v = window.localStorage.getItem(CLAVE_LETRA);
+      if (v in VIEJOS) return VIEJOS[v];
+      return Number(v) > 0 ? limitar(Number(v)) : 100;
+    } catch (_error) { return 100; }
   }
-  function aplicarLetra(id) {
-    const letra = buscarLetra(id);
-    document.documentElement.style.zoom = letra.zoom === 1 ? '' : String(letra.zoom);
-    document.documentElement.setAttribute('data-letra', letra.id);
-    return letra.id;
+  function aplicarLetra(pct) {
+    const n = limitar(pct);
+    document.documentElement.style.zoom = n === 100 ? '' : String(n / 100);
+    // Para los arreglos de CSS cuando la letra es muy grande.
+    document.documentElement.setAttribute('data-letra', n >= 132 ? 'enorme' : (n >= 118 ? 'muy-grande' : 'normal'));
+    return n;
   }
-  function elegirLetra(id) {
-    const elegida = aplicarLetra(id);
-    try { window.localStorage.setItem(CLAVE_LETRA, elegida); } catch (_error) { /* dura hasta cerrar la app */ }
-    return elegida;
+  function elegirLetra(pct) {
+    const n = aplicarLetra(pct);
+    try { window.localStorage.setItem(CLAVE_LETRA, String(n)); } catch (_error) { /* dura hasta cerrar la app */ }
+    return n;
   }
-  window.Letra = { lista: LETRAS, actual: letraActual, elegir: elegirLetra };
+  window.Letra = { min: MIN, max: MAX, paso: 5, actual: letraActual, elegir: elegirLetra };
   aplicarLetra(letraActual());
 })();

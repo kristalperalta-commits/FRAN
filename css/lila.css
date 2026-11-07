@@ -412,3 +412,29 @@ html body .ajustes-tema { flex-direction: row; }
 html[data-letra="muy-grande"] .fran-libro--chica .fran-libro__valor, html[data-letra="enorme"] .fran-libro--chica .fran-libro__valor { font-size: 12px; overflow-wrap: normal; white-space: nowrap; }
 html[data-letra="enorme"] .fran-libros-chicos { gap: 6px; }
 html[data-letra="enorme"] .fran-libro--chica { padding: 10px 7px; }
+
+/* Pensión: lo prestado en un solo renglón que se abre */
+.fran-prestado-pension > summary { gap: 12px; min-height: 64px; color: var(--text); }
+.fran-prestado-pension > summary b { flex: none; font-size: 15px; }
+.fran-prestado-pension .fran-lista { margin-bottom: 6px; }
+
+/* ---------- Tuerquita: apariencia ---------- */
+.fran-hola__botones { display: flex; gap: 8px; }
+button.fran-campana { border: 0; padding: 0; cursor: pointer; }
+.fran-enlace--boton { width: 100%; border: 0; font: inherit; font-size: 15px; text-align: left; cursor: pointer; }
+.fran-apariencia { max-height: 88vh; overflow-y: auto; }
+.fran-apariencia h2 { margin: 0 0 12px; font-size: 18px; text-align: center; }
+.fran-apariencia__etiqueta { display: flex; justify-content: space-between; margin: 14px 0 8px; color: var(--text-2); font-size: 13px; }
+.fran-apariencia__etiqueta b { color: var(--text); font-size: 14px; }
+.fran-apariencia__partes { display: flex; gap: 8px; margin: 0 -18px; padding: 0 18px 4px; overflow-x: auto; scrollbar-width: none; }
+.fran-apariencia__partes::-webkit-scrollbar { display: none; }
+.fran-apariencia__partes button { flex: none; display: flex; flex-direction: column; align-items: center; gap: 4px; min-width: 76px; padding: 10px 6px; border: 0; border-radius: 18px; background: var(--tile); color: var(--text); font: inherit; font-size: 12px; cursor: pointer; }
+.fran-apariencia__partes button span { font-size: 24px; line-height: 1; }
+.fran-apariencia__partes button.activo { box-shadow: inset 0 0 0 2px var(--accent); }
+.fran-apariencia__temas { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+.ajustes-tema__color--igual { background: conic-gradient(#8B6CFF, #34C79A, #EE6AAE, #FCD34D, #8B6CFF); }
+.fran-apariencia__letra { display: flex; align-items: center; gap: 12px; min-height: 52px; padding: 0 14px; border-radius: 18px; background: var(--tile); }
+.fran-apariencia__letra span { color: var(--text-2); font-size: 14px; }
+.fran-apariencia__letra span.grande { font-size: 24px; }
+.fran-apariencia__letra input { flex: 1; min-width: 0; height: 44px; accent-color: var(--accent); }
+.fran-apariencia .fran-boton-principal { width: 100%; margin-top: 18px; }

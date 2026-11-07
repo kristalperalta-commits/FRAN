@@ -6,6 +6,7 @@
 
 import { leerTexto } from '../texto.js';
 import { guardarFoto, leerFoto, reducirFoto } from '../fotos.js';
+import { abrirApariencia } from '../apariencia.js';
 
 export const LIBROS = {
   personal: { nombre: 'Finanzas personales', corto: 'Finanzas personales', enInicio: 'Finanzas personales', icono: '👛', color: '#22C55E' },
@@ -512,10 +513,11 @@ function renderPrincipal(contenedor, ctx) {
   const ganadoHoy = sumar(entradas.filter((a) => a.fecha === ctx.hoy()));
   const hayAviso = hoyAgenda.length || avisoAnotar;
 
-  contenedor.append(ui.el(`<div class="fran-principal">
+  const principal = ui.el(`<div class="fran-principal">
     <header class="fran-hola">
       <div><small>Hola,</small><h1>Fran</h1></div>
-      <a href="#/agenda" class="fran-campana" aria-label="Avisos"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 22a2.5 2.5 0 0 0 2.45-2h-4.9A2.5 2.5 0 0 0 12 22zm7-6V11a7 7 0 0 0-5.5-6.84V3.5a1.5 1.5 0 0 0-3 0v.66A7 7 0 0 0 5 11v5l-2 2v1h18v-1z"/></svg>${hayAviso ? '<i></i>' : ''}</a>
+      <span class="fran-hola__botones"><button type="button" class="fran-campana" data-apariencia aria-label="Apariencia: temas y letra"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M19.4 13a7.6 7.6 0 0 0 0-2l2.1-1.6-2-3.5-2.5 1a7.5 7.5 0 0 0-1.7-1L15 3h-4l-.4 2.7a7.5 7.5 0 0 0-1.7 1l-2.5-1-2 3.5L6.6 11a7.6 7.6 0 0 0 0 2l-2.1 1.6 2 3.5 2.5-1a7.5 7.5 0 0 0 1.7 1L11 21h4l.4-2.7a7.5 7.5 0 0 0 1.7-1l2.5 1 2-3.5zM13 15.5a3.5 3.5 0 1 1 0-7 3.5 3.5 0 0 1 0 7z"/></svg></button>
+      <a href="#/agenda" class="fran-campana" aria-label="Avisos"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 22a2.5 2.5 0 0 0 2.45-2h-4.9A2.5 2.5 0 0 0 12 22zm7-6V11a7 7 0 0 0-5.5-6.84V3.5a1.5 1.5 0 0 0-3 0v.66A7 7 0 0 0 5 11v5l-2 2v1h18v-1z"/></svg>${hayAviso ? '<i></i>' : ''}</a></span>
     </header>
     ${heroe({ etiqueta: 'Mi plata propia hoy', valor: plata.total, ruta: '#/virtual', cajas: [
       ['Efectivo', plata.efectivo],
@@ -528,7 +530,9 @@ function renderPrincipal(contenedor, ctx) {
     ${avisoAnotar ? renglon({ ruta: '#/libro/personal/agregar/gasto', icono: '📝', texto: 'Hoy no has anotado nada' }, ui) : ''}
     <div class="fran-libros">${['personal', 'prestamos', 'pension', 'productos'].map((id) => tarjetaLibro(id, false)).join('')}</div>
     <div class="fran-libros-chicos">${['arriendos', 'redes', 'terceros'].map((id) => tarjetaLibro(id, true)).join('')}</div>
-  </div>`));
+  </div>`);
+  principal.querySelector('[data-apariencia]').addEventListener('click', () => abrirApariencia(''));
+  contenedor.append(principal);
 }
 
 // ---------- Ganancia de los negocios, día a día ----------
@@ -726,7 +730,10 @@ function renderPension(contenedor, ctx) {
   const { ui, dinero, datos } = ctx;
   const fran = datos.estado.fran;
   const p = fran.pension;
-  const deuda = fran.deudasInternas.reduce((s, d) => s + d.valor, 0);
+  // Lo prestado de la pensión va junto en un renglón: a Daniel y lo que le debe el negocio.
+  const esDelNegocio = (o) => /debe el negocio/i.test(o.nota || '');
+  const prestados = p.otros.filter((o) => /prestado/i.test(o.nombre) || esDelNegocio(o));
+  const otrosPropios = p.otros.filter((o) => !prestados.includes(o));
   const raiz = ui.el(`<div>
     ${titular('pension', ctx, '#/inicio')}
     ${heroe({ etiqueta: 'Total pensión', valor: totalPension(fran), ayudaTexto: p.origen ? `Origen: ${p.origen.charAt(0).toLowerCase() + p.origen.slice(1)}.` : '' }, ctx)}
@@ -734,9 +741,12 @@ function renderPension(contenedor, ctx) {
     <form id="fran-tasa-form" class="fran-tasa oculto"><input name="tasa" inputmode="numeric" value="${ui.esc(p.tasa)}" aria-label="Tasa del día"><button class="boton boton--primario">Guardar</button></form>
     <div class="fran-lista">
       ${p.cuentas.map((c) => filaPension({ icono: '💵', titulo: c.nombre, pesos: Math.round(c.usd * p.tasa), usd: c.usd }, ctx)).join('')}
-      ${p.otros.map((o) => filaPension({ icono: /prestado/i.test(o.nombre) ? '🤝' : (/carro/i.test(o.nombre) ? '🚗' : '👛'), titulo: o.nombre, sub: o.nota, pesos: o.cop, usd: Number.isFinite(o.usd) ? o.usd : null }, ctx)).join('')}
+      ${otrosPropios.map((o) => filaPension({ icono: /carro/i.test(o.nombre) ? '🚗' : '👛', titulo: o.nombre, sub: o.nota, pesos: o.cop, usd: Number.isFinite(o.usd) ? o.usd : null }, ctx)).join('')}
     </div>
-    ${deuda ? `<div class="fran-tarjeta"><small>Me debe el negocio</small><strong class="numero">${dinero.formatear(deuda)}</strong></div>` : ''}
+    ${prestados.length ? `<details class="fran-tachados fran-prestado-pension">
+      <summary><span class="fran-cuadro fran-cuadro--40" aria-hidden="true">🤝</span><span class="fran-renglon__texto"><span>Prestado de la pensión</span><small>Toca para ver a quién</small></span><b class="numero">${dinero.formatear(prestados.reduce((s, o) => s + o.cop, 0))}</b></summary>
+      <div class="fran-lista">${prestados.map((o) => filaPension({ icono: esDelNegocio(o) ? '🏦' : '🤝', titulo: esDelNegocio(o) ? 'Lo debe el negocio de préstamos' : o.nombre.replace(/^Prestado a /i, ''), sub: esDelNegocio(o) ? 'Lorena lo devolvió y se volvió a prestar. El negocio se lo debe a la pensión.' : o.nota, pesos: o.cop }, ctx)).join('')}</div>
+    </details>` : ''}
     ${!p.cuentas.length ? '<p class="fran-vacio">Todavía no están tus cuentas en este aparato.</p>' : ''}
   </div>`);
   const form = raiz.querySelector('#fran-tasa-form');

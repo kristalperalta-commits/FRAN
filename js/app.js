@@ -11,7 +11,7 @@
 
 import * as ui from './ui.js';
 
-const VERSION_APP = '3.19.1';
+const VERSION_APP = '3.20.0';
 const contenedor = document.getElementById('pantalla');
 
 // ---------- Rutas (sección 7 de la especificación) ----------
@@ -112,6 +112,8 @@ function marcarPestana(nombre, resuelta = null) {
   if (resuelta && resuelta.libro && COLOR_LIBRO[resuelta.libro]) libroActual = resuelta.libro;
   // Diseño Lila: los libros ya no se pintan de su color; el acento sale del tema (css/lila.css).
   document.documentElement.dataset.libro = libroActual;
+  // Si ese libro tiene su propio tema, se pone; en Inicio y lo demás, el de toda la app.
+  if (window.Tema && window.Tema.aplicarPara) window.Tema.aplicarPara(resuelta && resuelta.libro ? resuelta.libro : null);
   const rutas = { inicio: `#/libro/${libroActual}`, graficos: `#/libro/${libroActual}/graficos`, informes: `#/libro/${libroActual}/informes`, yo: '#/ajustes' };
   document.querySelectorAll('.barra-inferior .pestana').forEach((pestana) => {
     const clave = pestana.dataset.pestana;
