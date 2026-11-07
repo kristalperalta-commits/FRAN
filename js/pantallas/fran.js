@@ -254,7 +254,10 @@ function conSigno(valor, dinero, signo) {
 function heroe({ etiqueta, valor, cajas = [], ruta = '', ayudaTexto = '' }, ctx) {
   const { ui, dinero } = ctx;
   const grande = typeof valor === 'number' ? conSigno(valor, dinero) : `<span>${ui.esc(valor)}</span>`;
-  const cajitas = cajas.length ? `<span class="fran-heroe__cajas">${cajas.map(([t, v, signo]) => `<span><small>${ui.esc(t)}</small>${typeof v === 'number' ? conSigno(v, dinero, signo) : `<span>${ui.esc(v)}</span>`}</span>`).join('')}</span>` : '';
+  const cajitas = cajas.length ? `<span class="fran-heroe__cajas${cajas.length === 4 ? ' fran-heroe__cajas--cuatro' : ''}">${cajas.map(([t, v, signo, enlace]) => {
+    const dentro = `<small>${ui.esc(t)}</small>${typeof v === 'number' ? conSigno(v, dinero, signo) : `<span>${ui.esc(v)}</span>`}`;
+    return enlace && !ruta ? `<a href="${ui.esc(enlace)}">${dentro}</a>` : `<span>${dentro}</span>`;
+  }).join('')}</span>` : '';
   const etiquetaHtml = `<span class="fran-heroe__etiqueta"><small>${ui.esc(etiqueta)}</small>${ayudaTexto && !ruta ? ayuda(ayudaTexto, ui) : ''}</span>`;
   const interior = `${etiquetaHtml}<strong class="fran-heroe__valor">${grande}</strong>${cajitas}`;
   return ruta ? `<a href="${ui.esc(ruta)}" class="fran-heroe">${interior}</a>` : `<div class="fran-heroe">${interior}</div>`;
@@ -522,16 +525,15 @@ function renderPrincipal(contenedor, ctx) {
     <header class="fran-hola">
       <div><small>Hola,</small><h1>Fran</h1></div>
       <span class="fran-hola__botones"><button type="button" class="fran-campana" data-modo-cambiar aria-label="Cambiar entre claro y oscuro"></button><button type="button" class="fran-campana" data-apariencia aria-label="Apariencia: temas y letra"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M19.4 13a7.6 7.6 0 0 0 0-2l2.1-1.6-2-3.5-2.5 1a7.5 7.5 0 0 0-1.7-1L15 3h-4l-.4 2.7a7.5 7.5 0 0 0-1.7 1l-2.5-1-2 3.5L6.6 11a7.6 7.6 0 0 0 0 2l-2.1 1.6 2 3.5 2.5-1a7.5 7.5 0 0 0 1.7 1L11 21h4l.4-2.7a7.5 7.5 0 0 0 1.7-1l2.5 1 2-3.5zM13 15.5a3.5 3.5 0 1 1 0-7 3.5 3.5 0 0 1 0 7z"/></svg></button>
-      <a href="#/agenda" class="fran-campana" aria-label="Avisos"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 22a2.5 2.5 0 0 0 2.45-2h-4.9A2.5 2.5 0 0 0 12 22zm7-6V11a7 7 0 0 0-5.5-6.84V3.5a1.5 1.5 0 0 0-3 0v.66A7 7 0 0 0 5 11v5l-2 2v1h18v-1z"/></svg>${hayAviso ? '<i></i>' : ''}</a></span>
+      <a href="#/agenda" class="fran-campana" aria-label="Avisos y cobros de hoy"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 22a2.5 2.5 0 0 0 2.45-2h-4.9A2.5 2.5 0 0 0 12 22zm7-6V11a7 7 0 0 0-5.5-6.84V3.5a1.5 1.5 0 0 0-3 0v.66A7 7 0 0 0 5 11v5l-2 2v1h18v-1z"/></svg>${hoyAgenda.length ? `<b class="fran-campana__numero">${hoyAgenda.length}</b>` : (hayAviso ? '<i></i>' : '')}</a></span>
     </header>
-    ${heroe({ etiqueta: 'Mi plata propia hoy', valor: plata.total, ruta: '#/virtual', cajas: [
-      ['Efectivo', plata.efectivo],
-      ['Virtual', fran.virtualPorDefinir ? 'por confirmar' : plata.virtual],
-      ['Tarjetas', plata.tarjetas, plata.tarjetas ? 'menos' : ''],
+    ${heroe({ etiqueta: plata.total < 0 ? 'Mi plata hoy · me hace falta' : 'Mi plata hoy · debo tener', valor: plata.total, ayudaTexto: 'Es efectivo más virtual, menos lo que debo en tarjetas. Si sale con ⊖, es lo que me hace falta.', cajas: [
+      ['Efectivo', plata.efectivo, '', '#/caja'],
+      ['Virtual', fran.virtualPorDefinir ? 'por confirmar' : plata.virtual, '', '#/virtual'],
+      ['Tarjetas', plata.tarjetas, plata.tarjetas ? 'menos' : '', '#/virtual'],
+      [`Ganancia hoy · ${fechas.nombreMes(Number(mesHoy.slice(5, 7)), true)} ${dinero.formatear(gananciaMes)}`, ganadoHoy, ganadoHoy ? 'mas' : '', '#/ganancias'],
     ] }, ctx)}
     ${sinDatos ? `<a href="#/ajustes" class="fran-aviso">Todavía no están tus datos en este aparato. Toca aquí y entra a la nube con tu correo.</a>` : ''}
-    ${sinDatos ? '' : renglon({ ruta: '#/agenda', icono: '⏰', texto: 'Cobros de hoy', contador: hoyAgenda.length }, ui)}
-    ${sinDatos ? '' : renglon({ ruta: '#/ganancias', icono: '📈', texto: 'Ganancia de hoy', sub: `${fechas.nombreMes(Number(mesHoy.slice(5, 7)))}: ${dinero.formatear(gananciaMes)} · Para reinvertir ${dinero.formatear(gananciaMes - sacadoMes)}`, derecha: `<span class="fran-renglon__valor">${conSigno(ganadoHoy, dinero, ganadoHoy ? 'mas' : '')}</span>` }, ui)}
     ${avisoAnotar ? renglon({ ruta: '#/libro/personal/agregar/gasto', icono: '📝', texto: 'Hoy no has anotado nada' }, ui) : ''}
     <div class="fran-libros">${['personal', 'prestamos', 'pension', 'productos'].map((id) => tarjetaLibro(id, false)).join('')}</div>
     <div class="fran-libros-chicos">${['arriendos', 'redes', 'terceros'].map((id) => tarjetaLibro(id, true)).join('')}</div>

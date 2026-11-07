@@ -7,7 +7,8 @@
 */
 
 const CLAVE = 'fran-candado';
-const MINUTOS_POR_DEFECTO = 5;
+// Pedido el 6 nov 2026: que no pida la cara a cada rato. Si usó Fran hace menos de esto, abre directo.
+const MINUTOS_POR_DEFECTO = 30;
 
 let ctx = null;
 let capa = null;
@@ -117,12 +118,18 @@ function colorBarra(color) {
   if (barra) barra.setAttribute('content', color);
 }
 
+/** Guarda cuándo la usó por última vez: al volver a abrir antes del tiempo elegido, no pide la cara. */
+function marcarUso() {
+  escribir({ ...leer(), ultimaVez: Date.now() });
+}
+
 function abrir() {
   turnoAuto++;
   cerradoAhora = false;
+  marcarUso();
   if (capa) { capa.remove(); capa = null; }
   document.body.classList.remove('con-candado');
-  if (window.Tema) window.Tema.elegir(window.Tema.actual());
+  if (window.Tema && window.Tema.aplicarPara) window.Tema.aplicarPara(window.Tema.libroVisible());
   if (alAbrir) { const fn = alAbrir; alAbrir = null; fn(); }
 }
 
@@ -254,12 +261,14 @@ function pantallaPrimeraVez(mensaje = '') {
 }
 
 function vigilar() {
+  window.addEventListener('pagehide', () => { if (!cerradoAhora && estado().activo) marcarUso(); });
   document.addEventListener('visibilitychange', () => {
     if (verificando) return;
     const { activo, minutos } = estado();
     if (!activo) return;
     if (document.visibilityState === 'hidden') {
       salidaEn = Date.now();
+      if (!cerradoAhora) marcarUso();
       return;
     }
     if (!salidaEn) return;
@@ -287,6 +296,13 @@ export function exigir(contexto) {
   return new Promise((resolver) => {
     (async () => {
       const c = leer();
+      // El iPhone cierra la app seguido: si la usó hace poco, abre sin pedir la cara.
+      const reciente = c.credId && c.ultimaVez && Date.now() - c.ultimaVez < estado().minutos * 60000;
+      if (reciente) {
+        marcarUso();
+        resolver();
+        return;
+      }
       if (c.credId) {
         alAbrir = resolver;
         cerradoAhora = true;
