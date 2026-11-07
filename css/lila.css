@@ -395,3 +395,9 @@ html body .fran-campos--grande > label.oculto { display: none; }
 .fran-corrido__fila small { color: var(--text-2); font-size: 12px; }
 .fran-corrido__fila b { flex: none; font-size: 15px; }
 .prestamo-corrido { margin: 4px 0 10px; padding: 10px 12px; border-radius: 14px; background: var(--tile); color: var(--text); font-size: 13px; }
+
+/* ---------- Ya tachados (agenda) y anotar suelto ---------- */
+.fran-tachados { margin: 14px 0; padding: 4px 14px; border-radius: 18px; background: var(--surface); box-shadow: var(--shadow); }
+.fran-tachados > summary { min-height: 48px; display: flex; align-items: center; color: var(--text-2); font-size: 14px; cursor: pointer; }
+.fran-tachados .fran-campos--grande > label { background: var(--tile); box-shadow: none; }
+.fran-tachados .fran-campos--grande { padding-bottom: 12px; }

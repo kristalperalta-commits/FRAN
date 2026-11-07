@@ -675,6 +675,7 @@ function renderPrestamos(contenedor, ctx, redibujar) {
       ['Cobré capital', estado.pagos.length || abonos.length ? capital : 'Sin datos', 'mas'],
     ] }, ctx)}
     ${cartera.provisional ? `<p class="fran-nota">Capital anotado: ${dinero.formatear(cartera.r.capitalEnCalle)}</p>` : ''}
+    ${renglonSoloIntereses(ctx)}
     <div class="fran-pastillas">
       ${c.por_confirmar ? pastilla('Por confirmar', c.por_confirmar, 'gris') : ''}
       ${pastilla('Al día', c.al_dia, 'verde')}
@@ -1526,6 +1527,100 @@ function verCobro(contenedor, m, cobros, cliente, volver, ctx) {
   window.scrollTo(0, 0);
 }
 
+// ---------- Solo deben intereses: caja aparte, no se suma a la cartera ----------
+
+/** Quienes ya no deben capital y solo deben intereses, más lo anotado a mano sin préstamo. */
+function soloInteresesDe(ctx) {
+  const { datos, motor } = ctx;
+  const estado = datos.estado;
+  const pagos = pagosRepartidos(estado);
+  const filas = [];
+  for (const c of estado.clientes) {
+    const propios = estado.prestamos.filter((p) => p.clienteId === c.id);
+    if (!propios.length || c.tipo === 'familia') continue;
+    const r = motor.resumenCliente(c, propios, pagos.filter((g) => g.clienteId === c.id), ctx.hoy());
+    const sinCapital = r.resultados.filter((x) => x.capitalPendiente === 0 && x.interesPendiente > 0 && !['perdido', 'pagado'].includes(x.estado));
+    const valor = sinCapital.reduce((s, x) => s + x.interesPendiente, 0);
+    if (valor > 0) filas.push({ nombre: c.nombre, valor, ruta: `#/cliente/${encodeURIComponent(c.id)}` });
+  }
+  for (const x of estado.fran.interesesSueltos || []) {
+    const queda = x.valor - (x.pagado || 0);
+    if (queda > 0) filas.push({ nombre: x.nombre, valor: queda, suelto: x });
+  }
+  filas.sort((a, b) => b.valor - a.valor);
+  return { filas, total: filas.reduce((s, f) => s + f.valor, 0) };
+}
+
+function renglonSoloIntereses(ctx) {
+  const { ui, dinero } = ctx;
+  const s = soloInteresesDe(ctx);
+  if (!s.total) return '';
+  return renglon({ ruta: '#/libro/prestamos/solo-intereses', icono: '💸', texto: 'Solo deben intereses', sub: `${s.filas.length} ${s.filas.length === 1 ? 'persona' : 'personas'} · no se suma a la cartera`, derecha: `<span class="fran-renglon__valor numero">${dinero.formatear(s.total)}</span>` }, ui);
+}
+
+function renderSoloIntereses(contenedor, ctx) {
+  const { ui, dinero, datos } = ctx;
+  const hoy = ctx.hoy();
+  const { filas, total } = soloInteresesDe(ctx);
+  const dibujar = () => { contenedor.innerHTML = ''; renderSoloIntereses(contenedor, ctx); };
+  const filaSuelta = (f) => `<div class="fran-fila"><span class="fran-ico">💸</span><span class="fran-fila__texto"><strong>${ui.esc(f.nombre)}</strong><small>${ui.esc([f.suelto.nota, f.suelto.pagado ? `Ya pagó ${dinero.formatear(f.suelto.pagado)}` : ''].filter(Boolean).join(' · '))}</small></span><span class="fran-fila__valor numero">${dinero.formatear(f.valor)}</span><button type="button" class="fran-boton-secundario fran-boton--44" data-pago="${ui.esc(f.suelto.id)}">Pagó</button></div>`;
+  const raiz = ui.el(`<div>
+    ${titular('prestamos', ctx, '#/libro/prestamos', 'Solo deben intereses')}
+    ${heroe({ etiqueta: 'Intereses por cobrar', valor: total, ayudaTexto: 'Son personas que ya no deben capital, solo intereses. Esta plata no se suma a tu cartera ni a tu plata propia: cuando la paguen, entra como ganancia.' }, ctx)}
+    <div class="fran-lista">${filas.map((f) => (f.suelto ? filaSuelta(f) : fila({ ui, icono: '💸', titulo: f.nombre, sub: 'Ya devolvió el capital', derecha: dinero.formatear(f.valor), ruta: f.ruta }))).join('') || '<p class="fran-vacio">Nadie debe solo intereses.</p>'}</div>
+    <form class="fran-campos fran-campos--grande oculto" data-form-pago novalidate>
+      <label class="fran-campo-valor"><small data-quien>Pagó</small><input name="valor" inputmode="numeric" autocomplete="off"></label>
+      <label><small>Entra por</small><select name="cuenta"><option>Efectivo</option><option>Nequi propio</option><option>Uno propio</option><option>Bancolombia</option></select></label>
+      <label><small>Fecha</small><input type="date" name="fecha" value="${ui.esc(hoy)}"></label>
+      <button class="fran-boton-principal fran-guardar">Guardar el pago</button>
+    </form>
+    <details class="fran-tachados"><summary>Anotar a alguien que debe solo intereses</summary>
+      <form class="fran-campos fran-campos--grande" data-form-nuevo novalidate>
+        <label><small>Nombre</small><input name="nombre" autocomplete="off"></label>
+        <label class="fran-campo-valor"><small>Debe de intereses</small><input name="valor" inputmode="numeric" autocomplete="off" placeholder="0"></label>
+        <label><small>Nota</small><input name="nota" autocomplete="off"></label>
+        <button class="fran-boton-principal fran-guardar">Anotar</button>
+      </form>
+    </details>
+  </div>`);
+  const formPago = raiz.querySelector('[data-form-pago]');
+  let elegido = null;
+  raiz.querySelectorAll('[data-pago]').forEach((b) => b.addEventListener('click', () => {
+    elegido = (datos.estado.fran.interesesSueltos || []).find((x) => x.id === b.dataset.pago);
+    if (!elegido) return;
+    formPago.querySelector('[data-quien]').textContent = `Pagó ${elegido.nombre}`;
+    formPago.elements.valor.value = String(elegido.valor - (elegido.pagado || 0));
+    formPago.classList.remove('oculto');
+    formPago.scrollIntoView({ behavior: 'smooth' });
+  }));
+  formPago.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    if (!elegido) return;
+    const f = e.target.elements;
+    const valor = Number(f.valor.value.replace(/\D/g, ''));
+    if (!valor) { ui.toast('Escribe cuánto pagó.'); return; }
+    try {
+      const fecha = f.fecha.value || hoy;
+      await datos.agregarAsiento({ libro: 'prestamos', fecha, tipo: 'ingreso', categoria: 'Intereses cobrados', descripcion: elegido.nombre, persona: elegido.nombre, valor, cuenta: f.cuenta.value });
+      const lista = datos.estado.fran.interesesSueltos.map((x) => (x.id === elegido.id ? { ...x, pagado: (x.pagado || 0) + valor, pagos: [...(x.pagos || []), { fecha, valor }] } : x));
+      await datos.actualizarFran({ interesesSueltos: lista });
+      ui.toast('Pago guardado como ganancia.');
+      dibujar();
+    } catch (error) { ui.toast(error.message); }
+  });
+  raiz.querySelector('[data-form-nuevo]').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const f = e.target.elements;
+    const nombre = f.nombre.value.trim();
+    const valor = Number(f.valor.value.replace(/\D/g, ''));
+    if (!nombre || !valor) { ui.toast('Escribe el nombre y cuánto debe.'); return; }
+    await datos.actualizarFran({ interesesSueltos: [...(datos.estado.fran.interesesSueltos || []), { id: `int-${Date.now()}`, nombre, valor, fecha: hoy, nota: f.nota.value.trim() }] });
+    ui.toast('Anotado.');
+    dibujar();
+  });
+  contenedor.append(raiz);
+}
+
 // ---------- Tabla de préstamos, como en su Excel ----------
 
 const NOMBRE_ESTADO = { al_dia: 'Al día', atrasado: 'Atrasado', vencido: 'Atrasado', pagado: 'Pagado', perdido: 'Perdido', legal: 'Legal', congelado: 'Congelado', familia: 'Familia', por_confirmar: 'Por confirmar' };
@@ -1830,6 +1925,11 @@ function renderAgenda(contenedor, ctx) {
   const despues = conFecha.filter((x) => x.fecha > fin);
   const sinFecha = propia.filter((x) => !x.repite && !x.fecha);
   const delMotor = motor.agendaCobros(datos.estado, hoy, 7);
+  // Historial: cada vez que se tachó algo, con su fecha. Lo tachado antes de esta versión sale sin fecha.
+  const tachados = (datos.estado.fran.agenda || []).flatMap((x) => {
+    const fechasT = x.historial && x.historial.length ? x.historial : (x.hecho ? [x.hechoEl || null] : (x.hechoEn ? [x.hechoEn] : []));
+    return fechasT.map((f) => ({ nombre: x.nombre, fecha: f, monto: x.monto, nota: x.nota }));
+  }).sort((a, b) => (b.fecha || '').localeCompare(a.fecha || ''));
   const linea = (x) => {
     const legal = /denuncia|legal/i.test(x.nota || '');
     const icono = x.repite ? '🔁' : (legal ? '⚖️' : '⏰');
@@ -1852,11 +1952,14 @@ function renderAgenda(contenedor, ctx) {
     </div>
     ${despues.length ? `<p class="fran-seccion">Más adelante</p><div class="fran-lista">${despues.map(linea).join('')}</div>` : ''}
     ${sinFecha.length ? `<p class="fran-seccion">Sin fecha</p><div class="fran-lista">${sinFecha.map(linea).join('')}</div>` : ''}
+    ${tachados.length ? `<details class="fran-tachados"><summary>Ya tachados · ${tachados.length}</summary><div class="fran-lista">${tachados.slice(0, 60).map((t) => fila({ ui, icono: '✓', titulo: t.nombre, sub: [t.fecha ? `Tachado el ${fechas.formatear(t.fecha)}` : 'Tachado antes de que Fran guardara la fecha', t.nota].filter(Boolean).join(' · '), derecha: t.monto ? dinero.formatear(t.monto) : '' })).join('')}</div></details>` : ''}
   </div>`);
   raiz.querySelectorAll('[data-hecho]').forEach((b) => b.addEventListener('click', async () => {
     const item = (datos.estado.fran.agenda || []).find((x) => x.id === b.dataset.hecho);
     if (!item) return;
-    const lista = datos.estado.fran.agenda.map((x) => (x.id !== item.id ? x : (x.repite ? { ...x, hechoEn: hoy } : { ...x, hecho: true })));
+    // Cada tachada queda en su historial con la fecha, también en los que se repiten.
+    const conHistorial = (x) => ({ ...x, historial: [...(x.historial || []), hoy] });
+    const lista = datos.estado.fran.agenda.map((x) => (x.id !== item.id ? x : (x.repite ? { ...conHistorial(x), hechoEn: hoy } : { ...conHistorial(x), hecho: true, hechoEl: hoy })));
     await datos.actualizarFran({ agenda: lista });
     const cliente = datos.estado.clientes.find((c) => c.id === item.clienteId || norm(c.nombre) === norm(item.nombre));
     if (cliente && await ui.confirmar(`¿Registrar el pago de ${item.nombre} ahora?`, { aceptar: 'Sí, registrar', cancelar: 'Después' })) {
@@ -1928,6 +2031,7 @@ export async function render(contenedor, params, ctx) {
     case 'ganancias': return renderGanancias(contenedor, ctx);
     case 'propiedades': return renderPropiedades(contenedor, ctx);
     case 'tablaPrestamos': return renderTablaPrestamos(contenedor, ctx);
+    case 'soloIntereses': return renderSoloIntereses(contenedor, ctx);
     case 'propiedad': {
       const { delAnio } = arriendosDelAnio(ctx);
       const anio = vista.anioPropiedad === 'todo' ? '' : ` · ${vista.anioPropiedad}`;

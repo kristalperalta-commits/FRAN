@@ -1412,3 +1412,18 @@ describe('intereses pagados hasta una fecha', () => {
     assert.equal(modMotor.calcularPrestamo(p, [], '2026-11-06').interesPendiente, 400000);
   });
 });
+
+describe('intereses de quien ya no debe capital', () => {
+  test('van en su propia caja y no en los intereses de la cartera', () => {
+    const estado = {
+      clientes: [{ id: 'c', nombre: 'C', tipo: 'cliente' }],
+      prestamos: [{ id: 'p', clienteId: 'c', fecha: '2026-09-01', capital: 1000000, tasa: 10, modalidad: 'interes_mensual' }],
+      pagos: [{ id: 'g', prestamoId: 'p', clienteId: 'c', fecha: '2026-09-15', monto: 1000000, interes: 0, capital: 1000000, tipo: 'pago', medio: 'efectivo' }],
+      movimientos: [],
+    };
+    const r = modMotor.resumenNegocio(estado, '2026-11-06');
+    assert.equal(r.capitalEnCalle, 0);
+    assert.equal(r.interesesPendientes, 0);
+    assert.equal(r.interesesSinCapital, 100000);
+  });
+});

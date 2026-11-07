@@ -137,6 +137,7 @@ function franVacio() {
     virtualHistorial: [],
     virtualCuentas: null,
     historicosBorrados: [],
+    interesesSueltos: [],
   };
 }
 
@@ -187,6 +188,8 @@ function completarFran(fran) {
     virtualHistorial: lista(f.virtualHistorial),
     virtualCuentas: f.virtualCuentas && Number.isInteger(f.virtualCuentas.valor) ? f.virtualCuentas : null,
     historicosBorrados: lista(f.historicosBorrados).filter((h) => typeof h === 'string'),
+    // Intereses que alguien debe sin préstamo de capital en Fran (por ejemplo, del Excel sin capital).
+    interesesSueltos: lista(f.interesesSueltos).filter((x) => x && x.id && x.nombre && Number.isInteger(x.valor) && x.valor > 0),
   };
 }
 
@@ -1380,6 +1383,7 @@ export const datos = {
       valor: a.valor, cuenta: limpiarTexto(a.cuenta), destino: limpiarTexto(a.destino),
     };
     if (a.conFoto === true) asiento.conFoto = true;
+    if (a.persona) asiento.persona = limpiarTexto(a.persona);
     asiento.creadoEn = new Date().toISOString();
     estadoActual.fran.asientos.push(asiento);
     await guardar();

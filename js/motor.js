@@ -724,6 +724,8 @@ export function resumenNegocio(estado, hoy) {
     capitalLegal: 0,
     capitalCongelado: 0,
     interesesPendientes: 0,
+    // Intereses de préstamos que ya no deben capital: van en su propia caja, no en la cartera.
+    interesesSinCapital: 0,
     interesesCobradosMes: 0,
     interesesCobradosAnio: 0,
     interesesCobradosTotal: 0,
@@ -768,7 +770,8 @@ export function resumenNegocio(estado, hoy) {
 
     resumen.prestamosActivos++;
     resumen.capitalEnCalle += r.capitalPendiente;
-    resumen.interesesPendientes += r.interesPendiente;
+    if (r.capitalPendiente === 0) resumen.interesesSinCapital += r.interesPendiente;
+    else resumen.interesesPendientes += r.interesPendiente;
     if (r.estado === 'legal') resumen.capitalLegal += r.capitalPendiente;
     if (r.estado === 'congelado') resumen.capitalCongelado += r.capitalPendiente;
     if (r.estado === 'atrasado' || r.estado === 'vencido') {
