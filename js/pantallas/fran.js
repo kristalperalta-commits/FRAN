@@ -786,7 +786,13 @@ function renderPension(contenedor, ctx) {
       <summary><span class="fran-cuadro fran-cuadro--40" aria-hidden="true">💵</span><span class="fran-renglon__texto"><span>Dinero en dólares</span><small>${ui.esc(String(Math.round(usdTotal * 100) / 100).replace('.', ','))} USD · toca para ver las cuentas</small></span><b class="numero">${dinero.formatear(pesosDolares)}</b></summary>
       <div class="fran-lista">${p.cuentas.map((c) => filaPension({ icono: '💵', titulo: c.nombre, pesos: Math.round(c.usd * p.tasa), usd: c.usd }, ctx)).join('')}</div>
     </details>` : ''}
-    ${otrosPropios.map((o) => `<div class="fran-tachados fran-prestado-pension fran-pension-fija"><span class="fran-cuadro fran-cuadro--40" aria-hidden="true">${/carro/i.test(o.nombre) ? '🚗' : '👛'}</span><span class="fran-renglon__texto"><span>${ui.esc(o.nombre)}</span>${o.nota ? `<small>${ui.esc(o.nota)}</small>` : ''}</span><b class="numero">${dinero.formatear(o.cop)}</b></div>`).join('')}
+    ${otrosPropios.map((o) => {
+      // Con descripción (como el carro), el renglón se abre al tocarlo.
+      const cabeza = `<span class="fran-cuadro fran-cuadro--40" aria-hidden="true">${/carro/i.test(o.nombre) ? '🚗' : '👛'}</span><span class="fran-renglon__texto"><span>${ui.esc(o.nombre)}</span>${o.nota || o.detalle ? `<small>${ui.esc(o.nota || 'Toca para ver la descripción')}</small>` : ''}</span><b class="numero">${dinero.formatear(o.cop)}</b>`;
+      return o.detalle
+        ? `<details class="fran-tachados fran-prestado-pension"><summary>${cabeza}</summary><p class="fran-pension-detalle">${ui.esc(o.detalle)}</p></details>`
+        : `<div class="fran-tachados fran-prestado-pension fran-pension-fija">${cabeza}</div>`;
+    }).join('')}
     ${prestados.length ? `<details class="fran-tachados fran-prestado-pension">
       <summary><span class="fran-cuadro fran-cuadro--40" aria-hidden="true">🤝</span><span class="fran-renglon__texto"><span>Prestado de la pensión</span><small>Toca para ver a quién</small></span><b class="numero">${dinero.formatear(prestados.reduce((s, o) => s + o.cop, 0))}</b></summary>
       <div class="fran-lista">${prestados.map((o) => filaPension({ icono: esDelNegocio(o) ? '🏦' : '🤝', titulo: esDelNegocio(o) ? 'Lo debe el negocio de préstamos' : o.nombre.replace(/^Prestado a /i, ''), sub: esDelNegocio(o) ? 'Lorena lo devolvió y se volvió a prestar. El negocio se lo debe a la pensión.' : o.nota, pesos: o.cop }, ctx)).join('')}</div>
