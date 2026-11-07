@@ -1601,7 +1601,7 @@ function soloInteresesDe(ctx) {
     const r = motor.resumenCliente(c, propios, pagos.filter((g) => g.clienteId === c.id), ctx.hoy());
     const sinCapital = r.resultados.filter((x) => x.capitalPendiente === 0 && x.interesPendiente > 0 && !['perdido', 'pagado'].includes(x.estado));
     const valor = sinCapital.reduce((s, x) => s + x.interesPendiente, 0);
-    if (valor > 0) filas.push({ nombre: c.nombre, valor, ruta: `#/cliente/${encodeURIComponent(c.id)}` });
+    if (valor > 0) filas.push({ nombre: c.nombre, valor, clienteId: c.id, ruta: `#/cliente/${encodeURIComponent(c.id)}` });
   }
   for (const x of estado.fran.interesesSueltos || []) {
     const queda = x.valor - (x.pagado || 0);
@@ -1623,16 +1623,18 @@ function renderSoloIntereses(contenedor, ctx) {
   const hoy = ctx.hoy();
   const { filas, total } = soloInteresesDe(ctx);
   const dibujar = () => { contenedor.innerHTML = ''; renderSoloIntereses(contenedor, ctx); };
-  const filaSuelta = (f) => `<div class="fran-fila"><span class="fran-ico">💸</span><span class="fran-fila__texto"><strong>${ui.esc(f.nombre)}</strong><small>${ui.esc([f.suelto.nota, f.suelto.pagado ? `Ya pagó ${dinero.formatear(f.suelto.pagado)}` : ''].filter(Boolean).join(' · '))}</small></span><span class="fran-fila__valor numero">${dinero.formatear(f.valor)}</span><button type="button" class="fran-boton-secundario fran-boton--44" data-pago="${ui.esc(f.suelto.id)}">Pagó</button></div>`;
+  // Quien tiene préstamo en Fran: al tocar el nombre va a su ficha; "Abonó" registra el pago de intereses.
+  const filaCliente = (f) => `<div class="fran-fila"><a class="fran-fila__enlace" href="${ui.esc(f.ruta)}"><span class="fran-ico">💸</span><span class="fran-fila__texto"><strong>${ui.esc(f.nombre)}</strong><small>Ya devolvió el capital</small></span></a><span class="fran-fila__valor numero">${dinero.formatear(f.valor)}</span><a class="fran-boton-secundario fran-boton--44" href="#/libro/prestamos/registrar/interes/${encodeURIComponent(f.clienteId)}">Abonó</a></div>`;
+  const filaSuelta = (f) => `<div class="fran-fila"><span class="fran-ico">💸</span><span class="fran-fila__texto"><strong>${ui.esc(f.nombre)}</strong><small>${ui.esc([f.suelto.nota, f.suelto.pagado ? `Ya pagó ${dinero.formatear(f.suelto.pagado)}` : ''].filter(Boolean).join(' · '))}</small></span><span class="fran-fila__valor numero">${dinero.formatear(f.valor)}</span><button type="button" class="fran-boton-secundario fran-boton--44" data-pago="${ui.esc(f.suelto.id)}">Abonó</button></div>`;
   const raiz = ui.el(`<div>
     ${titular('prestamos', ctx, '#/libro/prestamos', 'Solo deben intereses')}
     ${heroe({ etiqueta: 'Intereses por cobrar', valor: total, ayudaTexto: 'Son personas que ya no deben capital, solo intereses. Esta plata no se suma a tu cartera ni a tu plata propia: cuando la paguen, entra como ganancia.' }, ctx)}
-    <div class="fran-lista">${filas.map((f) => (f.suelto ? filaSuelta(f) : fila({ ui, icono: '💸', titulo: f.nombre, sub: 'Ya devolvió el capital', derecha: dinero.formatear(f.valor), ruta: f.ruta }))).join('') || '<p class="fran-vacio">Nadie debe solo intereses.</p>'}</div>
+    <div class="fran-lista">${filas.map((f) => (f.suelto ? filaSuelta(f) : filaCliente(f))).join('') || '<p class="fran-vacio">Nadie debe solo intereses.</p>'}</div>
     <form class="fran-campos fran-campos--grande oculto" data-form-pago novalidate>
       <label class="fran-campo-valor"><small data-quien>Pagó</small><input name="valor" inputmode="numeric" autocomplete="off"></label>
       <label><small>Entra por</small><select name="cuenta"><option>Efectivo</option><option>Nequi propio</option><option>Uno propio</option><option>Bancolombia</option></select></label>
       <label><small>Fecha</small><input type="date" name="fecha" value="${ui.esc(hoy)}"></label>
-      <button class="fran-boton-principal fran-guardar">Guardar el pago</button>
+      <button class="fran-boton-principal fran-guardar">Guardar el abono</button>
     </form>
     <details class="fran-tachados"><summary>Anotar a alguien que debe solo intereses</summary>
       <form class="fran-campos fran-campos--grande" data-form-nuevo novalidate>
@@ -1648,8 +1650,8 @@ function renderSoloIntereses(contenedor, ctx) {
   raiz.querySelectorAll('[data-pago]').forEach((b) => b.addEventListener('click', () => {
     elegido = (datos.estado.fran.interesesSueltos || []).find((x) => x.id === b.dataset.pago);
     if (!elegido) return;
-    formPago.querySelector('[data-quien]').textContent = `Pagó ${elegido.nombre}`;
-    formPago.elements.valor.value = String(elegido.valor - (elegido.pagado || 0));
+    formPago.querySelector('[data-quien]').textContent = `Abonó ${elegido.nombre}`;
+    formPago.elements.valor.value = dinero.formatear(elegido.valor - (elegido.pagado || 0));
     formPago.classList.remove('oculto');
     formPago.scrollIntoView({ behavior: 'smooth' });
   }));
