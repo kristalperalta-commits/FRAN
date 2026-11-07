@@ -553,3 +553,5 @@ html[data-relieve="plano"] img.fran-3d[src*="-azul"], html[data-relieve="plano"]
 .fran-tabla-premium__cabeza, .fran-tabla-premium__fila { grid-template-columns: 0.75fr 1fr 1fr 1.15fr 14px !important; }
 .fran-tabla-premium__fila > .numero { font-size: clamp(8px, 3.7cqi, 15px) !important; }
 .fran-heroe--informes .fran-heroe__valor .numero { font-size: inherit !important; }
+.fran-heroe--informes .fran-heroe__valor { padding-left: 0 !important; margin-top: 6px !important; flex: none !important; }
+.fran-heroe--informes .fran-heroe__etiqueta { padding-right: 112px !important; }
