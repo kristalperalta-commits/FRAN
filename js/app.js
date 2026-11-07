@@ -11,7 +11,7 @@
 
 import * as ui from './ui.js';
 
-const VERSION_APP = '3.27.1';
+const VERSION_APP = '3.27.2';
 const contenedor = document.getElementById('pantalla');
 
 // ---------- Rutas (sección 7 de la especificación) ----------
@@ -313,10 +313,21 @@ function activarDeslizarParaActualizar() {
   let tirando = 0;
   let ocupado = false;
   const UMBRAL = 80;
+  const pantalla = document.getElementById('pantalla');
   const mostrar = (texto, alto) => {
     aviso.textContent = texto;
     aviso.style.transform = `translate(-50%, ${Math.min(alto, 110) - 60}px)`;
     aviso.classList.toggle('visible', alto > 10);
+    // La pantalla baja con el dedo, para que se note que está halando.
+    pantalla.style.transition = alto ? 'none' : 'transform 0.3s ease';
+    pantalla.style.transform = alto ? `translateY(${Math.min(alto * 0.5, 90)}px)` : '';
+  };
+  /** Una luz que pasa por toda la pantalla: ya se actualizó. */
+  const brillo = () => {
+    document.body.classList.remove('brillo-actualizado');
+    void document.body.offsetWidth;
+    document.body.classList.add('brillo-actualizado');
+    setTimeout(() => document.body.classList.remove('brillo-actualizado'), 1300);
   };
   document.addEventListener('touchstart', (e) => {
     if (ocupado || e.touches.length !== 1 || !document.body.classList.contains('en-inicio') || window.scrollY > 0) { inicioY = null; return; }
@@ -335,7 +346,10 @@ function activarDeslizarParaActualizar() {
     inicioY = null;
     if (tirando < UMBRAL) { mostrar('', 0); return; }
     ocupado = true;
-    mostrar('Actualizando…', UMBRAL + 20);
+    aviso.textContent = 'Actualizando…';
+    aviso.style.transform = 'translate(-50%, 30px)';
+    pantalla.style.transition = 'transform 0.3s ease';
+    pantalla.style.transform = 'translateY(50px)';
     try {
       let resultado = 'apagada';
       if (ctx.nube) resultado = await ctx.nube.sincronizar('manual');
@@ -343,7 +357,7 @@ function activarDeslizarParaActualizar() {
       await renderizar({ conservarScroll: false });
       if (resultado === 'apagada') ui.toast('Para traer los datos de la nube, entra en Yo → Nube.');
       else if (resultado === 'error') ui.toast('No pude conectar con la nube. Revisa el internet e intenta otra vez.', 5000);
-      else ui.toast('Listo, todo al día.');
+      else { brillo(); ui.toast('Listo, todo al día.'); }
     } catch (error) {
       ui.toast(`No se pudo actualizar: ${error.message || error}`, 5000);
     } finally {
