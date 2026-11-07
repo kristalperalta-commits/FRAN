@@ -2271,7 +2271,7 @@ function renderEfectivo(contenedor, ctx) {
     </form>
     <details class="fran-tachados"><summary>Apartar plata del efectivo</summary>
       <form class="fran-campos fran-campos--grande" data-form-apartar novalidate>
-        <label><small>¿Para qué o de quién?</small><input name="nombre" autocomplete="off" placeholder="Ej. Pago de Yadira"></label>
+        <label><small>¿Para qué o de quién?</small><input name="nombre" autocomplete="off" placeholder="Ej. Pago de un cliente"></label>
         <label class="fran-campo-valor"><small>Cuánto</small><input name="valor" inputmode="numeric" autocomplete="off" placeholder="0"></label>
         <button class="fran-boton-principal fran-guardar">Apartar</button>
       </form>
