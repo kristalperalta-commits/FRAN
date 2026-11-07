@@ -1352,3 +1352,45 @@ test('quien ya devolvió el capital y debe intereses queda como solo intereses',
   const congelado = modMotor.resumenCliente(cliente, [{ ...prestamo, estadoManual: 'congelado' }], [pago('a', 1000000)], '2026-11-03');
   assert.equal(congelado.soloIntereses, false);
 });
+
+describe('interés de los días corridos (pedido por ella el 6 nov 2026)', () => {
+  const prestamo = { id: 'p-dias', clienteId: 'c', fecha: '2026-11-03', capital: 3000000, tasa: 10, modalidad: 'interes_mensual' };
+
+  test('del 3 al 6 de noviembre son 4 días a 10.000 cada uno', () => {
+    const r = modMotor.calcularPrestamo(prestamo, [], '2026-11-06');
+    assert.equal(r.interesDiario, 10000);
+    assert.equal(r.diasCorridos, 4);
+    assert.equal(r.interesCorrido, 40000);
+    assert.equal(r.interesPendiente, 0);
+    assert.equal(r.debeHoy, 3040000);
+  });
+
+  test('el mismo día del préstamo cuenta 1 día', () => {
+    assert.equal(modMotor.calcularPrestamo(prestamo, [], '2026-11-03').interesCorrido, 10000);
+  });
+
+  test('nunca pasa del interés del mes', () => {
+    const r = modMotor.calcularPrestamo(prestamo, [], '2026-12-02');
+    assert.equal(r.interesCorrido, 300000);
+  });
+
+  test('cumplido el mes, el mes entra a pendiente y empieza a correr el siguiente', () => {
+    const r = modMotor.calcularPrestamo(prestamo, [], '2026-12-04');
+    assert.equal(r.interesPendiente, 300000);
+    assert.equal(r.diasCorridos, 2);
+    assert.equal(r.interesCorrido, 20000);
+    assert.equal(r.debeHoy, 3000000 + 300000 + 20000);
+  });
+
+  test('lo pagado por adelantado de ese mes se descuenta', () => {
+    const pago = { id: 'g1', prestamoId: 'p-dias', fecha: '2026-11-05', monto: 30000, interes: 30000, capital: 0, tipo: 'pago' };
+    const r = modMotor.calcularPrestamo(prestamo, [pago], '2026-11-06');
+    assert.equal(r.interesCorrido, 10000);
+  });
+
+  test('sin tasa no corre nada', () => {
+    const r = modMotor.calcularPrestamo({ ...prestamo, tasa: 0 }, [], '2026-11-06');
+    assert.equal(r.interesCorrido, 0);
+    assert.equal(r.debeHoy, 3000000);
+  });
+});

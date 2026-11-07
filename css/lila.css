@@ -385,3 +385,13 @@ html body .fran-campos--grande > label, html body .fran-campos--grande > div { p
 html body .fran-campos--grande > label.oculto { display: none; }
 .fran-campos--grande .fran-guardar { width: 100%; margin-top: 6px; }
 .fran-campos--grande .fran-chips button:not(.activo) { background: var(--tile); box-shadow: none; }
+
+/* ---------- Intereses de los días corridos ---------- */
+.fran-corrido { margin: 0 0 14px; padding: 6px 14px; border-radius: 20px; background: var(--surface); box-shadow: var(--shadow); }
+.fran-corrido__titulo { margin: 6px 0 2px; color: var(--text-2); font-size: 13px; }
+.fran-corrido__fila { display: flex; align-items: center; justify-content: space-between; gap: 10px; min-height: 56px; padding: 6px 0; border-top: 1px solid var(--line); }
+.fran-corrido__fila:first-of-type { border-top: 0; }
+.fran-corrido__fila > span { display: flex; flex-direction: column; min-width: 0; font-size: 14px; }
+.fran-corrido__fila small { color: var(--text-2); font-size: 12px; }
+.fran-corrido__fila b { flex: none; font-size: 15px; }
+.prestamo-corrido { margin: 4px 0 10px; padding: 10px 12px; border-radius: 14px; background: var(--tile); color: var(--text); font-size: 13px; }

@@ -1615,6 +1615,8 @@ function renderFicha(contenedor, id, ctx) {
   const recuperado = Math.max(0, r.capitalPrestado - r.capitalPendiente);
   const abonosPlan = estado.fran.asientos.filter((x) => x.clienteId === id && x.tipo === 'abono').reduce((s, x) => s + x.valor, 0);
   const pct = r.capitalPrestado ? Math.min(100, (recuperado / r.capitalPrestado) * 100) : 0;
+  // Lo que corre de intereses por los días que lleva cada préstamo en el mes.
+  const corridos = r.resultados.filter((x) => x.interesCorrido > 0);
   const acuerdo = (estado.fran.agenda || []).find((x) => (x.fecha || x.repite) && (x.clienteId === id || norm(x.nombre) === norm(cliente.nombre)));
   const cuando = acuerdo && (acuerdo.repite ? `${acuerdo.repite}s` : (acuerdo.fecha ? fechas.formatear(acuerdo.fecha) : ''));
   const textoAcuerdo = acuerdo ? `Acuerdo: ${[acuerdo.monto ? `${dinero.formatear(acuerdo.monto)} ${acuerdo.repite ? cuando : ''}`.trim() : (acuerdo.repite ? cuando : ''), !acuerdo.repite && acuerdo.monto ? cuando : (!acuerdo.repite ? cuando : ''), acuerdo.nota].filter(Boolean).join(' · ')}` : '';
@@ -1637,10 +1639,8 @@ function renderFicha(contenedor, id, ctx) {
       <div><strong>${ui.esc(cliente.nombre)}</strong>${conTexto ? `<small>${ui.esc(`Acuerdo: ${conTexto.acuerdoTexto}`)}</small>` : (textoAcuerdo ? `<small>${ui.esc(textoAcuerdo)}</small>` : '')}</div>
       ${r.soloIntereses ? '<span class="fran-solo">Solo intereses</span>' : ui.chipEstado(r.estado)}
     </div>
-    <div class="fran-dos">
-      <div class="fran-tarjeta"><small>Debe total</small><strong class="numero">${dinero.formatear(r.deudaCliente)}</strong></div>
-      <div class="fran-tarjeta"><small>Capital pendiente</small><strong class="numero">${dinero.formatear(r.capitalPendiente)}</strong></div>
-    </div>
+    ${heroe({ etiqueta: 'Si paga hoy, debe', valor: r.debeHoy, cajas: [['Capital pendiente', r.capitalPendiente], ['Intereses', r.interesPendiente + r.interesCorrido]] }, ctx)}
+    ${corridos.length ? `<div class="fran-corrido"><p class="fran-corrido__titulo">Intereses de estos días</p>${corridos.map((x) => `<div class="fran-corrido__fila"><span><span>${ui.esc(`Préstamo del ${fechas.formatear(x.fecha)} · ${dinero.formatear(x.capitalPendiente)}`)}</span><small>${ui.esc(`${dinero.formatear(x.interesDelMes)} al mes · ${dinero.formatear(x.interesDiario)} por día · ${x.diasCorridos} ${x.diasCorridos === 1 ? 'día' : 'días'} desde el ${fechas.formatear(x.corridoDesde)}`)}</small></span><b class="numero">${dinero.formatear(x.interesCorrido)}</b></div>`).join('')}</div>` : ''}
     <div class="fran-progreso"><span style="width:${pct}%"></span></div>
     <p class="fran-nota">${abonosPlan && !recuperado ? `Abono a capital anotado: ${dinero.formatear(abonosPlan)}.` : `Recuperado ${dinero.formatear(recuperado)} de ${dinero.formatear(r.capitalPrestado)} de capital.`}${capitalPrimero ? (r.capitalPendiente === 0 ? ' Ya recuperó todo el capital: lo que pague es ganancia.' : ' Cuando llegue a 100%, todo lo que pague es ganancia.') : ''}</p>
     <p class="fran-seccion">Historial</p>

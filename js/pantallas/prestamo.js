@@ -74,7 +74,15 @@ export async function render(contenedor, params, ctx) {
 
 /** '$ 1.234.567' */
 function pesos(ctx, monto) {
-  return `$ ${ctx.dinero.formatear(monto)}`;
+  // Sin "$": en ninguna otra pantalla se usa (diseño Lila).
+  return ctx.dinero.formatear(monto);
+}
+
+/** "Lleva 4 días (desde el 3 nov): 10.000 por día = 40.000". Vacío si no corre interés. */
+function textoCorrido(ctx, r) {
+  if (!r || !(r.interesCorrido > 0)) return '';
+  const d = r.diasCorridos;
+  return `Lleva ${d} ${d === 1 ? 'día' : 'días'} desde el ${ctx.fechas.formatear(r.corridoDesde)}: ${ctx.dinero.formatear(r.interesDiario)} por día = ${ctx.dinero.formatear(r.interesCorrido)}`;
 }
 
 /** Ruta del hash con el id codificado. */
@@ -122,7 +130,7 @@ function tituloCortoPrestamo(ctx, prestamo) {
   const { ui, fechas, dinero } = ctx;
   const pc = prestamo.porConfirmar;
   let texto = `Préstamo ${pc && pc.fecha ? `(${pc.fecha})` : `del ${fechas.formatear(prestamo.fecha)}`} · ${dinero.formatear(prestamo.capital)}`;
-  if (prestamo.modalidad === 'interes_mensual' && !pc) texto += ` al ${prestamo.tasa} %`;
+  if (prestamo.modalidad === 'interes_mensual' && !pc) texto += ` al ${String(Math.round(Number(prestamo.tasa) * 100) / 100).replace('.', ',')} %`;
   else texto += ` · ${TEXTO_MODALIDAD[prestamo.modalidad] || prestamo.modalidad}`;
   return ui.esc(texto);
 }
@@ -346,7 +354,7 @@ function renderFicha(contenedor, params, ctx) {
 
       <div class="tarjeta tarjeta--primario prestamo-resumen">
         <p class="tarjeta__titulo">Debe hoy</p>
-        <p class="tarjeta__valor">${ui.esc(pesos(ctx, resultado.deudaCliente))}</p>
+        <p class="tarjeta__valor">${ui.esc(pesos(ctx, resultado.debeHoy))}</p>
         <p class="tarjeta__detalle">${ui.chipEstado(resultado.estado)}${atrasoTexto ? ` <span>${ui.esc(atrasoTexto)}</span>` : ''}</p>
       </div>
 
@@ -357,9 +365,10 @@ function renderFicha(contenedor, params, ctx) {
         </div>
         <div class="tarjeta">
           <p class="tarjeta__titulo">Intereses pendientes</p>
-          <p class="tarjeta__valor">${ui.esc(dinero.formatear(resultado.interesPendiente))}</p>
+          <p class="tarjeta__valor">${ui.esc(dinero.formatear(resultado.interesPendiente + resultado.interesCorrido))}</p>
         </div>
       </div>
+      ${resultado.interesCorrido > 0 ? `<p class="prestamo-corrido">${ui.esc(textoCorrido(ctx, resultado))}</p>` : ''}
 
       ${advertenciasHtml}
 
@@ -810,7 +819,8 @@ function htmlCabeceraPrestamo(ctx, carga) {
         ${filaDato('Capital pendiente', ui.esc(pesos(ctx, resultado.capitalPendiente)))}
         ${esMensual ? filaDato('Intereses pendientes', ui.esc(pesos(ctx, resultado.interesPendiente))) : ''}
         ${esMensual && resultado.mesesAtrasados > 0 ? filaDato('Meses de atraso', ui.esc(String(resultado.mesesAtrasados))) : ''}
-        ${filaDato('Debe hoy', ui.esc(pesos(ctx, resultado.deudaCliente)))}
+        ${resultado.interesCorrido > 0 ? filaDato(`Intereses de ${resultado.diasCorridos} ${resultado.diasCorridos === 1 ? 'día' : 'días'}`, ui.esc(pesos(ctx, resultado.interesCorrido))) : ''}
+        ${filaDato('Debe hoy', ui.esc(pesos(ctx, resultado.debeHoy)))}
         ${filaDato('Estado', ui.chipEstado(resultado.estado))}
       </dl>
       ${cerrado ? `<p class="prestamo-previa__aviso">Este préstamo está marcado como ${ui.esc(ui.textoEstado(resultado.estado).toLowerCase())}. Puedes registrar el pago igual, pero revisa el estado en la ficha.</p>` : ''}
@@ -1154,7 +1164,8 @@ function renderPagoCliente(contenedor, params, ctx) {
     return;
   }
 
-  const deudaTotal = partes.reduce((total, p) => total + p.resultado.deudaCliente, 0);
+  const deudaTotal = partes.reduce((total, p) => total + p.resultado.debeHoy, 0);
+  const corridoTotal = partes.reduce((total, p) => total + p.resultado.interesCorrido, 0);
   const interesTotal = partes.reduce((total, p) => total + p.resultado.interesPendiente, 0);
   const capitalTotal = partes.reduce((total, p) => total + p.resultado.capitalPendiente, 0);
 
@@ -1164,7 +1175,8 @@ function renderPagoCliente(contenedor, params, ctx) {
     return `
       <div class="tarjeta prestamo-parte" data-indice="${indice}">
         <p class="negrita sin-margen"><a href="${rutaPrestamo(prestamo.id)}">${tituloCortoPrestamo(ctx, prestamo)}</a></p>
-        <p class="suave">${ui.chipEstado(resultado.estado)} Debe ${ui.esc(ctx.dinero.formatear(resultado.deudaCliente))}${esMensual ? ` · intereses ${ui.esc(ctx.dinero.formatear(resultado.interesPendiente))} · capital ${ui.esc(ctx.dinero.formatear(resultado.capitalPendiente))}` : ''}</p>
+        <p class="suave">${ui.chipEstado(resultado.estado)} Debe hoy ${ui.esc(ctx.dinero.formatear(resultado.debeHoy))}${esMensual ? ` · intereses ${ui.esc(ctx.dinero.formatear(resultado.interesPendiente + resultado.interesCorrido))} · capital ${ui.esc(ctx.dinero.formatear(resultado.capitalPendiente))}` : ''}</p>
+        ${resultado.interesCorrido > 0 ? `<p class="prestamo-corrido">${ui.esc(textoCorrido(ctx, resultado))}</p>` : ''}
         <div class="reparto__campos">
           ${esMensual ? ui.campoDinero({ etiqueta: 'Interés', nombre: `interes_${indice}`, valor: 0 }) : ''}
           ${ui.campoDinero({ etiqueta: esMensual ? 'Abono a capital' : 'Abono', nombre: `capital_${indice}`, valor: 0 })}
@@ -1181,7 +1193,8 @@ function renderPagoCliente(contenedor, params, ctx) {
         <dl class="prestamo-datos">
           ${filaDato('Préstamos activos', ui.esc(String(partes.length)))}
           ${filaDato('Capital pendiente', ui.esc(pesos(ctx, capitalTotal)))}
-          ${filaDato('Intereses pendientes', ui.esc(pesos(ctx, interesTotal)))}
+          ${filaDato('Intereses de meses cumplidos', ui.esc(pesos(ctx, interesTotal)))}
+          ${filaDato('Intereses de estos días', ui.esc(pesos(ctx, corridoTotal)))}
           ${filaDato('Debe hoy', ui.esc(pesos(ctx, deudaTotal)))}
         </dl>
       </div>

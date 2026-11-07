@@ -22,6 +22,8 @@ const ESTADOS_CERRADOS = ['pagado', 'perdido'];
 
 // Tope de seguridad para los bucles que generan periodos (100 años de meses).
 const MAXIMO_PERIODOS = 1200;
+// Interés por día: el del mes dividido en 30. Se cuentan el día del préstamo y hoy (del 3 al 6 son 4 días).
+const DIAS_MES = 30;
 
 /* ----------------------------------------------------------------------- */
 /* Ayudas internas                                                          */
@@ -124,7 +126,32 @@ function resultadoBase(prestamo) {
     proximoCobro: null,
     vencimiento: vencimientoDe(prestamo),
     advertencias: [],
+    interesCorrido: 0,
+    diasCorridos: 0,
+    interesDiario: 0,
+    interesDelMes: 0,
+    corridoDesde: null,
+    debeHoy: 0,
   };
+}
+
+/**
+ * Interés de los días que lleva el mes en curso, aunque el mes no se haya cumplido.
+ * Ella no cobra más de los días que la persona ha tenido la plata: del 3 al 6 de
+ * noviembre son 4 días, a (interés del mes / 30) cada uno. Lo ya pagado de ese mes se descuenta.
+ */
+function calcularCorrido(resultado, periodos, hoy) {
+  if (ESTADOS_CERRADOS.includes(resultado.estado)) return;
+  const actual = periodos.find((p) => !p.esCausado && fechas.comparar(p.desde, hoy) <= 0 && fechas.comparar(hoy, p.hasta) < 0);
+  if (!actual || !(actual.causado > 0)) return;
+  const dias = Math.min(DIAS_MES, fechas.diferenciaDias(actual.desde, hoy) + 1);
+  const devengado = Math.min(actual.causado, redondear((actual.causado * dias) / DIAS_MES));
+  const yaCubierto = actual.causado - actual.pendiente;
+  resultado.interesCorrido = Math.max(0, devengado - yaCubierto);
+  resultado.diasCorridos = dias;
+  resultado.interesDiario = redondear(actual.causado / DIAS_MES);
+  resultado.interesDelMes = actual.causado;
+  resultado.corridoDesde = actual.desde;
 }
 
 /* ----------------------------------------------------------------------- */
@@ -390,6 +417,7 @@ function calcularInteresMensual(prestamo, pagos, hoy, aplicadoPorPago = null) {
   }
 
   resultado.proximoCobro = proximoCobroDe(prestamo, resultado, periodos, hoy);
+  calcularCorrido(resultado, periodos, hoy);
   return resultado;
 }
 
@@ -484,12 +512,13 @@ function calcularSinInteres(prestamo, pagos) {
 export function calcularPrestamo(prestamo, pagosDelPrestamo, hoy) {
   const pagos = pagosDe(prestamo, pagosDelPrestamo);
   const modalidad = prestamo.modalidad || 'interes_mensual';
-  if (modalidad === 'capital_primero') return calcularCapitalPrimero(prestamo, pagos, hoy);
-  if (modalidad === 'sin_interes') return calcularSinInteres(prestamo, pagos);
+  const conDebeHoy = (r) => { r.debeHoy = r.deudaCliente + r.interesCorrido; return r; };
+  if (modalidad === 'capital_primero') return conDebeHoy(calcularCapitalPrimero(prestamo, pagos, hoy));
+  if (modalidad === 'sin_interes') return conDebeHoy(calcularSinInteres(prestamo, pagos));
   const resultado = calcularInteresMensual(prestamo, pagos, hoy);
   // Cargado del Excel sin saber qué debe de intereses: no se afirma que esté al día.
   if (prestamo.porConfirmar && resultado.estado === 'al_dia') resultado.estado = 'por_confirmar';
-  return resultado;
+  return conDebeHoy(resultado);
 }
 
 /** Agrupa los pagos por prestamoId. Devuelve un Map. */
@@ -538,6 +567,8 @@ export function resumenCliente(cliente, prestamosDelCliente, pagos, hoy) {
     totalRecibido: 0,
     ganancia: 0,
     netoRecuperar: 0,
+    interesCorrido: 0,
+    debeHoy: 0,
     mesesAtrasados: 0,
     estado: cliente && cliente.tipo === 'familia' ? 'familia' : 'al_dia',
     proximoCobro: null,
@@ -555,6 +586,8 @@ export function resumenCliente(cliente, prestamosDelCliente, pagos, hoy) {
     resumen.totalRecibido += r.totalRecibido;
     resumen.ganancia += r.ganancia;
     resumen.netoRecuperar += r.netoRecuperar;
+    resumen.interesCorrido += r.interesCorrido || 0;
+    resumen.debeHoy += r.debeHoy || 0;
     resumen.mesesAtrasados = Math.max(resumen.mesesAtrasados, r.mesesAtrasados);
     if (!ESTADOS_CERRADOS.includes(r.estado)) resumen.prestamosActivos++;
     estado = peorEstado(estado, r.estado);
