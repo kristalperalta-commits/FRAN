@@ -543,7 +543,7 @@ html body .fran-form-sale > label:first-child { box-shadow: inset 0 0 0 2px var(
 .deslizar-aviso.visible { opacity: 1; }
 
 /* Luz que pasa por la pantalla al actualizar */
-body.brillo-actualizado::after { content: ''; position: fixed; inset: 0; z-index: 70; pointer-events: none; background: linear-gradient(110deg, transparent 30%, rgba(255, 255, 255, 0.55) 48%, rgba(255, 255, 255, 0.85) 50%, rgba(255, 255, 255, 0.55) 52%, transparent 70%); background-size: 250% 100%; animation: brillo-pasa 1.2s ease-out forwards; }
+body.brillo-actualizado-viejo::after { content: ''; position: fixed; inset: 0; z-index: 70; pointer-events: none; background: linear-gradient(110deg, transparent 30%, rgba(255, 255, 255, 0.55) 48%, rgba(255, 255, 255, 0.85) 50%, rgba(255, 255, 255, 0.55) 52%, transparent 70%); background-size: 250% 100%; animation: brillo-pasa 1.2s ease-out forwards; }
 @keyframes brillo-pasa { from { background-position: 120% 0; } to { background-position: -120% 0; } }
 
 /* ---------- Crédito de banco ---------- */
@@ -552,3 +552,101 @@ body.brillo-actualizado::after { content: ''; position: fixed; inset: 0; z-index
 .fran-cuatro--chico .fran-cuatro__cuadro { aspect-ratio: auto; min-height: 96px; padding: 12px 8px; border: 0; font: inherit; cursor: pointer; }
 .fran-cuatro--chico .fran-cuatro__cuadro.activo { box-shadow: inset 0 0 0 2px var(--accent); }
 .fran-cuatro--chico .fran-cuatro__nombre { font-size: 13.5px; }
+
+/* ================= Tablero de Inicio (brief del 7 nov 2026) =================
+   Mismos componentes en claro y oscuro; solo cambian colores, sombras y brillos. */
+.fran-3d { display: block; flex: none; object-fit: contain; filter: drop-shadow(0 6px 10px rgba(20, 20, 60, 0.18)); }
+.fran-3d--40 { width: 40px; height: 40px; }
+.fran-3d--48 { width: 48px; height: 48px; }
+.fran-3d--64 { width: 64px; height: 64px; }
+html body .fran-tablero .fran-hola h1 { font-size: 30px; font-weight: 500 !important; letter-spacing: -0.01em; }
+html body .fran-tablero .fran-hola small { font-size: 15px; }
+
+/* Tarjeta grande */
+.fran-panel { position: relative; display: flex; flex-direction: column; gap: 4px; padding: 20px 20px 18px; margin-bottom: 14px; border-radius: 28px; background: var(--hero); color: #fff; overflow: hidden; box-shadow: 0 14px 34px color-mix(in srgb, var(--accent) 30%, transparent); --plus: rgba(255,255,255,.92); --minus: rgba(255,255,255,.92); --text: #fff; }
+.fran-panel::before { content: ''; position: absolute; inset: 0; background: radial-gradient(420px 180px at 90% -20%, rgba(255,255,255,.28), transparent 60%); pointer-events: none; }
+.fran-panel__etiqueta { position: relative; display: flex; align-items: center; justify-content: space-between; }
+.fran-panel__etiqueta small { color: rgba(255,255,255,.85); font-size: 14px; }
+.fran-panel__etiqueta .fran-info { margin: -12px -12px -12px 0; color: #fff; }
+.fran-panel__valor { position: relative; font-size: 40px; line-height: 1.1; letter-spacing: -0.01em; }
+.fran-panel__valor .numero.fran-menos::before { width: 28px !important; height: 28px !important; vertical-align: -3px !important; margin-right: 8px !important; }
+.fran-panel__grafica { position: relative; width: 100%; height: 70px; margin-top: 8px; }
+.fran-panel__punto { filter: drop-shadow(0 0 6px rgba(255,255,255,.9)); }
+.fran-panel__pie { position: relative; display: flex; justify-content: space-between; margin-top: 2px; }
+.fran-panel__pie small { color: rgba(255,255,255,.7); font-size: 11px; }
+.fran-panel__boton { position: relative; align-self: flex-start; display: inline-flex; align-items: center; gap: 8px; min-height: 44px; margin-top: 10px; padding: 0 18px; border-radius: 22px; background: rgba(255,255,255,.92); color: #1F2A55; font-size: 14px; text-decoration: none; }
+
+/* Métricas */
+.fran-metricas { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; margin-bottom: 18px; }
+.fran-metrica { display: flex; align-items: center; gap: 10px; min-height: 72px; padding: 12px; border-radius: 20px; background: var(--surface); box-shadow: var(--shadow); color: var(--text); text-decoration: none; min-width: 0; }
+.fran-metrica__texto { display: flex; flex-direction: column; min-width: 0; }
+.fran-metrica__texto small { color: var(--text-2); font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.fran-metrica__texto b { font-size: 15.5px; white-space: nowrap; }
+.fran-metrica__texto b .numero::before { width: 13px !important; height: 13px !important; margin-right: 4px !important; }
+html[data-modo="claro"] .fran-metrica--efectivo { background: linear-gradient(150deg, #E6F8EE, #fff); }
+html[data-modo="claro"] .fran-metrica--virtual { background: linear-gradient(150deg, #EFEAFE, #fff); }
+html[data-modo="claro"] .fran-metrica--tarjetas { background: linear-gradient(150deg, #FFF0E3, #fff); }
+html[data-modo="claro"] .fran-metrica--ganancia { background: linear-gradient(150deg, #E2F6F4, #fff); }
+
+/* Módulos */
+.fran-tablero__titulo { margin: 4px 2px 10px; color: var(--text); font-size: 16px; }
+html body .fran-tablero .fran-libros { gap: 12px; }
+.fran-modulo { position: relative; display: flex; flex-direction: column; align-items: flex-start; gap: 6px; min-height: 150px; padding: 16px; border-radius: 24px; background: var(--surface); box-shadow: var(--shadow); color: var(--text); text-decoration: none; min-width: 0; overflow: hidden; }
+.fran-modulo .fran-3d { margin-bottom: 4px; }
+.fran-modulo__nombre { color: var(--text-2); font-size: 13px; line-height: 1.2; }
+.fran-modulo__valor { font-size: 19px; line-height: 1.2; overflow-wrap: anywhere; }
+.fran-modulo__ir { position: absolute; right: 12px; bottom: 12px; display: grid; place-items: center; width: 30px; height: 30px; border-radius: 50%; background: var(--accent); color: #fff; font-size: 18px; line-height: 1; }
+.fran-modulo--chico { min-height: 0; padding: 12px 10px; border-radius: 20px; }
+.fran-modulo--chico .fran-modulo__nombre { font-size: 12px; }
+.fran-modulo--chico .fran-modulo__valor { font-size: 14.5px; white-space: nowrap; }
+.fran-fila-tablero { display: flex; align-items: center; gap: 12px; min-height: 76px; padding: 12px 14px; margin-top: 12px; border-radius: 22px; background: var(--surface); box-shadow: var(--shadow); color: var(--text); text-decoration: none; }
+.fran-fila-tablero b { flex: none; font-size: 16px; }
+.fran-fila-tablero--liquidez { box-shadow: var(--shadow), inset 0 0 0 2px var(--accent); }
+
+/* Tocar: responde al dedo */
+.fran-modulo, .fran-metrica, .fran-fila-tablero, .fran-panel__boton { transition: transform .15s ease, box-shadow .2s ease, background-color .35s ease; }
+.fran-modulo:active, .fran-metrica:active, .fran-fila-tablero:active, .fran-panel__boton:active { transform: scale(.97); }
+
+/* Entrada discreta de las tarjetas al cargar */
+@keyframes fran-entra { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
+.fran-entra { animation: fran-entra .45s cubic-bezier(.2,.7,.2,1) both; animation-delay: calc(var(--i, 0) * 35ms); }
+@media (prefers-reduced-motion: reduce) { .fran-entra { animation: none; } }
+
+/* Cambio de tema suave */
+body, .fran-modulo, .fran-metrica, .fran-fila-tablero, .fran-renglon, .fran-tarjeta, .barra-inferior { transition: background-color .35s ease, color .35s ease, box-shadow .35s ease; }
+
+/* ---------- Oscuro premium: fondo noche con resplandor, tarjetas profundas y bordes luminosos ---------- */
+html[data-modo="oscuro"] body.en-inicio { background: radial-gradient(900px 520px at 85% -8%, color-mix(in srgb, var(--accent) 30%, transparent), transparent 62%), radial-gradient(700px 420px at -10% 40%, color-mix(in srgb, var(--accent) 14%, transparent), transparent 60%), var(--bg); background-attachment: fixed; }
+html[data-modo="oscuro"] .fran-panel { box-shadow: 0 0 0 1px rgba(255,255,255,.16) inset, 0 18px 40px color-mix(in srgb, var(--accent) 38%, transparent); }
+html[data-modo="oscuro"] .fran-metrica, html[data-modo="oscuro"] .fran-modulo, html[data-modo="oscuro"] .fran-fila-tablero {
+  background: linear-gradient(160deg, color-mix(in srgb, var(--accent) 16%, var(--surface)), color-mix(in srgb, var(--bg) 40%, var(--surface)));
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent) 34%, transparent), 0 10px 26px rgba(0,0,0,.28);
+}
+html[data-modo="oscuro"] .fran-modulo:first-child, html[data-modo="oscuro"] .fran-fila-tablero--liquidez { box-shadow: inset 0 0 0 1.5px color-mix(in srgb, var(--accent) 70%, transparent), 0 0 22px color-mix(in srgb, var(--accent) 35%, transparent); }
+html[data-modo="oscuro"] .fran-3d { filter: drop-shadow(0 8px 14px rgba(0,0,0,.45)); }
+html[data-modo="oscuro"] .fran-tablero .fran-campana { background: color-mix(in srgb, var(--accent) 14%, var(--surface)); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent) 35%, transparent); }
+
+/* ---------- Círculo de actualizar ---------- */
+.deslizar-aviso { display: none; }
+.deslizar-circulo { position: fixed; z-index: 60; top: calc(10px + env(safe-area-inset-top, 0px)); left: 50%; width: 44px; height: 44px; padding: 6px; border-radius: 50%; background: var(--surface); box-shadow: 0 6px 20px rgba(0,0,0,.18), inset 0 0 0 1px color-mix(in srgb, var(--accent) 25%, transparent); transform: translate(-50%, -50px); opacity: 0; pointer-events: none; }
+.deslizar-circulo svg { width: 100%; height: 100%; }
+.deslizar-circulo .pista { fill: none; stroke: color-mix(in srgb, var(--accent) 18%, transparent); stroke-width: 3; }
+.deslizar-circulo .arco { fill: none; stroke: var(--accent); stroke-width: 3; stroke-linecap: round; transform: rotate(-90deg); transform-origin: 50% 50%; transition: stroke .2s; }
+.deslizar-circulo.listo-para-soltar .arco { stroke: var(--plus); }
+.deslizar-circulo .chulo { fill: none; stroke: var(--plus); stroke-width: 3; stroke-linecap: round; stroke-linejoin: round; stroke-dasharray: 22; stroke-dashoffset: 22; }
+.deslizar-circulo.girando svg { animation: fran-gira .8s linear infinite; }
+.deslizar-circulo.girando .arco { stroke-dashoffset: 55 !important; }
+.deslizar-circulo.hecho .arco { stroke: var(--plus); stroke-dashoffset: 0 !important; }
+.deslizar-circulo.hecho .chulo { transition: stroke-dashoffset .35s ease .05s; stroke-dashoffset: 0; }
+.deslizar-circulo.hecho { animation: fran-pop .35s ease; }
+@keyframes fran-gira { to { transform: rotate(360deg); } }
+@keyframes fran-pop { 50% { scale: 1.12; } }
+/* Liquidez: grupos cerrados */
+.fran-liquidez > summary { list-style: none; cursor: pointer; }
+.fran-liquidez > summary::-webkit-details-marker { display: none; }
+.fran-liquidez__cabeza > span:nth-child(2) { display: flex; flex-direction: column; }
+.fran-liquidez__cabeza small { color: var(--text-2); font-size: 11.5px; }
+.fran-liquidez[open] .fran-liquidez__cabeza small { display: none; }
+
+.fran-modulo:not(.fran-modulo--chico) .fran-modulo__valor { padding-right: 34px; }
+.fran-metrica__texto small + b + small { font-size: 11px; }

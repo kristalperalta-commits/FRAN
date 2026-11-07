@@ -11,7 +11,7 @@
 
 import * as ui from './ui.js';
 
-const VERSION_APP = '3.28.1';
+const VERSION_APP = '3.29.0';
 const contenedor = document.getElementById('pantalla');
 
 // ---------- Rutas (sección 7 de la especificación) ----------
@@ -306,29 +306,38 @@ let registroSW = null;
  * busca si hay versión nueva de Fran y vuelve a dibujar.
  */
 function activarDeslizarParaActualizar() {
+  // Un círculo arriba: se llena mientras se hala, gira mientras actualiza y termina con ✓ (pedido el 7 nov 2026).
   const aviso = document.createElement('div');
-  aviso.className = 'deslizar-aviso';
-  aviso.setAttribute('aria-live', 'polite');
+  aviso.className = 'deslizar-circulo';
+  aviso.setAttribute('role', 'status');
+  aviso.setAttribute('aria-label', 'Actualizar');
+  aviso.innerHTML = '<svg viewBox="0 0 36 36" aria-hidden="true"><circle class="pista" cx="18" cy="18" r="13"/><circle class="arco" cx="18" cy="18" r="13"/><path class="chulo" d="M11.5 18.5l4.5 4.5 8.5-9"/></svg>';
   document.body.append(aviso);
+  const arco = aviso.querySelector('.arco');
+  const LARGO = 2 * Math.PI * 13;
+  arco.style.strokeDasharray = `${LARGO}`;
   let inicioY = null;
   let tirando = 0;
   let ocupado = false;
   const UMBRAL = 80;
   const pantalla = document.getElementById('pantalla');
-  const mostrar = (texto, alto) => {
-    aviso.textContent = texto;
-    aviso.style.transform = `translate(-50%, ${Math.min(alto, 110) - 60}px)`;
-    aviso.classList.toggle('visible', alto > 10);
-    // La pantalla baja con el dedo, para que se note que está halando.
-    pantalla.style.transition = alto ? 'none' : 'transform 0.3s ease';
-    pantalla.style.transform = alto ? `translateY(${Math.min(alto * 0.5, 90)}px)` : '';
+  const mover = (alto) => {
+    const y = Math.min(alto, 120);
+    aviso.style.transform = `translate(-50%, ${y * 0.7 - 50}px) rotate(${y * 2}deg)`;
+    aviso.style.opacity = String(Math.min(1, alto / 40));
+    arco.style.strokeDashoffset = String(LARGO * (1 - Math.min(1, alto / UMBRAL)));
+    aviso.classList.toggle('listo-para-soltar', alto >= UMBRAL);
+    pantalla.style.transition = alto ? 'none' : 'transform 0.35s cubic-bezier(.2,.7,.2,1)';
+    pantalla.style.transform = alto ? `translateY(${Math.min(alto * 0.45, 70)}px)` : '';
   };
-  /** Una luz que pasa por toda la pantalla: ya se actualizó. */
-  const brillo = () => {
-    document.body.classList.remove('brillo-actualizado');
-    void document.body.offsetWidth;
-    document.body.classList.add('brillo-actualizado');
-    setTimeout(() => document.body.classList.remove('brillo-actualizado'), 1300);
+  const esconder = () => {
+    aviso.className = 'deslizar-circulo';
+    aviso.style.transition = 'transform .3s ease, opacity .3s ease';
+    aviso.style.opacity = '0';
+    aviso.style.transform = 'translate(-50%, -50px)';
+    pantalla.style.transition = 'transform 0.35s cubic-bezier(.2,.7,.2,1)';
+    pantalla.style.transform = '';
+    setTimeout(() => { aviso.style.transition = ''; }, 320);
   };
   document.addEventListener('touchstart', (e) => {
     if (ocupado || e.touches.length !== 1 || !document.body.classList.contains('en-inicio') || window.scrollY > 0) { inicioY = null; return; }
@@ -339,31 +348,33 @@ function activarDeslizarParaActualizar() {
   document.addEventListener('touchmove', (e) => {
     if (inicioY === null) return;
     tirando = Math.max(0, e.touches[0].clientY - inicioY);
-    if (window.scrollY > 0) { inicioY = null; mostrar('', 0); return; }
-    if (tirando > 10) mostrar(tirando >= UMBRAL ? '↑ Suelta para actualizar' : '↓ Desliza para actualizar', tirando);
+    if (window.scrollY > 0) { inicioY = null; mover(0); return; }
+    if (tirando > 6) mover(tirando);
   }, { passive: true });
   document.addEventListener('touchend', async () => {
     if (inicioY === null) return;
     inicioY = null;
-    if (tirando < UMBRAL) { mostrar('', 0); return; }
+    if (tirando < UMBRAL) { esconder(); return; }
     ocupado = true;
-    aviso.textContent = 'Actualizando…';
-    aviso.style.transform = 'translate(-50%, 30px)';
+    aviso.style.transition = 'transform .25s ease';
+    aviso.style.transform = 'translate(-50%, 18px)';
+    aviso.classList.add('girando');
     pantalla.style.transition = 'transform 0.3s ease';
-    pantalla.style.transform = 'translateY(50px)';
+    pantalla.style.transform = 'translateY(54px)';
     try {
       let resultado = 'apagada';
       if (ctx.nube) resultado = await ctx.nube.sincronizar('manual');
       if (registroSW) await registroSW.update().catch(() => {});
       await renderizar({ conservarScroll: false });
+      aviso.classList.remove('girando');
       if (resultado === 'apagada') ui.toast('Para traer los datos de la nube, entra en Yo → Nube.');
       else if (resultado === 'error') ui.toast('No pude conectar con la nube. Revisa el internet e intenta otra vez.', 5000);
-      else { brillo(); ui.toast('Listo, todo al día.'); }
+      else { aviso.classList.add('hecho'); await new Promise((r) => setTimeout(r, 700)); }
     } catch (error) {
       ui.toast(`No se pudo actualizar: ${error.message || error}`, 5000);
     } finally {
       ocupado = false;
-      mostrar('', 0);
+      esconder();
     }
   });
 }
