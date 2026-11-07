@@ -7,35 +7,50 @@
   'use strict';
 
   const CLAVE = 'mis-prestamos-tema';
-  const POR_DEFECTO = 'oscuro';
+  const CLAVE_MODO = 'fran-modo';
+  const POR_DEFECTO = 'lila';
 
-  // Noche morada se quitó: quedaba casi igual al Lila oscuro. Quien la tenía pasa al Lila oscuro.
-  // fondo y texto solo sirven para pintar la muestra y la barra del teléfono.
+  // Cinco colores; cada uno se ve en claro o en oscuro con el sol y la luna (pedido el 6 nov 2026).
+  // fondo sirve para pintar la barra del teléfono en cada modo.
   const LISTA = [
-    { id: 'oscuro', nombre: 'Lila oscuro', detalle: '(predeterminado)', fondo: '#13112B', texto: '#FFFFFF', muestra: '#8B6CFF' },
-    { id: 'claro', nombre: 'Lila claro', fondo: '#F4F2FB', texto: '#1F1B33', muestra: '#6A3DE8' },
-    { id: 'menta', nombre: 'Verde menta', fondo: '#ECFBF4', texto: '#0E2E25', muestra: '#34C79A' },
-    { id: 'rosa', nombre: 'Rosa', fondo: '#FDF1F7', texto: '#3A1230', muestra: '#EE6AAE' },
-    { id: 'dorado', nombre: 'Dorado', fondo: '#221505', texto: '#FFFFFF', muestra: '#FCD34D' }
+    { id: 'lila', nombre: 'Lila', muestra: '#7C5CF0', fondo: { claro: '#F4F2FB', oscuro: '#13112B' } },
+    { id: 'rosa', nombre: 'Rosa', muestra: '#EE6AAE', fondo: { claro: '#FDF1F7', oscuro: '#24081A' } },
+    { id: 'azul', nombre: 'Azul', muestra: '#3B9BF5', fondo: { claro: '#EFF5FD', oscuro: '#0B1730' } },
+    { id: 'naranja', nombre: 'Naranja', muestra: '#FB923C', fondo: { claro: '#FFF5EC', oscuro: '#22130A' } },
+    { id: 'verde', nombre: 'Verde', muestra: '#34C79A', fondo: { claro: '#ECFBF4', oscuro: '#04211A' } }
   ];
+  // Los temas de antes pasan a su color y a su modo.
+  const VIEJOS = { oscuro: ['lila', 'oscuro'], claro: ['lila', 'claro'], morada: ['lila', 'oscuro'], menta: ['verde', 'claro'], rosa: ['rosa', null], dorado: ['naranja', 'oscuro'] };
 
   function buscar(id) {
-    return LISTA.find((tema) => tema.id === id) || LISTA.find((tema) => tema.id === POR_DEFECTO);
+    const viejo = VIEJOS[id];
+    const color = viejo ? viejo[0] : id;
+    return LISTA.find((tema) => tema.id === color) || LISTA.find((tema) => tema.id === POR_DEFECTO);
+  }
+
+  function leer(clave) {
+    try { return window.localStorage.getItem(clave); } catch (_error) { return null; }
   }
 
   function actual() {
-    try {
-      return buscar(window.localStorage.getItem(CLAVE)).id;
-    } catch (_error) {
-      return POR_DEFECTO;
-    }
+    return buscar(leer(CLAVE)).id;
+  }
+
+  function modo() {
+    const guardado = leer(CLAVE_MODO);
+    if (guardado === 'claro' || guardado === 'oscuro') return guardado;
+    const viejo = VIEJOS[leer(CLAVE)];
+    if (viejo && viejo[1]) return viejo[1];
+    return leer(CLAVE) === 'rosa' ? 'claro' : 'oscuro';
   }
 
   function aplicar(id) {
     const tema = buscar(id);
+    const m = modo();
     document.documentElement.setAttribute('data-tema', tema.id);
+    document.documentElement.setAttribute('data-modo', m);
     const barra = document.querySelector('meta[name="theme-color"]');
-    if (barra) barra.setAttribute('content', tema.fondo);
+    if (barra) barra.setAttribute('content', tema.fondo[m]);
     return tema.id;
   }
 
@@ -47,7 +62,7 @@
   }
   function temaDeLibro(libro) {
     const t = libro ? temasLibros()[libro] : null;
-    return t && LISTA.some((x) => x.id === t) ? t : null;
+    return t ? buscar(t).id : null;
   }
   function aplicarPara(libro) {
     libroVisible = libro || null;
@@ -55,6 +70,8 @@
   }
   function elegir(id) {
     const elegido = buscar(id).id;
+    // Se guarda el modo antes de cambiar el color, para no perder el de un tema viejo.
+    if (!leer(CLAVE_MODO)) { try { window.localStorage.setItem(CLAVE_MODO, modo()); } catch (_error) { /* nada */ } }
     try {
       window.localStorage.setItem(CLAVE, elegido);
     } catch (_error) {
@@ -70,19 +87,27 @@
     aplicarPara(libroVisible);
   }
 
-  window.Tema = { lista: LISTA, actual, elegir, temaDeLibro, elegirParaLibro, aplicarPara, libroVisible: () => libroVisible };
+  // El sol y la luna: claro u oscuro para toda la app.
+  function cambiarModo(nuevo) {
+    const m = nuevo || (modo() === 'oscuro' ? 'claro' : 'oscuro');
+    try { window.localStorage.setItem(CLAVE_MODO, m); } catch (_error) { /* dura hasta cerrar la app */ }
+    aplicarPara(libroVisible);
+    return m;
+  }
+
+  window.Tema = { lista: LISTA, actual, elegir, temaDeLibro, elegirParaLibro, aplicarPara, modo, cambiarModo, libroVisible: () => libroVisible };
   aplicar(actual());
 
   // Tamaño de la letra en porcentaje: agranda toda la app por igual (letras, números, botones y cuadros).
   const CLAVE_LETRA = 'fran-letra';
-  const VIEJOS = { normal: 100, grande: 112, 'muy-grande': 125, enorme: 138 };
+  const LETRAS_VIEJAS = { normal: 100, grande: 112, 'muy-grande': 125, enorme: 138 };
   const MIN = 85;
   const MAX = 150;
   const limitar = (n) => Math.min(MAX, Math.max(MIN, Math.round(n)));
   function letraActual() {
     try {
       const v = window.localStorage.getItem(CLAVE_LETRA);
-      if (v in VIEJOS) return VIEJOS[v];
+      if (v in LETRAS_VIEJAS) return LETRAS_VIEJAS[v];
       return Number(v) > 0 ? limitar(Number(v)) : 100;
     } catch (_error) { return 100; }
   }

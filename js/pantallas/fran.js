@@ -478,6 +478,9 @@ function agendaDeHoy(ctx) {
   return (ctx.datos.estado.fran.agenda || []).filter((x) => !hecho(x, hoy) && (x.repite === 'diario' ? (!x.desde || x.desde <= hoy) : x.fecha && x.fecha <= hoy));
 }
 
+const ICONO_SOL = '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4.5"/><path d="M12 1.5v3M12 19.5v3M1.5 12h3M19.5 12h3M4.6 4.6l2.1 2.1M17.3 17.3l2.1 2.1M4.6 19.4l2.1-2.1M17.3 6.7l2.1-2.1" stroke="currentColor" stroke-width="2" stroke-linecap="round" fill="none"/></svg>';
+const ICONO_LUNA = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20.5 14.6A8.5 8.5 0 0 1 9.4 3.5 8.5 8.5 0 1 0 20.5 14.6z"/></svg>';
+
 function renderPrincipal(contenedor, ctx) {
   reiniciarVista();
   const { ui, dinero, datos, fechas } = ctx;
@@ -516,7 +519,7 @@ function renderPrincipal(contenedor, ctx) {
   const principal = ui.el(`<div class="fran-principal">
     <header class="fran-hola">
       <div><small>Hola,</small><h1>Fran</h1></div>
-      <span class="fran-hola__botones"><button type="button" class="fran-campana" data-apariencia aria-label="Apariencia: temas y letra"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M19.4 13a7.6 7.6 0 0 0 0-2l2.1-1.6-2-3.5-2.5 1a7.5 7.5 0 0 0-1.7-1L15 3h-4l-.4 2.7a7.5 7.5 0 0 0-1.7 1l-2.5-1-2 3.5L6.6 11a7.6 7.6 0 0 0 0 2l-2.1 1.6 2 3.5 2.5-1a7.5 7.5 0 0 0 1.7 1L11 21h4l.4-2.7a7.5 7.5 0 0 0 1.7-1l2.5 1 2-3.5zM13 15.5a3.5 3.5 0 1 1 0-7 3.5 3.5 0 0 1 0 7z"/></svg></button>
+      <span class="fran-hola__botones"><button type="button" class="fran-campana" data-modo-cambiar aria-label="Cambiar entre claro y oscuro"></button><button type="button" class="fran-campana" data-apariencia aria-label="Apariencia: temas y letra"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M19.4 13a7.6 7.6 0 0 0 0-2l2.1-1.6-2-3.5-2.5 1a7.5 7.5 0 0 0-1.7-1L15 3h-4l-.4 2.7a7.5 7.5 0 0 0-1.7 1l-2.5-1-2 3.5L6.6 11a7.6 7.6 0 0 0 0 2l-2.1 1.6 2 3.5 2.5-1a7.5 7.5 0 0 0 1.7 1L11 21h4l.4-2.7a7.5 7.5 0 0 0 1.7-1l2.5 1 2-3.5zM13 15.5a3.5 3.5 0 1 1 0-7 3.5 3.5 0 0 1 0 7z"/></svg></button>
       <a href="#/agenda" class="fran-campana" aria-label="Avisos"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 22a2.5 2.5 0 0 0 2.45-2h-4.9A2.5 2.5 0 0 0 12 22zm7-6V11a7 7 0 0 0-5.5-6.84V3.5a1.5 1.5 0 0 0-3 0v.66A7 7 0 0 0 5 11v5l-2 2v1h18v-1z"/></svg>${hayAviso ? '<i></i>' : ''}</a></span>
     </header>
     ${heroe({ etiqueta: 'Mi plata propia hoy', valor: plata.total, ruta: '#/virtual', cajas: [
@@ -536,6 +539,11 @@ function renderPrincipal(contenedor, ctx) {
     </div>
   </div>`);
   principal.querySelector('[data-apariencia]').addEventListener('click', () => abrirApariencia(''));
+  // Sol y luna: en oscuro se ve el sol (para pasar a claro); en claro, la luna.
+  const botonModo = principal.querySelector('[data-modo-cambiar]');
+  const pintarModo = () => { botonModo.innerHTML = window.Tema && window.Tema.modo() === 'claro' ? ICONO_LUNA : ICONO_SOL; };
+  botonModo.addEventListener('click', () => { if (window.Tema) window.Tema.cambiarModo(); pintarModo(); });
+  pintarModo();
   contenedor.append(principal);
 }
 

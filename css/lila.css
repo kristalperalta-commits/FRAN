@@ -10,70 +10,98 @@
 @font-face { font-family: 'Poppins'; font-style: normal; font-weight: 400; font-display: swap; src: url('../fuentes/poppins-400.woff2') format('woff2'); }
 @font-face { font-family: 'Poppins'; font-style: normal; font-weight: 500; font-display: swap; src: url('../fuentes/poppins-500.woff2') format('woff2'); }
 
-/* ---------- Variables por tema ---------- */
+/* ---------- Temas: cinco colores, cada uno en claro y oscuro (pedido el 6 nov 2026) ----------
+   data-tema = color (lila, rosa, azul, naranja, verde); data-modo = claro u oscuro, con el sol y la luna. */
+
+html:root[data-tema="lila"][data-modo="claro"] {
+  color-scheme: light;
+  --bg: #F4F2FB; --surface: #FFFFFF; --tile: #EFEAFE; --line: #EEECF5;
+  --text: #1F1B33; --text-2: #6B6785;
+  --hero: linear-gradient(160deg, #6A3DE8, #8446E0); --accent: #6A3DE8; --cta: #E8590C;
+  --plus: #12A06E; --minus: #E8590C; --alert: #E8590C;
+  --shadow: 0 6px 18px rgba(80, 50, 160, 0.08); --activa: var(--accent); --primario: var(--accent);
+}
+
 html:root,
-html:root[data-tema="oscuro"] {
+html:root[data-tema="lila"][data-modo="oscuro"] {
   color-scheme: dark;
-  --bg: #13112B;
-  --surface: #1E1B3F;
-  --tile: #2A2654;
-  --line: rgba(255, 255, 255, 0.06);
-  --text: #FFFFFF;
-  --text-2: #B7B3D9;
-  --hero: linear-gradient(135deg, #5B3FE0, #8A3FD6);
-  --accent: #8B6CFF;
-  --cta: var(--hero);
-  --plus: #6EE7B7;
-  --minus: #F9A8D4;
-  --alert: #FDBA74;
-  --shadow: none;
-  --activa: var(--text);
+  --bg: #13112B; --surface: #1E1B3F; --tile: #2A2654; --line: rgba(255, 255, 255, 0.06);
+  --text: #FFFFFF; --text-2: #B7B3D9;
+  --hero: linear-gradient(135deg, #5B3FE0, #8A3FD6); --accent: #8B6CFF; --cta: var(--hero);
+  --plus: #6EE7B7; --minus: #F9A8D4; --alert: #FDBA74;
+  --shadow: none; --activa: var(--text); --primario: var(--text);
 }
 
-html:root[data-tema="claro"] {
-  color-scheme: light;
-  --bg: #F4F2FB;
-  --surface: #FFFFFF;
-  --tile: #EFEAFE;
-  --line: #EEECF5;
-  --text: #1F1B33;
-  --text-2: #6B6785;
-  --hero: linear-gradient(160deg, #6A3DE8, #8446E0);
-  --accent: #6A3DE8;
-  --cta: #E8590C;
-  --plus: #12A06E; /* verde: los ingresos se ven en verde en todos los temas */
-  --minus: #D9590C;
-  --alert: #E8590C;
-  --shadow: 0 6px 18px rgba(80, 50, 160, 0.08);
-  --activa: var(--accent);
-}
-
-/* Rosa y Verde menta: fondo clarito, tarjetas blancas y letra oscura (pedido por ella el 6 nov 2026). */
-html:root[data-tema="menta"] {
-  color-scheme: light;
-  --bg: #ECFBF4; --surface: #FFFFFF; --tile: #D9F7EA; --line: #DDF1E8;
-  --text: #0E2E25; --text-2: #557A6D;
-  --hero: linear-gradient(160deg, #0E9F7A, #34C79A); --accent: #0E9F7A; --cta: var(--hero);
-  --plus: #0E9F7A; --minus: #E8590C; --alert: #E8590C;
-  --shadow: 0 6px 18px rgba(20, 110, 80, 0.08); --activa: var(--accent);
-}
-
-html:root[data-tema="rosa"] {
+html:root[data-tema="rosa"][data-modo="claro"] {
   color-scheme: light;
   --bg: #FDF1F7; --surface: #FFFFFF; --tile: #FCE4F0; --line: #F5E1EC;
   --text: #3A1230; --text-2: #8B5C7A;
   --hero: linear-gradient(160deg, #D63384, #EE6AAE); --accent: #D63384; --cta: var(--hero);
   --plus: #12A06E; --minus: #E8590C; --alert: #E8590C;
-  --shadow: 0 6px 18px rgba(170, 40, 110, 0.08); --activa: var(--accent);
+  --shadow: 0 6px 18px rgba(170, 40, 110, 0.08); --activa: var(--accent); --primario: var(--accent);
 }
 
-/* Dorado sigue oscuro. */
-html:root[data-tema="dorado"] {
+html:root[data-tema="rosa"][data-modo="oscuro"] {
   color-scheme: dark;
-  --bg: #221505; --surface: #33200A; --tile: #452D10; --line: rgba(255, 255, 255, 0.06);
-  --text: #FFFFFF; --text-2: #DCC08A;
-  --hero: linear-gradient(135deg, #A16207, #CA8A04); --accent: #FBBF24; --cta: var(--hero);
-  --plus: #6EE7B7; --minus: #F9A8D4; --alert: #FDBA74; --shadow: none; --activa: var(--text);
+  --bg: #24081A; --surface: #350D27; --tile: #481435; --line: rgba(255, 255, 255, 0.06);
+  --text: #FFFFFF; --text-2: #E3AECB;
+  --hero: linear-gradient(135deg, #BE185D, #DB2777); --accent: #F472B6; --cta: var(--hero);
+  --plus: #6EE7B7; --minus: #F9A8D4; --alert: #FDBA74;
+  --shadow: none; --activa: var(--text); --primario: var(--text);
+}
+
+html:root[data-tema="azul"][data-modo="claro"] {
+  color-scheme: light;
+  --bg: #EFF5FD; --surface: #FFFFFF; --tile: #DCEBFC; --line: #E2ECF7;
+  --text: #0F2440; --text-2: #5A6F8A;
+  --hero: linear-gradient(160deg, #2563EB, #3B9BF5); --accent: #2563EB; --cta: var(--hero);
+  --plus: #12A06E; --minus: #E8590C; --alert: #E8590C;
+  --shadow: 0 6px 18px rgba(30, 80, 170, 0.08); --activa: var(--accent); --primario: var(--accent);
+}
+
+html:root[data-tema="azul"][data-modo="oscuro"] {
+  color-scheme: dark;
+  --bg: #0B1730; --surface: #13223F; --tile: #1C2F55; --line: rgba(255, 255, 255, 0.06);
+  --text: #FFFFFF; --text-2: #A9C1E6;
+  --hero: linear-gradient(135deg, #1D4ED8, #3B82F6); --accent: #60A5FA; --cta: var(--hero);
+  --plus: #6EE7B7; --minus: #F9A8D4; --alert: #FDBA74;
+  --shadow: none; --activa: var(--text); --primario: var(--text);
+}
+
+html:root[data-tema="naranja"][data-modo="claro"] {
+  color-scheme: light;
+  --bg: #FFF5EC; --surface: #FFFFFF; --tile: #FFE7D1; --line: #F7E6D6;
+  --text: #3A1E0A; --text-2: #8A6248;
+  --hero: linear-gradient(160deg, #EA580C, #FB923C); --accent: #EA580C; --cta: var(--hero);
+  --plus: #12A06E; --minus: #D6336C; --alert: #E8590C;
+  --shadow: 0 6px 18px rgba(190, 90, 20, 0.08); --activa: var(--accent); --primario: var(--accent);
+}
+
+html:root[data-tema="naranja"][data-modo="oscuro"] {
+  color-scheme: dark;
+  --bg: #22130A; --surface: #331C0E; --tile: #462714; --line: rgba(255, 255, 255, 0.06);
+  --text: #FFFFFF; --text-2: #E8BFA0;
+  --hero: linear-gradient(135deg, #C2410C, #EA580C); --accent: #FB923C; --cta: var(--hero);
+  --plus: #6EE7B7; --minus: #F9A8D4; --alert: #FDBA74;
+  --shadow: none; --activa: var(--text); --primario: var(--text);
+}
+
+html:root[data-tema="verde"][data-modo="claro"] {
+  color-scheme: light;
+  --bg: #ECFBF4; --surface: #FFFFFF; --tile: #D9F7EA; --line: #DDF1E8;
+  --text: #0E2E25; --text-2: #557A6D;
+  --hero: linear-gradient(160deg, #0E9F7A, #34C79A); --accent: #0E9F7A; --cta: var(--hero);
+  --plus: #12A06E; --minus: #E8590C; --alert: #E8590C;
+  --shadow: 0 6px 18px rgba(20, 110, 80, 0.08); --activa: var(--accent); --primario: var(--accent);
+}
+
+html:root[data-tema="verde"][data-modo="oscuro"] {
+  color-scheme: dark;
+  --bg: #04211A; --surface: #0A3026; --tile: #114034; --line: rgba(255, 255, 255, 0.06);
+  --text: #FFFFFF; --text-2: #A3D9C6;
+  --hero: linear-gradient(135deg, #0F766E, #059669); --accent: #34D399; --cta: var(--hero);
+  --plus: #6EE7B7; --minus: #F9A8D4; --alert: #FDBA74;
+  --shadow: none; --activa: var(--text); --primario: var(--text);
 }
 
 /* Los nombres viejos toman los nuevos, en todos los temas. */
@@ -86,7 +114,6 @@ html:root[data-tema] {
   --borde: var(--line);
   --texto: var(--text);
   --texto-suave: var(--text-2);
-  --primario: var(--text);
   --primario-oscuro: var(--accent);
   --destacado: var(--hero);
   --destacado-texto: #FFFFFF;
@@ -107,7 +134,6 @@ html:root[data-tema] {
   --texto-estado-congelado: var(--text);
   --texto-estado-familia: var(--text);
 }
-html:root:is([data-tema="claro"], [data-tema="rosa"], [data-tema="menta"]) { --primario: var(--accent); }
 
 /* ---------- Letra delgada en toda la app ---------- */
 body { font-family: var(--fuente); font-weight: 400; background: var(--bg); color: var(--text); }
@@ -239,7 +265,7 @@ html body .fran-segmento button, html body .fran-segmento a { min-height: 44px; 
   background: var(--surface); box-shadow: var(--shadow); color: var(--text) !important; font: inherit; font-size: 15px; text-decoration: none; cursor: pointer;
 }
 html body .fran-borrar, .fran-boton--44 { min-height: 44px; padding: 0 16px; border-radius: 14px; font-size: 14px; }
-html:root:is([data-tema="claro"], [data-tema="rosa"], [data-tema="menta"]) .fran-boton-secundario, html:root:is([data-tema="claro"], [data-tema="rosa"], [data-tema="menta"]) .boton--secundario, html:root:is([data-tema="claro"], [data-tema="rosa"], [data-tema="menta"]) .boton--peligro, html:root:is([data-tema="claro"], [data-tema="rosa"], [data-tema="menta"]) .fran-borrar { background: transparent; box-shadow: inset 0 0 0 1.5px var(--accent); }
+html:root[data-modo="claro"] .fran-boton-secundario, html:root[data-modo="claro"] .boton--secundario, html:root[data-modo="claro"] .boton--peligro, html:root[data-modo="claro"] .fran-borrar { background: transparent; box-shadow: inset 0 0 0 1.5px var(--accent); }
 .fran-tarjeta .fran-boton-secundario, .fran-fila .fran-boton-secundario, .fran-tarjeta .fran-borrar, .fran-fila .fran-borrar { background: var(--tile); box-shadow: none; }
 .fran-boton--emoji { width: 100%; justify-content: flex-start; padding: 0 12px; margin-bottom: 12px; }
 .boton { border-radius: 18px; min-height: 48px; }
@@ -315,8 +341,8 @@ html body .pestana--mas span::before {
   -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2.8' stroke-linecap='round'%3E%3Cpath d='M12 4v16M4 12h16'/%3E%3C/svg%3E") center / contain no-repeat;
   mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2.8' stroke-linecap='round'%3E%3Cpath d='M12 4v16M4 12h16'/%3E%3C/svg%3E") center / contain no-repeat;
 }
-html:root[data-tema="claro"] .pestana--mas span { box-shadow: 0 8px 20px rgba(232, 89, 12, 0.35); }
-html:root:is([data-tema="rosa"], [data-tema="menta"]) .pestana--mas span { box-shadow: 0 8px 20px rgba(0, 0, 0, 0.15); }
+html:root[data-tema="lila"][data-modo="claro"] .pestana--mas span { box-shadow: 0 8px 20px rgba(232, 89, 12, 0.35); }
+html:root[data-modo="claro"]:not([data-tema="lila"]) .pestana--mas span { box-shadow: 0 8px 20px rgba(0, 0, 0, 0.15); }
 
 /* ---------- Temas en Yo: píldoras con un circulito de su color ---------- */
 html body .ajustes-temas { display: flex; flex-wrap: wrap; gap: 8px; }
@@ -454,3 +480,9 @@ html body .pestana__texto { font-size: 10.5px; }
 
 /* Inicio: Plata virtual y Efectivo, junto a los libros (antes estaban en Yo) */
 .fran-libros-dos { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; margin-top: 10px; }
+
+/* Sol y luna */
+[data-modo-cambiar] svg { fill: currentColor; }
+.fran-apariencia__modo { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; padding: 4px; border-radius: 24px; background: var(--tile); }
+.fran-apariencia__modo button { min-height: 44px; border: 0; border-radius: 20px; background: none; color: var(--text); font: inherit; font-size: 14px; cursor: pointer; }
+.fran-apariencia__modo button.activo { background: var(--accent); color: #FFFFFF; }
