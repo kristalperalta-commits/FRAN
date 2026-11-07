@@ -24,6 +24,8 @@ export const titulo = 'Yo';
 // Lo abierto en Yo sigue abierto cuando la pantalla se vuelve a dibujar.
 const abiertos = new Set();
 let ultimoSalto = '';
+// Yo: qué grupo y qué cuadro están abiertos (se recuerda mientras la app esté abierta).
+let seleccionYo = { grupo: '', item: '' };
 
 /* ---------- Ayudas ---------- */
 
@@ -837,28 +839,54 @@ export async function render(contenedor, params, ctx) {
   const irA = { categorias: 'Categorías', recordatorios: 'Recordatorios', recurrentes: 'Transacciones recurrentes' }[params && params.seccion];
   const saltar = irA && irA !== ultimoSalto;
   ultimoSalto = irA || '';
-  if (saltar) { abiertos.clear(); abiertos.add(irA); }
-  contenedor.append(ui.el(`<header class="fran-titulo"><a href="#/inicio" class="fran-titulo__atras" aria-label="Volver">‹</a><h1>Yo</h1></header>`));
-  const apariencia = ui.el('<button type="button" class="fran-enlace fran-enlace--boton fran-enlace--destacado"><img class="fran-3d fran-3d--48" src="iconos/3d/paleta.png" alt="" aria-hidden="true"><span class="fran-renglon__texto"><span>Apariencia</span><small>Temas y tamaño de la letra</small></span><i class="fran-ajuste__flecha" aria-hidden="true"></i></button>');
-  apariencia.addEventListener('click', () => abrirApariencia(''));
-  contenedor.append(apariencia);
-  contenedor.append(ui.el('<p class="fran-seccion fran-seccion--yo"><img class="fran-3d fran-3d--28" src="iconos/3d/engranaje-azul.png" alt="" aria-hidden="true">Ajustes<i></i></p>'));
-  contenedor.append(plegable('⚙️', 'Categorías', seccionCategorias(ctx), ui));
-  contenedor.append(ui.el('<a class="fran-enlace" href="#/libro/pension"><img class="fran-3d fran-3d--40" src="iconos/3d/monedas.png" alt="" aria-hidden="true">Moneda COP · tasa USD<i class="fran-ajuste__flecha" aria-hidden="true"></i></a>'));
-  contenedor.append(plegable('⏰', 'Recordatorios', seccionRecordatorios(ctx), ui));
-  contenedor.append(plegable('🔁', 'Transacciones recurrentes', seccionRecurrentes(ctx), ui));
-  const respaldo = plegable('☁️', 'Respaldo y exportar Excel', seccionCopia(ctx), ui);
-  respaldo.append(seccionHistoricos(ctx));
-  respaldo.append(seccionBorrar(ctx));
-  contenedor.append(respaldo);
-  contenedor.append(plegable('🔒', 'Face ID', seccionCandado(ctx), ui));
-  contenedor.append(ui.el('<p class="fran-seccion fran-seccion--yo"><img class="fran-3d fran-3d--28" src="iconos/3d/celular-azul.png" alt="" aria-hidden="true">Esta app<i></i></p>'));
-  contenedor.append(plegable('🌐', 'Nube', seccionNube(ctx), ui));
-  contenedor.append(plegable('📲', 'Instalar en el teléfono', seccionInstalar(ctx), ui));
-  contenedor.append(plegable('ℹ️', 'Acerca de la app', seccionAcerca(ctx), ui));
+  // Tres grupos con símbolo; al tocar uno se despliegan sus cuadros (icono grande, dos por fila).
+  const GRUPOS = [
+    { id: 'ajustes', nombre: 'Ajustes', icono: 'engranaje-azul', items: [
+      ['Categorías', 'carpeta-azul', () => seccionCategorias(ctx)],
+      ['Moneda COP · tasa USD', 'monedas', null, '#/libro/pension'],
+      ['Recordatorios', 'reloj-azul', () => seccionRecordatorios(ctx)],
+      ['Transacciones recurrentes', 'repetir-azul', () => seccionRecurrentes(ctx)],
+    ] },
+    { id: 'seguridad', nombre: 'Seguridad', icono: 'candado-azul', items: [
+      ['Respaldo y exportar Excel', 'nube-azul', () => { const d = document.createElement('div'); d.append(seccionCopia(ctx), seccionHistoricos(ctx), seccionBorrar(ctx)); return d; }],
+      ['Face ID', 'candado-azul', () => seccionCandado(ctx)],
+    ] },
+    { id: 'app', nombre: 'Esta app', icono: 'celular-azul', items: [
+      ['Nube', 'mundo-azul', () => seccionNube(ctx)],
+      ['Instalar en el teléfono', 'celular-azul', () => seccionInstalar(ctx)],
+      ['Acerca de la app', 'info-azul', () => seccionAcerca(ctx)],
+    ] },
+  ];
+  if (saltar) { const g = GRUPOS.find((x) => x.items.some((it) => it[0] === irA)); seleccionYo = { grupo: g ? g.id : '', item: irA }; }
+  contenedor.append(ui.el(`<header class="fran-titulo"><a href="#/inicio" class="fran-titulo__atras" aria-label="Volver">‹</a><h1>Yo</h1><button type="button" class="fran-titulo__der fran-titulo__paleta" aria-label="Apariencia: temas, letra y sombreado"><img class="fran-3d" src="iconos/3d/paleta.png" alt="" aria-hidden="true"></button></header>`));
+  contenedor.querySelector('.fran-titulo__paleta').addEventListener('click', () => abrirApariencia(''));
+  const grupos = ui.el(`<div class="fran-yo-grupos">${GRUPOS.map((g) => `<button type="button" class="fran-yo-grupo" data-grupo="${g.id}" aria-pressed="false"><img class="fran-3d" src="iconos/3d/${g.icono}.png" alt="" aria-hidden="true" decoding="async"><span>${ui.esc(g.nombre)}</span></button>`).join('')}</div>`);
+  const cuadros = ui.el('<div class="fran-yo-cuadros"></div>');
+  const panel = ui.el('<div class="fran-yo-panel"></div>');
+  const pintar = () => {
+    grupos.querySelectorAll('[data-grupo]').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.grupo === seleccionYo.grupo)));
+    const g = GRUPOS.find((x) => x.id === seleccionYo.grupo);
+    cuadros.innerHTML = g ? g.items.map(([texto, archivo, , ruta]) => {
+      const dentro = `<img class="fran-3d" src="iconos/3d/${archivo}.png" alt="" aria-hidden="true" decoding="async"><span>${ui.esc(texto)}</span>`;
+      return ruta ? `<a class="fran-yo-cuadro" href="${ruta}">${dentro}</a>` : `<button type="button" class="fran-yo-cuadro" data-item="${ui.esc(texto)}" aria-pressed="${String(texto === seleccionYo.item)}">${dentro}</button>`;
+    }).join('') : '';
+    cuadros.classList.toggle('abierto', !!g);
+    panel.innerHTML = '';
+    const it = g && g.items.find((x) => x[0] === seleccionYo.item);
+    if (it && it[2]) {
+      const caja = ui.el(`<section class="fran-yo-panel__caja"><h2><img class="fran-3d fran-3d--28" src="iconos/3d/${it[1]}.png" alt="" aria-hidden="true">${ui.esc(it[0])}</h2></section>`);
+      caja.append(it[2]());
+      panel.append(caja);
+    }
+  };
+  grupos.addEventListener('click', (e) => { const b = e.target.closest('[data-grupo]'); if (!b) return; seleccionYo = { grupo: seleccionYo.grupo === b.dataset.grupo ? '' : b.dataset.grupo, item: '' }; pintar(); });
+  cuadros.addEventListener('click', (e) => {
+    const b = e.target.closest('[data-item]'); if (!b) return;
+    seleccionYo.item = seleccionYo.item === b.dataset.item ? '' : b.dataset.item; pintar();
+    if (seleccionYo.item) setTimeout(() => panel.scrollIntoView({ block: 'nearest', behavior: 'smooth' }), 60);
+  });
+  contenedor.append(grupos, cuadros, panel);
+  pintar();
   contenedor.append(ui.el(`<p class="fran-version"><span class="fran-version__pildora">Versión ${ui.esc(ctx.version || '')}</span></p>`));
-  if (saltar) {
-    const destino = [...contenedor.querySelectorAll('.fran-ajuste')].find((x) => x.dataset.seccion === irA);
-    if (destino) setTimeout(() => destino.scrollIntoView(), 80);
-  }
+  if (saltar) setTimeout(() => panel.scrollIntoView({ block: 'start' }), 80);
 }

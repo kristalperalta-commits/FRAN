@@ -57,7 +57,7 @@ html[data-modo="claro"] body::before {
 /* ================= CRISTAL CON RELIEVE: toda tarjeta y renglón ================= */
 .fran-modulo, .fran-metrica, .fran-fila-tablero, .fran-renglon, .fran-tarjeta, .fran-accesos a,
 .fran-tachados, .fran-tarjeta-dona, .fran-tarjeta-lista .fran-renglon, .fran-cuatro__cuadro,
-.fran-liquidez-boton, .fran-tabla-bloque, .fran-lista--tarjetas .fran-fila, .fran-tabla-premium__fila,
+.fran-yo-grupo, .fran-yo-cuadro, .fran-liquidez-boton, .fran-tabla-bloque, .fran-lista--tarjetas .fran-fila, .fran-tabla-premium__fila,
 .fran-tabla-premium__cabeza, .fran-campos--grande > label, .fran-campos--grande > div, .fran-enlace,
 .fran-ajuste, .fran-virtual__cuadro, .fran-tarjeta-credito, .lista, .tarjeta, .fran-corrido, .fran-explica {
   position: relative;
@@ -69,7 +69,7 @@ html[data-modo="oscuro"] .fran-modulo, html[data-modo="oscuro"] .fran-metrica, h
 html[data-modo="oscuro"] .fran-renglon, html[data-modo="oscuro"] .fran-tarjeta, html[data-modo="oscuro"] .fran-accesos a,
 html[data-modo="oscuro"] .fran-tachados, html[data-modo="oscuro"] .fran-tarjeta-dona, html[data-modo="oscuro"] .fran-cuatro__cuadro,
 html[data-modo="oscuro"] .fran-liquidez-boton, html[data-modo="oscuro"] .fran-tabla-bloque, html[data-modo="oscuro"] .fran-lista--tarjetas .fran-fila,
-html[data-modo="oscuro"] .fran-tabla-premium__fila, html[data-modo="oscuro"] .fran-tabla-premium__cabeza, html[data-modo="oscuro"] .fran-campos--grande > label,
+html[data-modo="oscuro"] .fran-yo-grupo, html[data-modo="oscuro"] .fran-yo-cuadro, html[data-modo="oscuro"] .fran-tabla-premium__fila, html[data-modo="oscuro"] .fran-tabla-premium__cabeza, html[data-modo="oscuro"] .fran-campos--grande > label,
 html[data-modo="oscuro"] .fran-campos--grande > div, html[data-modo="oscuro"] .fran-enlace, html[data-modo="oscuro"] .fran-ajuste,
 html[data-modo="oscuro"] .fran-virtual__cuadro, html[data-modo="oscuro"] .fran-tarjeta-credito, html[data-modo="oscuro"] .lista, html[data-modo="oscuro"] .tarjeta,
 html[data-modo="oscuro"] .fran-corrido, html[data-modo="oscuro"] .fran-explica {
@@ -87,7 +87,7 @@ html[data-modo="claro"] .fran-modulo, html[data-modo="claro"] .fran-metrica, htm
 html[data-modo="claro"] .fran-renglon, html[data-modo="claro"] .fran-tarjeta, html[data-modo="claro"] .fran-accesos a,
 html[data-modo="claro"] .fran-tachados, html[data-modo="claro"] .fran-tarjeta-dona, html[data-modo="claro"] .fran-cuatro__cuadro,
 html[data-modo="claro"] .fran-liquidez-boton, html[data-modo="claro"] .fran-tabla-bloque, html[data-modo="claro"] .fran-lista--tarjetas .fran-fila,
-html[data-modo="claro"] .fran-tabla-premium__fila, html[data-modo="claro"] .fran-tabla-premium__cabeza, html[data-modo="claro"] .fran-campos--grande > label,
+html[data-modo="claro"] .fran-yo-grupo, html[data-modo="claro"] .fran-yo-cuadro, html[data-modo="claro"] .fran-tabla-premium__fila, html[data-modo="claro"] .fran-tabla-premium__cabeza, html[data-modo="claro"] .fran-campos--grande > label,
 html[data-modo="claro"] .fran-campos--grande > div, html[data-modo="claro"] .fran-enlace, html[data-modo="claro"] .fran-ajuste,
 html[data-modo="claro"] .fran-virtual__cuadro, html[data-modo="claro"] .fran-tarjeta-credito, html[data-modo="claro"] .lista, html[data-modo="claro"] .tarjeta,
 html[data-modo="claro"] .fran-corrido, html[data-modo="claro"] .fran-explica {
@@ -480,3 +480,75 @@ html[data-letra="enorme"] .fran-heroe__cajas { grid-template-columns: 1fr !impor
 .fran-modulo--chico .fran-modulo__valor { font-size: clamp(10px, 12cqi, 14.5px) !important; }
 .fran-heroe__cajas > span, .fran-heroe__cajas > a { container-type: inline-size; }
 .fran-heroe__cajas > span > span, .fran-heroe__cajas > a > span { font-size: clamp(11px, 11cqi, 15px) !important; }
+
+/* ================= Ajustes del 7 nov (noche): barra pegada, cuadros en dos filas, Informes ================= */
+/* Barra inferior pegada al borde de abajo (lo pidió Fran), con esquinas redondas solo arriba. */
+html body .barra-inferior { left: 0 !important; right: 0 !important; bottom: 0 !important; width: auto !important; transform: none !important; border-radius: 28px 28px 0 0 !important; height: calc(70px + env(safe-area-inset-bottom, 0px)) !important; padding: 0 8px env(safe-area-inset-bottom, 0px) !important; }
+/* Cuadros de Inicio (Efectivo, Virtual, Tarjetas, Ganancia): arriba el icono y el nombre, abajo todo el ancho para el número. */
+.fran-metrica { display: grid !important; grid-template-columns: auto minmax(0, 1fr); grid-template-areas: "icono nombre" "valor valor" "extra extra"; column-gap: 10px; row-gap: 2px; align-items: center; container-type: inline-size; }
+.fran-metrica .fran-3d { grid-area: icono; }
+.fran-metrica__texto { display: contents !important; container-type: normal; }
+.fran-metrica__texto > small:first-child { grid-area: nombre; font-size: 13px; }
+.fran-metrica__texto > b { grid-area: valor; display: block; min-width: 0; margin-top: 4px; font-size: clamp(10px, 13cqi, 22px) !important; white-space: nowrap; overflow: hidden; text-overflow: clip; }
+.fran-metrica__texto > small + b + small { grid-area: extra; font-size: 11px; }
+/* Informes: icono y "Saldo" arriba, el número con todo el ancho debajo; cajitas en dos filas; tabla que no se revuelve. */
+.fran-heroe--informes { display: grid !important; grid-template-columns: auto minmax(0, 1fr); grid-template-areas: "icono etiqueta" "valor valor" "cajas cajas"; column-gap: 14px; align-items: center; padding-left: 22px !important; text-align: left !important; container-type: inline-size; }
+.fran-heroe--informes .fran-heroe__3d--izq { position: static !important; grid-area: icono; width: 64px !important; height: 64px !important; margin: 0 !important; }
+.fran-heroe--informes .fran-heroe__etiqueta { grid-area: etiqueta; justify-content: flex-start !important; }
+.fran-heroe--informes .fran-heroe__etiqueta small { font-size: 15px; }
+.fran-heroe--informes .fran-heroe__valor { grid-area: valor; min-width: 0; margin-top: 6px; font-size: clamp(22px, 12cqi, 38px) !important; white-space: nowrap; overflow: hidden; }
+.fran-heroe--informes .fran-heroe__cajas { grid-area: cajas; width: 100% !important; margin-left: 0 !important; }
+.fran-heroe--informes .fran-heroe__cajas > span { display: grid !important; grid-template-columns: auto minmax(0, 1fr); grid-template-areas: "ic nombre" "valor valor"; column-gap: 8px; row-gap: 2px; align-items: center; padding: 10px 12px; container-type: inline-size; }
+.fran-heroe--informes .fran-heroe__cajas > span > .fran-3d { grid-area: ic; }
+.fran-heroe__caja-texto { display: contents !important; }
+.fran-heroe__caja-texto small { grid-area: nombre; font-size: 12px; }
+.fran-heroe__caja-texto .numero { grid-area: valor; display: block; min-width: 0; margin-top: 4px; font-size: clamp(10px, 13cqi, 19px) !important; white-space: nowrap; overflow: hidden; }
+.fran-tabla-premium__cabeza, .fran-tabla-premium__fila { grid-template-columns: 0.9fr 1fr 1fr 1fr 14px !important; gap: 6px !important; container-type: inline-size; }
+.fran-tabla-premium__cabeza > span { min-width: 0; overflow: hidden; white-space: nowrap; font-size: clamp(9px, 3.6cqi, 12px) !important; }
+.fran-tabla-premium__fila > .numero { min-width: 0; overflow: hidden; white-space: nowrap; text-align: right; font-size: clamp(8px, 4cqi, 15px) !important; }
+.fran-tabla-premium__fila > .fran-tabla-premium__mes { min-width: 0; overflow: hidden; white-space: nowrap; }
+@media (min-width: 700px) {
+  html body .barra-inferior { left: 50% !important; right: auto !important; width: min(640px, 100%) !important; transform: translateX(-50%) !important; border-radius: 28px 28px 0 0 !important; }
+  .fran-tabla-premium__fila > .numero { font-size: 16px !important; }
+}
+
+/* ================= Yo: paleta chica, tres grupos y cuadros grandes ================= */
+.fran-titulo__paleta { display: grid; place-items: center; width: 44px; height: 44px; padding: 0; border: 0; border-radius: 50%; background: var(--surface); box-shadow: var(--shadow); cursor: pointer; }
+.fran-titulo__paleta .fran-3d { width: 28px; height: 28px; }
+.fran-yo-grupos { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; margin: 4px 0 14px; }
+.fran-yo-grupo, .fran-yo-cuadro { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; aspect-ratio: 1; min-width: 0; padding: 12px; border: 0; border-radius: 26px; color: var(--text); font: inherit; font-weight: 600; font-size: 14px; line-height: 1.2; text-align: center; text-decoration: none; cursor: pointer; transition: transform .15s ease; }
+.fran-yo-grupo:active, .fran-yo-cuadro:active { transform: scale(.96); }
+.fran-yo-grupo .fran-3d { width: 58px; height: 58px; }
+.fran-yo-cuadro .fran-3d { width: 72px; height: 72px; }
+.fran-yo-grupo[aria-pressed="true"], .fran-yo-cuadro[aria-pressed="true"] { background: var(--hero) !important; color: #fff !important; box-shadow: 0 16px 34px color-mix(in srgb, var(--accent) 45%, transparent), inset 0 1.5px 0 rgba(255,255,255,.55), inset 0 0 0 1.5px color-mix(in srgb, var(--luz) 85%, transparent) !important; }
+.fran-yo-cuadros { display: none; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 16px; }
+.fran-yo-cuadros.abierto { display: grid; }
+.fran-yo-panel__caja > h2 { display: flex; align-items: center; gap: 10px; margin: 6px 2px 10px; font-size: 17px; font-weight: 700; }
+@media (min-width: 700px) { .fran-yo-cuadros { grid-template-columns: repeat(4, minmax(0, 1fr)); } .fran-yo-grupos { max-width: 560px; } }
+/* Informes: el saldo pegado a la izquierda y entero; el signo de la tabla más chico; con letra enorme la tabla va a dos líneas. */
+.fran-heroe--informes .fran-heroe__valor { justify-content: flex-start !important; text-align: left !important; }
+.fran-tabla-premium__fila > .numero { font-size: clamp(8px, 3.8cqi, 15px) !important; }
+.fran-tabla-premium__fila > .numero::before { width: 11px !important; height: 11px !important; margin-right: 2px !important; }
+html[data-letra="enorme"] .fran-tabla-premium__fila { grid-template-columns: 1fr 1fr 1fr 14px !important; grid-template-areas: "mes mes mes f" "g i s f"; row-gap: 2px; }
+html[data-letra="enorme"] .fran-tabla-premium__fila > .fran-tabla-premium__mes { grid-area: mes; }
+html[data-letra="enorme"] .fran-tabla-premium__fila > span:nth-of-type(2) { grid-area: g; }
+html[data-letra="enorme"] .fran-tabla-premium__fila > span:nth-of-type(3) { grid-area: i; }
+html[data-letra="enorme"] .fran-tabla-premium__fila > span:nth-of-type(4) { grid-area: s; }
+html[data-letra="enorme"] .fran-tabla-premium__fila > .fran-ajuste__flecha { grid-area: f; }
+html[data-letra="enorme"] .fran-tabla-premium__fila > .numero { font-size: clamp(8px, 4.6cqi, 13px) !important; }
+html[data-letra="enorme"] .fran-tabla-premium__cabeza { grid-template-columns: 1fr 1fr 1fr 14px !important; }
+html[data-letra="enorme"] .fran-tabla-premium__cabeza > span:first-child { display: none; }
+
+/* ================= Iconos azules teñidos con el color del tema ================= */
+/* Los iconos "-azul" se giran al tono del tema (lila, rosa, naranja, verde) para que no chillen. */
+html[data-tema="lila"] { --giro-3d: 34deg; }
+html[data-tema="rosa"] { --giro-3d: 108deg; }
+html[data-tema="azul"] { --giro-3d: 0deg; }
+html[data-tema="naranja"] { --giro-3d: 158deg; }
+html[data-tema="verde"] { --giro-3d: -57deg; }
+img.fran-3d[src*="-azul"] { filter: hue-rotate(var(--giro-3d, 0deg)) drop-shadow(0 0 10px color-mix(in srgb, var(--luz) 55%, transparent)) drop-shadow(0 8px 12px rgba(0, 0, 0, .35)); }
+html[data-modo="claro"] img.fran-3d[src*="-azul"] { filter: hue-rotate(var(--giro-3d, 0deg)) drop-shadow(0 0 8px color-mix(in srgb, var(--luz) 45%, transparent)) drop-shadow(0 6px 10px color-mix(in srgb, var(--accent) 22%, transparent)); }
+img.fran-heroe__3d[src*="-azul"] { filter: hue-rotate(var(--giro-3d, 0deg)) drop-shadow(0 0 18px color-mix(in srgb, var(--luz) 85%, transparent)) drop-shadow(0 12px 20px rgba(0, 0, 0, .4)) !important; }
+html[data-relieve="plano"] img.fran-3d[src*="-azul"], html[data-relieve="plano"] img.fran-heroe__3d[src*="-azul"] { filter: hue-rotate(var(--giro-3d, 0deg)) !important; }
+.fran-tabla-premium__cabeza, .fran-tabla-premium__fila { grid-template-columns: 0.75fr 1fr 1fr 1.15fr 14px !important; }
+.fran-tabla-premium__fila > .numero { font-size: clamp(8px, 3.7cqi, 15px) !important; }
