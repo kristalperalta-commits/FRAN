@@ -138,6 +138,7 @@ function franVacio() {
     virtualCuentas: null,
     historicosBorrados: [],
     interesesSueltos: [],
+    apartados: [],
     creditos: [],
   };
 }
@@ -192,6 +193,8 @@ function completarFran(fran) {
     // Intereses que alguien debe sin préstamo de capital en Fran (por ejemplo, del Excel sin capital).
     interesesSueltos: lista(f.interesesSueltos).filter((x) => x && x.id && x.nombre && Number.isInteger(x.valor) && x.valor > 0),
     // Créditos que ella saca con un banco para prestar aparte del negocio (ej. Banco de Bogotá, 3 nov 2026).
+    // Plata del efectivo que ella tiene separada (ej. el millón de Yadira). No cambia el saldo.
+    apartados: lista(f.apartados).filter((x) => x && x.id && x.nombre && Number.isInteger(x.valor) && x.valor > 0),
     creditos: lista(f.creditos).filter((c) => c && c.id && Number.isInteger(c.monto) && c.monto > 0)
       .map((c) => ({ ...c, movimientos: lista(c.movimientos).filter((m) => m && m.id && esFechaValida(m.fecha) && Number.isInteger(m.valor) && m.valor > 0), plan: lista(c.plan) })),
   };

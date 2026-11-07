@@ -2249,6 +2249,8 @@ function renderEfectivo(contenedor, ctx) {
   const salio = delMesE.filter((f) => f.valor < 0).reduce((s, f) => s - f.valor, 0);
   const mesAntes = fechas.nombreMes(Number(fechas.sumarMeses(`${mes}-01`, -1).slice(5, 7))).toLowerCase();
   const dibujar = () => { contenedor.innerHTML = ''; renderEfectivo(contenedor, ctx); };
+  const apartados = datos.estado.fran.apartados || [];
+  const apartado = apartados.reduce((s, x) => s + x.valor, 0);
   // Por grupo (Alimentos, Préstamos, Mano de obra...), primero lo que más movió.
   const porGrupo = new Map();
   for (const f of delMesE) { if (!porGrupo.has(f.grupo)) porGrupo.set(f.grupo, []); porGrupo.get(f.grupo).push(f); }
@@ -2256,7 +2258,10 @@ function renderEfectivo(contenedor, ctx) {
   const rangoFechas = (lista) => { const fs = lista.map((f) => f.fecha).sort(); const a = fechas.formatear(fs[0]).replace(/ \d{4}$/, ''); const b = fechas.formatear(fs[fs.length - 1]).replace(/ \d{4}$/, ''); return a === b ? a : `${a} al ${b}`; };
   const raiz = ui.el(`<div class="fran-virtual">
     ${titular('personal', ctx, '#/inicio', 'Plata en efectivo', mes)}
-    ${heroe({ etiqueta: 'Efectivo hoy', valor: total, ayudaTexto: `Arranca con el cierre del mes pasado y suma o resta solo lo que entró o salió en efectivo.`, cajas: [[`Cierre de ${mesAntes}`, anterior], ['Entró', entro, entro ? 'mas' : ''], ['Salió', salio, salio ? 'menos' : '']] }, ctx)}
+    ${heroe({ etiqueta: 'Efectivo hoy', valor: total, ilustracion: 'billete', ayudaTexto: `Arranca con el cierre del mes pasado y suma o resta solo lo que entró o salió en efectivo.${apartado ? ` De eso, ${dinero.formatear(apartado)} está apartado y ${dinero.formatear(total - apartado)} es para gastar.` : ''}`, cajas: [[`Cierre de ${mesAntes}`, anterior], ['Entró', entro, entro ? 'mas' : ''], ['Salió', salio, salio ? 'menos' : '']] }, ctx)}
+    ${apartados.length ? `<details class="fran-tachados fran-prestado-pension"><summary>${icono3d('bolsa', 'fran-3d--40')}<span class="fran-renglon__texto"><span>Apartado</span><small>Para gastar quedan ${dinero.formatear(total - apartado)}</small></span><b class="numero">${dinero.formatear(apartado)}</b></summary>
+      <div class="fran-lista">${apartados.map((x) => `<div class="fran-fila"><span class="fran-fila__texto"><strong>${ui.esc(x.nombre)}</strong>${x.nota ? `<small>${ui.esc(x.nota)}</small>` : ''}</span><span class="fran-fila__valor numero">${dinero.formatear(x.valor)}</span><button type="button" class="fran-boton-secundario fran-boton--44" data-quitar-apartado="${ui.esc(x.id)}">Ya no</button></div>`).join('')}</div>
+    </details>` : ''}
     <div class="fran-dos fran-virtual__botones"><button type="button" class="fran-boton-secundario fran-boton-entra" data-nuevo="aporte"><span class="fran-signo fran-signo--mas" aria-hidden="true"></span>Entró</button><button type="button" class="fran-boton-secundario fran-boton-sale" data-nuevo="retiro"><span class="fran-signo fran-signo--menos" aria-hidden="true"></span>Salió</button></div>
     <form class="fran-campos fran-campos--grande oculto" data-form-mov novalidate>
       <label><small data-titulo>Entró</small><input name="concepto" autocomplete="off" placeholder="¿Quién o qué?"></label>
@@ -2264,6 +2269,13 @@ function renderEfectivo(contenedor, ctx) {
       <label><small>Fecha</small><input type="date" name="fecha" value="${ui.esc(mes === hoy.slice(0, 7) ? hoy : `${mes}-01`)}"></label>
       <button class="fran-boton-principal fran-guardar">Guardar</button>
     </form>
+    <details class="fran-tachados"><summary>Apartar plata del efectivo</summary>
+      <form class="fran-campos fran-campos--grande" data-form-apartar novalidate>
+        <label><small>¿Para qué o de quién?</small><input name="nombre" autocomplete="off" placeholder="Ej. Pago de Yadira"></label>
+        <label class="fran-campo-valor"><small>Cuánto</small><input name="valor" inputmode="numeric" autocomplete="off" placeholder="0"></label>
+        <button class="fran-boton-principal fran-guardar">Apartar</button>
+      </form>
+    </details>
     ${grupos.map(([nombre, lista]) => { const suma = lista.reduce((t, f) => t + f.valor, 0); return `<details class="fran-tachados fran-prestado-pension">
       <summary>${icono3dDe(lista[0].icono, 'fran-3d--40')}<span class="fran-renglon__texto"><span>${ui.esc(nombre)}</span><small>${lista.length} ${lista.length === 1 ? 'movimiento' : 'movimientos'} · ${ui.esc(rangoFechas(lista))}</small></span><b>${conSigno(suma, dinero, suma < 0 ? 'menos' : 'mas')}</b></summary>
       <div class="fran-lista">${lista.map((f) => `<div class="fran-fila"><span class="fran-fila__texto"><strong>${ui.esc(f.titulo)}</strong><small>${ui.esc([fechas.formatear(f.fecha), f.sub].filter(Boolean).join(' · '))}</small></span><span class="fran-fila__valor numero ${f.valor < 0 ? 'fran-menos' : 'fran-mas'}">${dinero.formatear(Math.abs(f.valor))}</span>${f.manual ? `<button type="button" class="fran-boton-secundario fran-boton--44" data-quitar="${ui.esc(f.id)}">Quitar</button>` : ''}</div>`).join('')}</div>
@@ -2291,6 +2303,20 @@ function renderEfectivo(contenedor, ctx) {
   });
   raiz.querySelectorAll('[data-quitar]').forEach((b) => b.addEventListener('click', async () => {
     if (await ui.confirmar('¿Quitar este movimiento del efectivo?', { aceptar: 'Sí, quitar', peligro: true })) { await datos.eliminarMovimiento(b.dataset.quitar); dibujar(); }
+  }));
+  raiz.querySelector('[data-form-apartar]').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const f = e.target.elements;
+    const nombre = f.nombre.value.trim();
+    const valor = Number(f.valor.value.replace(/\D/g, ''));
+    if (!nombre || !valor) { ui.toast('Escribe para qué y cuánto.'); return; }
+    await datos.actualizarFran({ apartados: [...apartados, { id: `ap-${Date.now()}`, nombre, valor, fecha: hoy }] });
+    ui.toast('Apartado.');
+    dibujar();
+  });
+  raiz.querySelectorAll('[data-quitar-apartado]').forEach((b) => b.addEventListener('click', async () => {
+    await datos.actualizarFran({ apartados: apartados.filter((x) => x.id !== b.dataset.quitarApartado) });
+    dibujar();
   }));
   contenedor.append(raiz);
 }
