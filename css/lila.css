@@ -409,3 +409,6 @@ html body .ajustes-letra__titulo { display: block; margin: 0 0 10px; color: var(
 html[data-letra="muy-grande"] .fran-heroe__cajas > span > span, html[data-letra="enorme"] .fran-heroe__cajas > span > span { white-space: normal; overflow-wrap: anywhere; font-size: 13px; }
 html[data-letra="enorme"] .fran-heroe__cajas { grid-auto-flow: row; grid-template-columns: repeat(2, minmax(0, 1fr)); }
 html body .ajustes-tema { flex-direction: row; }
+html[data-letra="muy-grande"] .fran-libro--chica .fran-libro__valor, html[data-letra="enorme"] .fran-libro--chica .fran-libro__valor { font-size: 12px; overflow-wrap: normal; white-space: nowrap; }
+html[data-letra="enorme"] .fran-libros-chicos { gap: 6px; }
+html[data-letra="enorme"] .fran-libro--chica { padding: 10px 7px; }
