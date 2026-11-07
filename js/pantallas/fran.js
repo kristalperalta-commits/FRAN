@@ -44,7 +44,7 @@ export const CATEGORIAS_BASE = {
     ingreso: ['Otros', 'Salario', 'Negocio Ropa', 'Ingreso mensual'],
   },
   arriendos: { ingreso: [], gasto: ['Mano de obra', 'Servicios de las casas', 'Remodelación', 'Materiales', 'Trámites'] },
-  redes: { ingreso: ['Redes sociales', 'Trabajo audiovisual'], gasto: ['Redes sociales', 'Videos'] },
+  redes: { ingreso: ['Facebook', 'YouTube', 'TikTok', 'Instagram', 'Creación de contenido para otros'], gasto: ['Facebook', 'YouTube', 'TikTok', 'Instagram', 'Creación de contenido para otros'] },
   productos: { inversion: ['Inventario sin vender', 'Inversiones'], ingreso: ['Ventas'], gasto: ['Gasto de productos'] },
   terceros: { ingreso: ['Abuelos', 'Esposo'], gasto: ['Abuelos', 'Esposo'], uso: ['Préstamo interno'] },
 };
@@ -62,7 +62,7 @@ const ICONOS = [
   [/electronic/, '📱'], [/belleza/, '💄'], [/deporte/, '⚽'], [/entreten/, '🎬'], [/transporte/, '🚌'], [/educacion/, '📚'],
   [/regalo/, '🎁'], [/agua/, '💧'], [/ropa/, '👕'], [/tarjeta/, '💳'], [/descuadre/, '❓'], [/deuda/, '📄'],
   [/interes|prestamo/, '💵'], [/prado|laguna|bodega|piso|apartamento|franklin|arriendo/, '🏢'], [/mano de obra/, '👷'],
-  [/remodel/, '🎨'], [/material/, '🧱'], [/tramite/, '📑'], [/casas/, '🏗️'], [/redes|youtube|video/, '📺'], [/audiovisual/, '🎬'],
+  [/remodel/, '🎨'], [/material/, '🧱'], [/tramite/, '📑'], [/casas/, '🏗️'], [/audiovisual|contenido/, '🎬'], [/redes|youtube|video/, '📺'],
   [/inventario|venta|producto/, '📦'], [/inversion/, '📈'], [/salario|ingreso|tiempo|premio/, '💰'], [/abuelo|esposo/, '🤝'],
   [/transferencia/, '🔁'], [/total|resto/, '🧾'], [/ferreter/, '🔨'], [/parqueadero/, '🅿️'],
 ];
@@ -97,7 +97,21 @@ const EMOJI_3D = {
   '📲': 'celular', '💻': 'portatil', '🏛️': 'clasico', '🛒': 'bolsas', '🔔': 'reloj', '📝': 'lapiz', '🏦': 'banco', '👛': 'billetera', '📋': 'tabla', '📅': 'calendario', '📞': 'telefono', '💬': 'chat', '🔍': 'lista', '✓': 'recibo', '🔥': 'bombilla', '⬇️': 'repetir', '⬆️': 'repetir', '🔴': 'pregunta', '🤝': 'manos', '🏢': 'edificio',
 };
 /** Imagen 3D de una categoría (o de un emoji). Si no hay dibujo, devuelve el emoji en su cuadro. */
+// Logos sencillos de las redes (pedido el 7 nov 2026): se ven en Redes, en sus categorías y en Inicio.
+const LOGO_RED = {
+  facebook: '<svg viewBox="0 0 48 48"><rect width="48" height="48" rx="12" fill="#1877F2"/><path d="M26.5 40V26.6h4.5l.7-5.2h-5.2v-3.3c0-1.5.4-2.5 2.6-2.5h2.8v-4.7c-.5-.1-2.1-.2-4-.2-4 0-6.7 2.4-6.7 6.9v3.8H16.7v5.2h4.5V40z" fill="#fff"/></svg>',
+  youtube: '<svg viewBox="0 0 48 48"><rect width="48" height="48" rx="12" fill="#FF0033"/><path d="M19 15.5v17l14-8.5z" fill="#fff"/></svg>',
+  tiktok: '<svg viewBox="0 0 48 48"><rect width="48" height="48" rx="12" fill="#111"/><path d="M28.6 10h-4.8v19.4a4.4 4.4 0 1 1-3.1-4.2v-4.9a9.2 9.2 0 1 0 7.9 9.1V19a11 11 0 0 0 6.4 2v-4.8a6.4 6.4 0 0 1-6.4-6.2z" fill="#25F4EE" transform="translate(-1.2 -1)"/><path d="M28.6 10h-4.8v19.4a4.4 4.4 0 1 1-3.1-4.2v-4.9a9.2 9.2 0 1 0 7.9 9.1V19a11 11 0 0 0 6.4 2v-4.8a6.4 6.4 0 0 1-6.4-6.2z" fill="#FE2C55" transform="translate(1.2 1)"/><path d="M28.6 10h-4.8v19.4a4.4 4.4 0 1 1-3.1-4.2v-4.9a9.2 9.2 0 1 0 7.9 9.1V19a11 11 0 0 0 6.4 2v-4.8a6.4 6.4 0 0 1-6.4-6.2z" fill="#fff"/></svg>',
+  instagram: '<svg viewBox="0 0 48 48"><defs><linearGradient id="ig-g" x1="0" y1="1" x2="1" y2="0"><stop offset="0" stop-color="#FEDA75"/><stop offset=".3" stop-color="#FA7E1E"/><stop offset=".6" stop-color="#D62976"/><stop offset="1" stop-color="#4F5BD5"/></linearGradient></defs><rect width="48" height="48" rx="12" fill="url(#ig-g)"/><rect x="11" y="11" width="26" height="26" rx="8" fill="none" stroke="#fff" stroke-width="3.2"/><circle cx="24" cy="24" r="6.2" fill="none" stroke="#fff" stroke-width="3.2"/><circle cx="31.6" cy="16.4" r="2" fill="#fff"/></svg>',
+};
+function logoRed(nombre, clase = '') {
+  const svg = LOGO_RED[norm(nombre)];
+  return svg ? svg.replace('<svg ', `<svg class="fran-3d fran-logo-red ${clase}" aria-hidden="true" `) : '';
+}
+
 export function icono3dDe(categoriaOEmoji, clase = 'fran-3d--40') {
+  const logo = logoRed(categoriaOEmoji, clase);
+  if (logo) return logo;
   const emoji = EMOJI_3D[categoriaOEmoji] ? categoriaOEmoji : iconoDe(categoriaOEmoji);
   const archivo = EMOJI_3D[emoji];
   if (!archivo) return `<span class="fran-ico">${emoji}</span>`;
@@ -565,7 +579,7 @@ function listaPorDia(lista, ctx) {
     html += `<div class="fran-dia"><span>${ui.esc(fechaLinda(dia, ctx))}</span><span>${g ? `G: <b class="numero">${dinero.formatear(g)}</b> ` : ''}${i ? `I: <b class="numero">${dinero.formatear(i)}</b>` : ''}</span></div>`;
     for (const a of filas) {
       const signo = a.tipo === 'ingreso' ? '+' : (a.tipo === 'gasto' ? '−' : '');
-      html += fila({ ui, ver: a.id, icono: iconoDe(a.categoria), titulo: a.categoria, sub: a.descripcion, derecha: `${signo}${dinero.formatear(a.valor)}`, clase: a.tipo === 'ingreso' ? 'fran-mas' : (a.tipo === 'gasto' ? 'fran-menos' : '') });
+      html += fila({ ui, ver: a.id, icono: LOGO_RED[norm(a.categoria)] ? a.categoria : iconoDe(a.categoria), titulo: a.categoria, sub: [a.propiedad, a.descripcion].filter(Boolean).join(' · '), derecha: `${signo}${dinero.formatear(a.valor)}`, clase: a.tipo === 'ingreso' ? 'fran-mas' : (a.tipo === 'gasto' ? 'fran-menos' : '') });
     }
   }
   return html || `<p class="fran-vacio">No hay movimientos en este mes.</p>`;
@@ -699,7 +713,7 @@ function renderPrincipal(contenedor, ctx) {
     terceros: totalTerceros(ctx),
   };
   const tarjetaLibro = (id, chica, n) => `<a href="#/libro/${id}" class="fran-modulo${chica ? ' fran-modulo--chico' : ''} fran-entra" style="--i:${n}">
-    ${icono3d(id, chica ? 'fran-3d--48' : 'fran-3d--64')}
+    ${id === 'redes' ? `<span class="fran-redes-mini" aria-hidden="true">${['Facebook', 'YouTube', 'TikTok', 'Instagram'].map((r) => logoRed(r)).join('')}</span>` : icono3d(id, chica ? 'fran-3d--48' : 'fran-3d--64')}
     <span class="fran-modulo__nombre">${ui.esc(LIBROS[id].enInicio)}</span>
     <span class="fran-modulo__valor">${typeof valorDe[id] === 'number' ? conSigno(valorDe[id], dinero) : ui.esc(valorDe[id])}</span>
     ${chica ? '' : '<span class="fran-modulo__ir" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M5 12h13M12 6l6 6-6 6" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg></span>'}
@@ -715,6 +729,7 @@ function renderPrincipal(contenedor, ctx) {
   const principal = ui.el(`<div class="fran-principal fran-tablero">
     <header class="fran-hola">
       <div><small>Hola,</small><h1>Fran</h1></div>
+      ${libretaBoton(ctx)}
       <span class="fran-hola__botones"><button type="button" class="fran-campana" data-modo-cambiar aria-label="Cambiar entre claro y oscuro"></button><button type="button" class="fran-campana" data-apariencia aria-label="Apariencia: temas y letra"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M19.4 13a7.6 7.6 0 0 0 0-2l2.1-1.6-2-3.5-2.5 1a7.5 7.5 0 0 0-1.7-1L15 3h-4l-.4 2.7a7.5 7.5 0 0 0-1.7 1l-2.5-1-2 3.5L6.6 11a7.6 7.6 0 0 0 0 2l-2.1 1.6 2 3.5 2.5-1a7.5 7.5 0 0 0 1.7 1L11 21h4l.4-2.7a7.5 7.5 0 0 0 1.7-1l2.5 1 2-3.5zM13 15.5a3.5 3.5 0 1 1 0-7 3.5 3.5 0 0 1 0 7z"/></svg></button>
       <a href="#/agenda" class="fran-campana" aria-label="Avisos y cobros de hoy"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 22a2.5 2.5 0 0 0 2.45-2h-4.9A2.5 2.5 0 0 0 12 22zm7-6V11a7 7 0 0 0-5.5-6.84V3.5a1.5 1.5 0 0 0-3 0v.66A7 7 0 0 0 5 11v5l-2 2v1h18v-1z"/></svg>${hoyAgenda.length ? `<b class="fran-campana__numero">${hoyAgenda.length}</b>` : (hayAviso ? '<i></i>' : '')}</a></span>
     </header>
@@ -1372,7 +1387,9 @@ export function categoriasDe(fran, id, clave, tipo) {
   let fijas = [];
   if (id === 'personal' && clave === 'ingreso') fijas = Object.keys(INGRESOS_DE_OTRO_LIBRO);
   if (id === 'arriendos' && clave === 'ingreso') fijas = (fran.propiedades || []).map((p) => p.nombre);
-  const todas = [...new Set([...fijas, ...usadas, ...extra, ...base])].filter((c) => !/total del mes|resto sin|^casas del mes$|^arriendos del mes$|sin decir piso|^laguna y prado$/i.test(c));
+  // Arriendos (ingreso) y Redes muestran solo lo de hoy: las propiedades y las redes. Lo viejo sigue en el historial.
+  const soloFijas = (id === 'arriendos' && clave === 'ingreso' && fijas.length) || id === 'redes';
+  const todas = [...new Set(soloFijas ? [...fijas, ...base, ...extra] : [...fijas, ...usadas, ...extra, ...base])].filter((c) => !/total del mes|resto sin|^casas del mes$|^arriendos del mes$|sin decir piso|^laguna y prado$/i.test(c));
   const ocultas = fran.categoriasOcultas[llave] || [];
   return { todas, visibles: todas.filter((c) => !ocultas.includes(c)), ocultas };
 }
@@ -1408,6 +1425,9 @@ function renderAgregar(contenedor, id, clave, ctx) {
   const tipo = def[2];
   const esTransfer = tipo === 'transferencia';
   const categorias = categoriasDe(datos.estado.fran, id, def[1], tipo).visibles;
+  const propiedades = datos.estado.fran.propiedades || [];
+  const pidePropiedad = id === 'arriendos' && tipo === 'gasto' && propiedades.length > 0;
+  let propiedadElegida = null;
   const vaAOtroLibro = (c) => (id === 'personal' && clave === 'ingreso' ? INGRESOS_DE_OTRO_LIBRO[c] : null);
   const hoy = ctx.hoy();
   let elegida = null;
@@ -1420,7 +1440,10 @@ function renderAgregar(contenedor, id, clave, ctx) {
       ${esTransfer ? `
         <p class="fran-seccion">Sale de</p>${chips('cuenta', CUENTAS, 'Efectivo', ui)}
         <p class="fran-seccion">Entra a</p>${chips('destino', CUENTAS, 'Nequi propio', ui)}` : `
-        <div class="fran-iconos">${categorias.map((c, i) => `<button type="button" class="${i >= 11 ? 'fran-mas-cat oculto' : ''}" data-cat="${ui.esc(c)}"><span>${icono3dDe(c, 'fran-3d--48')}</span><small>${ui.esc(c.replace(' públicos', ''))}</small></button>`).join('')}
+        ${pidePropiedad ? `<p class="fran-seccion fran-agregar__paso">¿Para qué propiedad?</p>
+        <div class="fran-iconos fran-iconos--prop">${propiedades.map((p) => `<button type="button" data-prop="${ui.esc(p.nombre)}"><span>${iconoPropiedad(p, 'fran-3d--48')}</span><small>${ui.esc(p.nombre)}</small></button>`).join('')}</div>
+        <p class="fran-seccion fran-agregar__paso oculto" data-paso-cat>¿De qué fue el gasto?</p>` : ''}
+        <div class="fran-iconos${pidePropiedad ? ' oculto' : ''}" data-grilla-cat>${categorias.map((c, i) => `<button type="button" class="${i >= 11 ? 'fran-mas-cat oculto' : ''}" data-cat="${ui.esc(c)}"><span>${iconoCategoria(c, id, datos.estado.fran, 'fran-3d--48')}</span><small>${ui.esc(c.replace(' públicos', ''))}</small></button>`).join('')}
           <button type="button" data-ver-mas><span>＋</span><small>Más</small></button>
           <button type="button" class="fran-mas-cat oculto" data-nueva><span>${icono3dDe('✎', 'fran-3d--48')}</span><small>Nueva</small></button>
           <a class="fran-mas-cat oculto" href="#/ajustes/categorias"><span>${icono3dDe('⚙️', 'fran-3d--48')}</span><small>Categorías</small></a></div>`}
@@ -1477,6 +1500,13 @@ function renderAgregar(contenedor, id, clave, ctx) {
   };
   const marcar = (boton) => raiz.querySelectorAll('[data-cat],[data-nueva]').forEach((x) => x.classList.toggle('activo', x === boton));
 
+  raiz.querySelectorAll('[data-prop]').forEach((b) => b.addEventListener('click', () => {
+    propiedadElegida = b.dataset.prop;
+    raiz.querySelectorAll('[data-prop]').forEach((x) => x.classList.toggle('activo', x === b));
+    raiz.querySelector('[data-grilla-cat]').classList.remove('oculto');
+    raiz.querySelector('[data-paso-cat]').classList.remove('oculto');
+    setTimeout(() => raiz.querySelector('[data-paso-cat]').scrollIntoView({ block: 'start', behavior: 'smooth' }), 60);
+  }));
   raiz.querySelectorAll('[data-cat]').forEach((b) => b.addEventListener('click', () => {
     if (vaAOtroLibro(b.dataset.cat)) { ctx.navegar(vaAOtroLibro(b.dataset.cat)); return; }
     elegida = b.dataset.cat;
@@ -1547,9 +1577,11 @@ function renderAgregar(contenedor, id, clave, ctx) {
     const categoriaNueva = nueva.value.trim();
     if (botonNueva && botonNueva.classList.contains('activo') && !categoriaNueva) { ui.toast('Escribe el nombre de la categoría.'); nueva.focus(); return; }
     if (!esTransfer && !elegida && !categoriaNueva) { ui.toast('Elige la categoría.'); return; }
+    if (pidePropiedad && !propiedadElegida) { ui.toast('Elige la propiedad.'); return; }
     const fecha = campoFecha.value || hoy;
     try {
-      const asiento = await datos.agregarAsiento({ libro: id, fecha, tipo, categoria: esTransfer ? 'Transferencia' : (categoriaNueva || elegida), descripcion: nota.value, valor, cuenta, destino, conFoto: !!foto });
+      const asiento = await datos.agregarAsiento({ libro: id, fecha, tipo, categoria: esTransfer ? 'Transferencia' : (categoriaNueva || elegida), descripcion: nota.value, valor, cuenta, destino, conFoto: !!foto, propiedad: propiedadElegida || '' });
+      if (notaDeLibreta) { await marcarNotaPasada(ctx, notaDeLibreta); notaDeLibreta = null; }
       if (foto) await guardarFoto(asiento.id, foto).catch(() => ui.toast('El movimiento quedó, pero la foto no se pudo guardar.'));
       ui.toast('Guardado.');
       vista.mes = fecha.slice(0, 7);
@@ -1576,6 +1608,7 @@ function renderAgregar(contenedor, id, clave, ctx) {
     guardarMovimiento();
   });
 
+  if (textoDeLibreta && texto) { texto.value = textoDeLibreta; textoDeLibreta = ''; }
   // Escribir o dictar: "pollo 12000" llena el teclado; ella revisa y confirma con ✓.
   raiz.querySelector('form').addEventListener('submit', (e) => {
     e.preventDefault();
@@ -2027,6 +2060,7 @@ function renderPropiedades(contenedor, ctx) {
   const { lista, delAnio } = arriendosDelAnio(ctx);
   const anios = [...new Set(lista.map((a) => a.fecha.slice(0, 4)))].sort().reverse();
   const DUENA = Object.fromEntries((ctx.datos.estado.fran.propiedades || []).map((p) => [p.nombre, p.duena]));
+  const PROPS = Object.fromEntries((ctx.datos.estado.fran.propiedades || []).map((p) => [p.nombre, p]));
   const totales = new Map(Object.keys(DUENA).map((n) => [n, 0]));
   for (const a of delAnio) totales.set(a.categoria, (totales.get(a.categoria) || 0) + a.valor);
   const filas = [...totales].sort((x, y) => y[1] - x[1]);
@@ -2035,7 +2069,7 @@ function renderPropiedades(contenedor, ctx) {
     <div class="fran-anios">${[...anios, 'todo'].map((x) => `<button type="button" data-anio="${x}" class="${x === vista.anioPropiedad ? 'activo' : ''}">${x === 'todo' ? 'Todo' : x}</button>`).join('')}</div>
     <p class="fran-total"><strong class="numero">Total: <span class="fran-mas">${dinero.formatear(sumar(delAnio))}</span></strong></p>
     <div class="fran-lista">${filas.map(([n, v]) => fila({
-      ui, icono: '🏢', titulo: n === 'Arriendos del mes' ? 'Sin repartir' : n,
+      ui, icono: EMOJI_PROPIEDAD[(PROPS[n] || {}).tipo] || '🏢', titulo: n === 'Arriendos del mes' ? 'Sin repartir' : n,
       sub: v || !DUENA[n] ? (NOTA_PROPIEDAD[n] || (/sin decir piso/.test(n) ? 'La anotación no dice el piso' : '') || DUENA[n] || '') : `${DUENA[n]} · sin ingresos este año`,
       derecha: dinero.formatear(v), clase: v ? 'fran-mas' : '', ruta: `#/libro/arriendos/propiedad/${encodeURIComponent(n)}`,
     })).join('')}</div>
@@ -2222,6 +2256,100 @@ function renderLiquidez(contenedor, ctx) {
   contenedor.append(raiz);
   // Trae el dólar de hoy y vuelve a dibujar si cambió.
   traerDolar(ctx.hoy()).then((t) => { if (t.valor !== tasa.valor && document.body.contains(raiz)) { contenedor.innerHTML = ''; renderLiquidez(contenedor, ctx); } }).catch(() => {});
+}
+
+// ---------- Propiedades: icono según el tipo (casa, apartamento, bodega) ----------
+
+const EMOJI_PROPIEDAD = { casa: '🏠', apartamento: '🏢', bodega: '📦' };
+const ARCHIVO_PROPIEDAD = { casa: 'casa', apartamento: 'edificio', bodega: 'caja' };
+function iconoPropiedad(p, clase = '') {
+  return `<img class="fran-3d ${clase}" src="iconos/3d/${ARCHIVO_PROPIEDAD[p.tipo] || 'edificio'}.png" alt="" aria-hidden="true" decoding="async">`;
+}
+function iconoCategoria(c, libro, fran, clase) {
+  if (libro === 'arriendos') { const p = (fran.propiedades || []).find((x) => x.nombre === c); if (p) return iconoPropiedad(p, clase); }
+  return icono3dDe(c, clase);
+}
+
+// ---------- Libreta: anotar rápido en texto y pasarlo después a su categoría ----------
+
+let textoDeLibreta = '';
+let notaDeLibreta = null;
+
+async function marcarNotaPasada(ctx, id) {
+  const notas = (ctx.datos.estado.fran.notas || []).map((n) => (n.id === id ? { ...n, pasada: true, pasadaEl: ctx.hoy() } : n));
+  await ctx.datos.actualizarFran({ notas });
+}
+
+// Libreta en Inicio: una hoja con lápiz grande al lado de "Hola, Fran" (pedido el 7 nov 2026).
+const SVG_LIBRETA = '<svg viewBox="0 0 64 64" aria-hidden="true"><defs><linearGradient id="lib-h" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fff"/><stop offset="1" style="stop-color:color-mix(in srgb, var(--accent) 14%, #fff)"/></linearGradient><linearGradient id="lib-l" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#FDE68A"/><stop offset="1" stop-color="#F59E0B"/></linearGradient></defs><rect x="9" y="7" width="38" height="48" rx="8" fill="url(#lib-h)" style="stroke:var(--accent)" stroke-width="2.5"/><path d="M17 21h22M17 29h22M17 37h14" style="stroke:var(--accent)" stroke-width="3" stroke-linecap="round" opacity=".7"/><g transform="rotate(40 46 40)"><rect x="41" y="14" width="10" height="34" rx="2.5" fill="url(#lib-l)"/><rect x="41" y="14" width="10" height="6" rx="2" fill="#F472B6"/><path d="M41 48h10l-5 9z" fill="#FCD9B6"/><path d="M44.6 54.2h2.8L46 57z" fill="#374151"/></g></svg>';
+
+function libretaBoton(ctx) {
+  const pendientes = (ctx.datos.estado.fran.notas || []).filter((n) => !n.pasada).length;
+  return `<a href="#/libreta" class="fran-hola__libreta" aria-label="Libreta: anotar rápido${pendientes ? `, ${pendientes} por pasar` : ''}">${SVG_LIBRETA}${pendientes ? `<b>${pendientes}</b>` : ''}</a>`;
+}
+
+function libretaInicio(ctx) {
+  const { ui } = ctx;
+  const pendientes = (ctx.datos.estado.fran.notas || []).filter((n) => !n.pasada);
+  return `<section class="fran-libreta fran-entra" style="--i:5">
+    <a class="fran-libreta__cabeza" href="#/libreta">${icono3d('lapiz', 'fran-3d--40')}<span class="fran-renglon__texto"><span>Libreta</span><small>${pendientes.length ? `${pendientes.length} ${pendientes.length === 1 ? 'nota' : 'notas'} por pasar` : 'Anota rápido y lo pasas después'}</small></span><i class="fran-ajuste__flecha" aria-hidden="true"></i></a>
+    <form class="fran-libreta__escribir" data-libreta novalidate><input name="texto" autocomplete="off" placeholder="Ej.: pagué 20.000 de gas en efectivo" aria-label="Nota rápida"><button class="fran-boton-principal" aria-label="Guardar nota">＋</button></form>
+    ${pendientes.slice(0, 2).map((n) => `<p class="fran-libreta__nota">${ui.esc(n.texto)}</p>`).join('')}
+  </section>`;
+}
+
+function conectarLibreta(raiz, ctx, redibujar) {
+  const form = raiz.querySelector('[data-libreta]');
+  if (!form) return;
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const texto = form.elements.texto.value.trim();
+    if (!texto) { ctx.ui.toast('Escribe la nota.'); return; }
+    const nota = { id: `nota-${Date.now()}`, texto, fecha: ctx.hoy(), creadoEn: new Date().toISOString() };
+    await ctx.datos.actualizarFran({ notas: [...(ctx.datos.estado.fran.notas || []), nota] });
+    ctx.ui.toast('Anotado en la libreta.');
+    redibujar();
+  });
+}
+
+function renderLibreta(contenedor, ctx) {
+  const { ui, fechas } = ctx;
+  const notas = ctx.datos.estado.fran.notas || [];
+  const pendientes = notas.filter((n) => !n.pasada).sort((a, b) => b.creadoEn.localeCompare(a.creadoEn));
+  const pasadas = notas.filter((n) => n.pasada).sort((a, b) => b.creadoEn.localeCompare(a.creadoEn));
+  const dibujar = () => { contenedor.innerHTML = ''; renderLibreta(contenedor, ctx); };
+  const tarjeta = (n) => `<div class="fran-libreta__item" data-nota="${ui.esc(n.id)}">
+    <p>${ui.esc(n.texto)}</p>
+    <small>${ui.esc(fechas.formatear(n.fecha))}${n.pasada ? ' · ya la pasé' : ''}</small>
+    <span class="fran-libreta__botones">${n.pasada ? `<button type="button" class="fran-boton-secundario fran-boton--44" data-volver="${ui.esc(n.id)}">Volver a pendientes</button>` : `<button type="button" class="fran-boton-principal fran-boton--44" data-pasar="${ui.esc(n.id)}" data-tipo="gasto">Pasar a gasto</button><button type="button" class="fran-boton-secundario fran-boton--44" data-pasar="${ui.esc(n.id)}" data-tipo="ingreso">Pasar a ingreso</button><button type="button" class="fran-boton-secundario fran-boton--44" data-hecha="${ui.esc(n.id)}">Ya la pasé</button>`}<button type="button" class="fran-boton-secundario fran-boton--44" data-borrar-nota="${ui.esc(n.id)}" aria-label="Borrar nota">Borrar</button></span>
+  </div>`;
+  const raiz = ui.el(`<div>
+    ${titular('personal', ctx, '#/inicio', 'Libreta')}
+    <p class="fran-nota">Anota aquí lo que pagaste o recibiste, como te salga. Cuando tengas calma, toca "Pasar" y Fran te abre Agregar con el texto ya escrito.</p>
+    <form class="fran-libreta__escribir fran-libreta__escribir--grande" data-libreta novalidate><textarea name="texto" rows="3" placeholder="Ej.: recibí 150.000 de un arriendo por Nequi" aria-label="Nota"></textarea><button class="fran-boton-principal">Guardar nota</button></form>
+    ${seccion(`Por pasar (${pendientes.length})`, 'lapiz')}
+    ${pendientes.map(tarjeta).join('') || '<p class="fran-vacio">No hay notas por pasar.</p>'}
+    ${pasadas.length ? `<details class="fran-tachados"><summary>Ya pasadas (${pasadas.length})</summary>${pasadas.map(tarjeta).join('')}</details>` : ''}
+  </div>`);
+  conectarLibreta(raiz, ctx, dibujar);
+  setTimeout(() => { const t = raiz.querySelector('textarea'); if (t && !pendientes.length) t.focus(); }, 150);
+  raiz.querySelectorAll('[data-pasar]').forEach((b) => b.addEventListener('click', () => {
+    const n = notas.find((x) => x.id === b.dataset.pasar);
+    textoDeLibreta = n ? n.texto : '';
+    notaDeLibreta = n ? n.id : null;
+    ctx.navegar(`/libro/personal/agregar/${b.dataset.tipo}`);
+  }));
+  raiz.querySelectorAll('[data-hecha]').forEach((b) => b.addEventListener('click', async () => { await marcarNotaPasada(ctx, b.dataset.hecha); dibujar(); }));
+  raiz.querySelectorAll('[data-volver]').forEach((b) => b.addEventListener('click', async () => {
+    await ctx.datos.actualizarFran({ notas: notas.map((n) => (n.id === b.dataset.volver ? { ...n, pasada: false } : n)) });
+    dibujar();
+  }));
+  raiz.querySelectorAll('[data-borrar-nota]').forEach((b) => b.addEventListener('click', async () => {
+    if (!(await ui.confirmar('¿Borrar esta nota?', { aceptar: 'Sí, borrar', peligro: true }))) return;
+    await ctx.datos.actualizarFran({ notas: notas.filter((n) => n.id !== b.dataset.borrarNota) });
+    dibujar();
+  }));
+  contenedor.append(raiz);
 }
 
 // ---------- Mi plata hoy: por qué da lo que da ----------
@@ -2671,12 +2799,14 @@ export async function render(contenedor, params, ctx) {
     case 'tarjetas': return renderTarjetas(contenedor, ctx);
     case 'liquidez': return renderLiquidez(contenedor, ctx);
     case 'miplata': return renderMiPlata(contenedor, ctx);
+    case 'libreta': return renderLibreta(contenedor, ctx);
     case 'credito': return renderCredito(contenedor, params.id, ctx);
     case 'soloIntereses': return renderSoloIntereses(contenedor, ctx);
     case 'propiedad': {
       const { delAnio } = arriendosDelAnio(ctx);
       const anio = vista.anioPropiedad === 'todo' ? '' : ` · ${vista.anioPropiedad}`;
-      return renderDetalle(contenedor, 'arriendos', `${params.nombre === 'Arriendos del mes' ? 'Sin repartir' : params.nombre}${anio}`, delAnio.filter((a) => a.categoria === params.nombre), '#/libro/arriendos/propiedades', ctx);
+      const gastosProp = deTipo(delLibro(asientos(ctx), 'arriendos'), 'gasto').filter((a) => a.propiedad === params.nombre && (vista.anioPropiedad === 'todo' || a.fecha.startsWith(vista.anioPropiedad)));
+      return renderDetalle(contenedor, 'arriendos', `${params.nombre === 'Arriendos del mes' ? 'Sin repartir' : params.nombre}${anio}`, [...delAnio.filter((a) => a.categoria === params.nombre), ...gastosProp], '#/libro/arriendos/propiedades', ctx);
     }
     case 'moverPension': return renderMoverPension(contenedor, params.accion, ctx);
     case 'personas': return renderPersonas(contenedor, ctx);

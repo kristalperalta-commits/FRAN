@@ -628,3 +628,47 @@ html body .fran-heroe--informes .fran-heroe__valor { text-align: center !importa
 .fran-tabla-premium__fila > .numero { font-size: clamp(8px, 3.25cqi, 15px) !important; letter-spacing: -0.01em; }
 html body .fran-heroe--informes .fran-heroe__etiqueta { text-align: left !important; justify-content: flex-start !important; }
 html body .fran-heroe--informes .fran-heroe__etiqueta small { white-space: nowrap; font-size: clamp(20px, 8cqi, 34px) !important; }
+
+/* ================= Redes con sus logos, propiedades y libreta ================= */
+.fran-logo-red { display: block; border-radius: 22%; }
+.fran-redes-mini { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; width: 52px; height: 52px; }
+.fran-redes-mini .fran-logo-red { width: 24px; height: 24px; }
+.fran-iconos span .fran-logo-red { width: 46px; height: 46px; }
+.fran-agregar__paso { margin: 6px 2px 8px; font-weight: 700; }
+html body .fran-iconos--prop .activo span { background: var(--hero) !important; }
+.fran-libreta { display: flex; flex-direction: column; gap: 8px; margin: 14px 0 4px; padding: 14px; border-radius: 24px; background: var(--surface); box-shadow: var(--shadow); }
+.fran-libreta__cabeza { display: flex; align-items: center; gap: 12px; color: var(--text); text-decoration: none; }
+.fran-libreta__cabeza .fran-renglon__texto { flex: 1; min-width: 0; }
+.fran-libreta__escribir { display: flex; gap: 8px; align-items: stretch; }
+.fran-libreta__escribir input, .fran-libreta__escribir textarea { flex: 1; min-width: 0; min-height: 46px; padding: 10px 14px; border: 1px solid color-mix(in srgb, var(--accent) 30%, transparent); border-radius: 16px; background: var(--tile); color: var(--text); font: inherit; font-size: 16px; }
+.fran-libreta__escribir .fran-boton-principal { width: auto; min-width: 52px; padding: 0 14px; }
+.fran-libreta__escribir--grande { flex-direction: column; margin-bottom: 8px; }
+.fran-libreta__nota { margin: 0; padding: 8px 12px; border-radius: 14px; background: var(--tile); color: var(--text); font-size: 14px; overflow-wrap: anywhere; }
+.fran-libreta__item { display: flex; flex-direction: column; gap: 6px; margin-bottom: 12px; padding: 14px; border-radius: 22px; background: var(--surface); box-shadow: var(--shadow); }
+.fran-libreta__item p { margin: 0; color: var(--text); font-size: 16px; overflow-wrap: anywhere; }
+.fran-libreta__item small { color: var(--text-2); }
+.fran-libreta__botones { display: flex; flex-wrap: wrap; gap: 8px; }
+.fran-libreta__botones button { width: auto; padding: 0 14px; }
+
+/* Libreta junto a "Hola, Fran": hoja con lápiz, grandecita, con el número de notas por pasar. */
+.fran-hola { display: flex; align-items: center; }
+.fran-hola > div:first-child { flex: 0 0 auto; }
+.fran-hola__libreta { position: relative; display: grid; place-items: center; width: 64px; height: 64px; margin: 0 auto 0 14px; border-radius: 20px; text-decoration: none; transition: transform .15s ease; }
+.fran-hola__libreta:active { transform: scale(.94); }
+.fran-hola__libreta svg { width: 58px; height: 58px; filter: drop-shadow(0 6px 10px color-mix(in srgb, var(--accent) 35%, transparent)); }
+.fran-hola__libreta b { position: absolute; top: 0; right: 0; min-width: 20px; height: 20px; padding: 0 5px; border-radius: 10px; background: #EA580C; color: #fff; font-size: 12px; line-height: 20px; text-align: center; }
+html[data-relieve="plano"] .fran-hola__libreta svg { filter: none; }
+
+/* ================= Letras que no se pierden al elegir (revisión del 7 nov) ================= */
+/* Entró/Salió elegido: verde y naranja fuertes en los dos modos, letra blanca. */
+html[data-modo] body .fran-virtual__botones .fran-boton-entra.elegido { background: #0E8F62 !important; color: #fff !important; }
+html[data-modo] body .fran-virtual__botones .fran-boton-sale.elegido { background: #D9480F !important; color: #fff !important; }
+html[data-modo] body .fran-virtual__botones .elegido .fran-signo { color: #fff !important; }
+/* Caja: la tarjeta principal lleva el color del tema para que la letra blanca se lea. */
+html[data-modo] body .tarjeta--primario { background: var(--hero) !important; color: #fff !important; }
+html[data-modo] body .tarjeta--primario * { color: #fff !important; }
+/* Nombres de las casillas: se parten por sílabas (Aparta-mento), nunca a la mitad de una letra cualquiera. */
+html body .fran-iconos button small, html body .fran-iconos a small { overflow-wrap: break-word !important; word-break: normal !important; hyphens: auto; -webkit-hyphens: auto; font-size: 12.5px; }
+/* Libreta junto a "Hola, Fran": más grande y centrada en el espacio libre. */
+.fran-hola__libreta { width: 80px; height: 80px; margin: 0 auto; }
+.fran-hola__libreta svg { width: 74px; height: 74px; }

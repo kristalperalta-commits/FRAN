@@ -140,6 +140,7 @@ function franVacio() {
     interesesSueltos: [],
     apartados: [],
     creditos: [],
+    notas: [],
   };
 }
 
@@ -197,6 +198,8 @@ function completarFran(fran) {
     apartados: lista(f.apartados).filter((x) => x && x.id && x.nombre && Number.isInteger(x.valor) && x.valor > 0),
     creditos: lista(f.creditos).filter((c) => c && c.id && Number.isInteger(c.monto) && c.monto > 0)
       .map((c) => ({ ...c, movimientos: lista(c.movimientos).filter((m) => m && m.id && esFechaValida(m.fecha) && Number.isInteger(m.valor) && m.valor > 0), plan: lista(c.plan) })),
+    // Libreta: lo que ella anota rápido en texto para pasarlo después a su categoría.
+    notas: lista(f.notas).filter((n) => n && n.id && typeof n.texto === 'string' && n.texto.trim()),
   };
 }
 
@@ -1391,6 +1394,8 @@ export const datos = {
     };
     if (a.conFoto === true) asiento.conFoto = true;
     if (a.persona) asiento.persona = limpiarTexto(a.persona);
+    // Arriendos: a qué propiedad fue el gasto (la categoría dice de qué fue: obra, materiales…).
+    if (a.propiedad) asiento.propiedad = limpiarTexto(a.propiedad);
     // Plata de un negocio compartido: se ve en su libro, pero no entra a sus cuentas ni a Finanzas.
     if (a.soloLibro === true) asiento.soloLibro = true;
     if (a.textoFecha) asiento.textoFecha = limpiarTexto(a.textoFecha);
