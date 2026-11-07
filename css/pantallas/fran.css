@@ -440,3 +440,15 @@ a.fran-plata { color: inherit; text-decoration: none; }
 .fran-reparto .fran-tarjeta { padding: 10px; min-width: 0; }
 .fran-reparto strong { display: block; font-size: 1rem; overflow-wrap: anywhere; }
 .fran-detalles dd a { color: inherit; text-decoration: underline; }
+
+/* Categorías al agregar: cuadros grandes con el dibujo encima y el nombre debajo, como su pantallazo. */
+.fran-iconos { gap: 14px 8px; margin: 8px 0 14px; }
+.fran-iconos button, .fran-iconos a { gap: 7px; }
+.fran-iconos span {
+  width: 100%; max-width: 78px; aspect-ratio: 1; height: auto;
+  border: 0; border-radius: 20px; background: var(--fondo-tarjeta);
+  font-size: 2.55rem; line-height: 1; box-shadow: none;
+}
+.fran-iconos small { font-size: 0.95rem; font-weight: 500; line-height: 1.15; text-align: center; overflow-wrap: normal; }
+.fran-iconos .activo span { background: var(--fondo-tarjeta); border: 0; box-shadow: 0 0 0 2.5px var(--libro); }
+.fran-iconos .activo small { font-weight: 600; }
