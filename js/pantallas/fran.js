@@ -186,16 +186,44 @@ function totalTerceros(ctx) {
   return fran.terceros.reduce((s, t) => s + t.valor, 0) + sumar(deTipo(m, 'ingreso')) - sumar(deTipo(m, 'gasto'));
 }
 
+/** De qué tarjeta es una cuenta de pago: "Tarjeta comida" es la Visa Classic comida, y así. */
+export function tarjetaDeCuenta(tarjetas, cuenta) {
+  const n = norm(cuenta);
+  if (!n.startsWith('tarjeta')) return -1;
+  const clave = ['comida', 'gasolina', 'gold', 'online'].find((k) => n.includes(k));
+  const i = clave ? tarjetas.findIndex((t) => norm(t.nombre).includes(clave === 'online' ? 'gold' : clave) || norm(t.nombre).includes(clave)) : -1;
+  return i;
+}
+
+/** Cada tarjeta: lo que se debía en su último extracto (o lo anotado al empezar) más lo de después. */
+export function estadoTarjetas(fran) {
+  const tarjetas = (fran.tarjetas || []).map((t) => ({ ...t, base: t.deuda || 0, deudaHoy: t.deuda || 0, movimientos: [] }));
+  for (const a of fran.asientos || []) {
+    if (a.libro === 'terceros') continue;
+    const cargar = (cuenta, valor) => {
+      const i = tarjetaDeCuenta(tarjetas, cuenta);
+      if (i < 0) return;
+      if (tarjetas[i].fecha && a.fecha <= tarjetas[i].fecha) return;
+      tarjetas[i].deudaHoy += valor;
+      tarjetas[i].movimientos.push({ ...a, efecto: valor });
+    };
+    if (a.tipo === 'transferencia') { cargar(a.cuenta, a.valor); cargar(a.destino, -a.valor); }
+    else if (a.tipo === 'ingreso') cargar(a.cuenta, -a.valor);
+    else cargar(a.cuenta, a.valor);
+  }
+  return tarjetas;
+}
+
 export function miPlata(ctx) {
   const { motor, datos } = ctx;
   const estado = datos.estado;
   let efectivo = motor.saldoCaja(estado.movimientos, 'efectivo');
   let virtual = motor.saldoCaja(estado.movimientos, 'virtual');
-  let tarjetas = (estado.fran.tarjetas || []).reduce((s, t) => s + (t.deuda || 0), 0);
+  const tarjetas = estadoTarjetas(estado.fran).reduce((s, t) => s + t.deudaHoy, 0);
   const mover = (cuenta, valor) => {
     if (!cuenta) return;
     if (cuenta === 'Efectivo') efectivo += valor;
-    else if (cuenta.startsWith('Tarjeta')) tarjetas -= valor;
+    else if (cuenta.startsWith('Tarjeta')) return; // va en la deuda de su tarjeta
     else virtual += valor;
   };
   for (const m of estado.fran.virtualMov || []) virtual += m.tipo === 'entra' ? m.valor : -m.valor;
@@ -530,7 +558,7 @@ function renderPrincipal(contenedor, ctx) {
     ${heroe({ etiqueta: plata.total < 0 ? 'Mi plata hoy · me hace falta' : 'Mi plata hoy · debo tener', valor: plata.total, ayudaTexto: 'Es efectivo más virtual, menos lo que debo en tarjetas. Si sale con ⊖, es lo que me hace falta.', cajas: [
       ['Efectivo', plata.efectivo, '', '#/efectivo'],
       ['Virtual', fran.virtualPorDefinir ? 'por confirmar' : plata.virtual, '', '#/virtual'],
-      ['Tarjetas', plata.tarjetas, plata.tarjetas ? 'menos' : '', '#/virtual'],
+      ['Tarjetas', plata.tarjetas, plata.tarjetas ? 'menos' : '', '#/tarjetas'],
       [`Ganancia hoy · ${fechas.nombreMes(Number(mesHoy.slice(5, 7)), true)} ${dinero.formatear(gananciaMes)}`, ganadoHoy, ganadoHoy ? 'mas' : '', '#/ganancias'],
     ] }, ctx)}
     ${sinDatos ? `<a href="#/ajustes" class="fran-aviso">Todavía no están tus datos en este aparato. Toca aquí y entra a la nube con tu correo.</a>` : ''}
@@ -1822,6 +1850,58 @@ function renderPropiedades(contenedor, ctx) {
 const CUENTA_NO_VIRTUAL = /^(efectivo|tarjeta)/i;
 
 /** Todo lo que entró o salió de mi cuenta virtual después del saldo de partida. */
+/** Entró o Salió: el botón elegido se pinta (verde lo que entra, naranja lo que sale) y el otro se apaga. */
+function marcarEntraSale(raiz, boton, form, entra) {
+  raiz.querySelectorAll('.fran-virtual__botones [data-nuevo]').forEach((x) => {
+    x.classList.toggle('elegido', x === boton);
+    x.classList.toggle('apagado', x !== boton);
+  });
+  form.classList.toggle('fran-form-entra', entra);
+  form.classList.toggle('fran-form-sale', !entra);
+  form.querySelector('[data-titulo]').textContent = entra ? '⊕ Entró: ¿de quién o de qué?' : '⊖ Salió: ¿para quién o para qué?';
+}
+
+// ---------- Tarjetas: cuánto se debe en cada una y a qué fecha ----------
+
+function renderTarjetas(contenedor, ctx) {
+  const { ui, dinero, fechas, datos } = ctx;
+  const hoy = ctx.hoy();
+  const fran = datos.estado.fran;
+  const tarjetas = estadoTarjetas(fran);
+  const total = tarjetas.reduce((s, t) => s + t.deudaHoy, 0);
+  const dibujar = () => { contenedor.innerHTML = ''; renderTarjetas(contenedor, ctx); };
+  const ICONO = (n) => (/gasolina/i.test(n) ? '⛽' : (/comida/i.test(n) ? '🛒' : '💳'));
+  const raiz = ui.el(`<div class="fran-virtual">
+    ${titular('personal', ctx, '#/inicio', 'Tarjetas')}
+    ${heroe({ etiqueta: 'Debo en tarjetas', valor: -total, ayudaTexto: 'Cada tarjeta parte de lo que se debía en su último extracto (o lo anotado al empezar Fran) y suma lo que pagaste con ella después. Lo que le abonas a la tarjeta lo resta.' }, ctx)}
+    ${tarjetas.map((t, i) => `<section class="fran-tarjeta fran-tarjeta-credito">
+      <span class="fran-tarjeta-credito__cabeza"><span class="fran-cuadro fran-cuadro--40" aria-hidden="true">${ICONO(t.nombre)}</span><span class="fran-renglon__texto"><span>${ui.esc(t.nombre)}</span><small>${t.fecha ? `Extracto al ${ui.esc(fechas.formatear(t.fecha))}: ${dinero.formatear(t.base)}` : `Al empezar Fran: ${dinero.formatear(t.base)}`}${t.pagoHasta ? ` · Pagar antes del ${ui.esc(fechas.formatear(t.pagoHasta))}` : ''}</small></span><b>${conSigno(-t.deudaHoy, dinero)}</b></span>
+      ${t.movimientos.length ? `<div class="fran-lista">${t.movimientos.sort((a, b) => b.fecha.localeCompare(a.fecha)).map((a) => fila({ ui, icono: iconoDe(a.categoria), titulo: a.categoria, sub: `${fechas.formatear(a.fecha)}${a.descripcion ? ` · ${a.descripcion}` : ''}`, derecha: `${a.efecto > 0 ? '−' : '+'}${dinero.formatear(Math.abs(a.efecto))}`, clase: a.efecto > 0 ? 'fran-menos' : 'fran-mas' })).join('')}</div>` : '<p class="fran-nota">Sin compras anotadas después de esa fecha.</p>'}
+      <button type="button" class="fran-boton-secundario fran-boton--44" data-extracto="${i}">Actualizar con el extracto</button>
+      <form class="fran-campos fran-campos--grande oculto" data-form-extracto="${i}" novalidate>
+        <label class="fran-campo-valor"><small>¿Cuánto se debe según el extracto?</small><input name="valor" inputmode="numeric" autocomplete="off" placeholder="0"></label>
+        <label><small>¿A qué fecha?</small><input type="date" name="fecha" value="${ui.esc(hoy)}"></label>
+        <label><small>Pagar antes del (si lo sabes)</small><input type="date" name="pagoHasta" value="${ui.esc(t.pagoHasta || '')}"></label>
+        <button class="fran-boton-principal fran-guardar">Guardar</button>
+      </form>
+    </section>`).join('') || '<p class="fran-vacio">No hay tarjetas anotadas.</p>'}
+  </div>`);
+  raiz.querySelectorAll('[data-extracto]').forEach((b) => b.addEventListener('click', () => raiz.querySelector(`[data-form-extracto="${b.dataset.extracto}"]`).classList.toggle('oculto')));
+  raiz.querySelectorAll('[data-form-extracto]').forEach((form) => form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const i = Number(form.dataset.formExtracto);
+    const f = form.elements;
+    const texto = f.valor.value.trim();
+    const valor = Number(texto.replace(/\D/g, ''));
+    if (!texto || !Number.isInteger(valor)) { ui.toast('Escribe cuánto se debe.'); return; }
+    const lista = (fran.tarjetas || []).map((t, j) => (j === i ? { ...t, deuda: valor, fecha: f.fecha.value || hoy, ...(f.pagoHasta.value ? { pagoHasta: f.pagoHasta.value } : {}) } : t));
+    await datos.actualizarFran({ tarjetas: lista });
+    ui.toast('Tarjeta actualizada.');
+    dibujar();
+  }));
+  contenedor.append(raiz);
+}
+
 // ---------- Plata en efectivo: solo lo del efectivo, desde el cierre del mes pasado ----------
 
 /** Todo lo que movió el efectivo: préstamos, pagos, gastos e ingresos en efectivo y lo anotado a mano. */
@@ -1876,7 +1956,7 @@ function renderEfectivo(contenedor, ctx) {
   const raiz = ui.el(`<div class="fran-virtual">
     ${titular('personal', ctx, '#/inicio', 'Plata en efectivo', mes)}
     ${heroe({ etiqueta: 'Efectivo hoy', valor: total, ayudaTexto: `Arranca con el cierre del mes pasado y suma o resta solo lo que entró o salió en efectivo.`, cajas: [[`Cierre de ${mesAntes}`, anterior], ['Entró', entro, entro ? 'mas' : ''], ['Salió', salio, salio ? 'menos' : '']] }, ctx)}
-    <div class="fran-dos fran-virtual__botones"><button type="button" class="fran-boton-principal" data-nuevo="aporte"><span class="fran-signo fran-signo--mas" aria-hidden="true"></span>Entró</button><button type="button" class="fran-boton-secundario" data-nuevo="retiro"><span class="fran-signo fran-signo--menos" aria-hidden="true"></span>Salió</button></div>
+    <div class="fran-dos fran-virtual__botones"><button type="button" class="fran-boton-secundario fran-boton-entra" data-nuevo="aporte"><span class="fran-signo fran-signo--mas" aria-hidden="true"></span>Entró</button><button type="button" class="fran-boton-secundario fran-boton-sale" data-nuevo="retiro"><span class="fran-signo fran-signo--menos" aria-hidden="true"></span>Salió</button></div>
     <form class="fran-campos fran-campos--grande oculto" data-form-mov novalidate>
       <label><small data-titulo>Entró</small><input name="concepto" autocomplete="off" placeholder="¿Quién o qué?"></label>
       <label class="fran-campo-valor"><small>Valor</small><input name="valor" inputmode="numeric" autocomplete="off" placeholder="0"></label>
@@ -1890,7 +1970,7 @@ function renderEfectivo(contenedor, ctx) {
   let tipo = 'aporte';
   raiz.querySelectorAll('[data-nuevo]').forEach((b) => b.addEventListener('click', () => {
     tipo = b.dataset.nuevo;
-    form.querySelector('[data-titulo]').textContent = tipo === 'aporte' ? 'Entró' : 'Salió';
+    marcarEntraSale(raiz, b, form, tipo === 'aporte');
     form.classList.remove('oculto');
     form.elements.concepto.focus();
   }));
@@ -1974,7 +2054,7 @@ function renderVirtual(contenedor, ctx) {
       <p><span>Salió</span><span class="numero fran-menos">${dinero.formatear(salio)}</span></p>
       <p class="fran-virtual__queda"><span>Queda</span><span class="numero ${queda < 0 ? 'fran-menos' : ''}">${dinero.formatear(Math.abs(queda))}</span></p>
     </div>`}
-    ${guardado ? '' : `<div class="fran-dos fran-virtual__botones"><button type="button" class="fran-boton-principal" data-nuevo="entra"><span class="fran-signo fran-signo--mas" aria-hidden="true"></span>Entró</button><button type="button" class="fran-boton-secundario" data-nuevo="sale"><span class="fran-signo fran-signo--menos" aria-hidden="true"></span>Salió</button></div>
+    ${guardado ? '' : `<div class="fran-dos fran-virtual__botones"><button type="button" class="fran-boton-secundario fran-boton-entra" data-nuevo="entra"><span class="fran-signo fran-signo--mas" aria-hidden="true"></span>Entró</button><button type="button" class="fran-boton-secundario fran-boton-sale" data-nuevo="sale"><span class="fran-signo fran-signo--menos" aria-hidden="true"></span>Salió</button></div>
     <form class="fran-campos oculto" data-form-mov novalidate>
       <label><small data-titulo>Entró</small><input name="concepto" autocomplete="off" placeholder="¿Quién o qué?"></label>
       <label><small>Valor</small><input name="valor" inputmode="numeric" autocomplete="off" placeholder="0"></label>
@@ -2006,7 +2086,7 @@ function renderVirtual(contenedor, ctx) {
   let tipoMov = 'entra';
   raiz.querySelectorAll('[data-nuevo]').forEach((b) => b.addEventListener('click', () => {
     tipoMov = b.dataset.nuevo;
-    formMov.querySelector('[data-titulo]').textContent = tipoMov === 'entra' ? 'Entró' : 'Salió';
+    marcarEntraSale(raiz, b, formMov, tipoMov === 'entra');
     formMov.classList.remove('oculto');
     formMov.elements.concepto.focus();
   }));
@@ -2144,6 +2224,7 @@ export async function render(contenedor, params, ctx) {
     case 'propiedades': return renderPropiedades(contenedor, ctx);
     case 'tablaPrestamos': return renderTablaPrestamos(contenedor, ctx);
     case 'efectivo': return renderEfectivo(contenedor, ctx);
+    case 'tarjetas': return renderTarjetas(contenedor, ctx);
     case 'soloIntereses': return renderSoloIntereses(contenedor, ctx);
     case 'propiedad': {
       const { delAnio } = arriendosDelAnio(ctx);
