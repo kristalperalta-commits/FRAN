@@ -391,3 +391,7 @@ html body .fran-enlace-suave { color: var(--text); }
 .destello-borde::after { content: ''; position: absolute; inset: 0; box-shadow: inset 0 0 60px color-mix(in srgb, var(--accent) 55%, transparent); animation: destello-apaga 1.5s linear forwards; }
 /* El círculo de actualizar se ve sobre cristal */
 html[data-modo="oscuro"] .deslizar-circulo { background: radial-gradient(circle at 35% 30%, color-mix(in srgb, var(--accent) 45%, transparent), rgba(15,23,42,.9)); box-shadow: inset 0 1px 0 color-mix(in srgb, var(--luz) 45%, transparent), inset 0 0 0 1.5px color-mix(in srgb, var(--luz) 55%, transparent), 0 0 22px color-mix(in srgb, var(--accent) 60%, transparent); }
+/* Yo · Apariencia en claro: letras oscuras sobre fondo claro */
+html[data-modo="claro"] .fran-enlace--destacado { background: linear-gradient(160deg, #fff, color-mix(in srgb, var(--accent) 12%, #fff)) !important; color: var(--text) !important; }
+html[data-modo="claro"] .fran-enlace--destacado .fran-renglon__texto span, html[data-modo="claro"] .fran-enlace--destacado .fran-renglon__texto small { color: var(--text) !important; }
+html[data-modo="claro"] .fran-enlace--destacado .fran-ajuste__flecha { border-color: var(--text) !important; }
