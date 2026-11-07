@@ -134,8 +134,10 @@
   }
   function aplicarRelieve(pct) {
     const n = limitarRelieve(pct);
-    document.documentElement.style.setProperty('--relieve', String(n / 100));
-    document.documentElement.setAttribute('data-relieve', n <= 30 ? 'plano' : (n > 100 ? 'fuerte' : 'normal'));
+    // En el estilo Sencillo todo va plano, sin importar la barra.
+    const efectivo = estiloActual() === 'sencillo' ? 0 : n;
+    document.documentElement.style.setProperty('--relieve', String(efectivo / 100));
+    document.documentElement.setAttribute('data-relieve', efectivo <= 30 ? 'plano' : (efectivo > 100 ? 'fuerte' : 'normal'));
     return n;
   }
   function elegirRelieve(pct) {
@@ -144,5 +146,26 @@
     return n;
   }
   window.Relieve = { min: 0, max: 200, paso: 10, actual: relieveActual, elegir: elegirRelieve };
+
+  // Estilo de toda la app: cómo se ve, aparte del color. Cada uno trae sus ajustes en la tuerquita.
+  const CLAVE_ESTILO = 'fran-estilo';
+  const ESTILOS = [
+    { id: 'relieve', nombre: 'Sombras', ajustes: ['color', 'letra', 'sombreado'] },
+    { id: 'sencillo', nombre: 'Sencillo', ajustes: ['color', 'letra'] },
+    { id: 'lineas', nombre: 'Líneas', ajustes: ['color', 'letra', 'sombreado'] },
+    { id: 'dibujos', nombre: 'Dibujitos', ajustes: ['color', 'letra', 'sombreado'] },
+  ];
+  function estiloActual() {
+    try { const v = window.localStorage.getItem(CLAVE_ESTILO); return ESTILOS.some((e) => e.id === v) ? v : 'relieve'; } catch (_error) { return 'relieve'; }
+  }
+  function elegirEstilo(id) {
+    const e = ESTILOS.some((x) => x.id === id) ? id : 'relieve';
+    try { window.localStorage.setItem(CLAVE_ESTILO, e); } catch (_error) { /* dura hasta cerrar la app */ }
+    document.documentElement.setAttribute('data-estilo', e);
+    aplicarRelieve(relieveActual());
+    return e;
+  }
+  window.Estilo = { lista: ESTILOS, actual: estiloActual, elegir: elegirEstilo };
+  document.documentElement.setAttribute('data-estilo', estiloActual());
   aplicarRelieve(relieveActual());
 })();

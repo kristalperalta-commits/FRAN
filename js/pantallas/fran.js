@@ -256,6 +256,65 @@ export function miPlata(ctx, hasta = null) {
   return { efectivo, virtual, tarjetas, total: efectivo + virtual - tarjetas };
 }
 
+/**
+ * De dónde sale "Mi plata hoy": con qué se arrancó (el cierre y lo que se debía en tarjetas) y cada
+ * cosa que la movió después, con la misma cuenta que usa miPlata. Si algo no cuadra, sale aparte.
+ */
+export function cuentaMiPlata(ctx) {
+  const { datos } = ctx;
+  const estado = datos.estado;
+  const fran = estado.fran;
+  const tarjetas = fran.tarjetas || [];
+  const QUE = { prestamo: 'Préstamo que hice', pago: 'Pago de un cliente', aporte: 'Entró', retiro: 'Salió', traslado: 'Pasé plata entre cajas', ganancia_a_personal: 'Ganancia a personal' };
+  const partida = { efectivo: 0, virtual: 0, fecha: null, tarjetas: tarjetas.map((t) => ({ nombre: t.nombre, valor: t.deuda || 0, fecha: t.fecha || '', nota: t.nota || '' })) };
+  const eventos = [];
+  for (const m of estado.movimientos || []) {
+    if (m.caja !== 'efectivo' && m.caja !== 'virtual') continue;
+    const v = (Number(m.monto) || 0) * (Number(m.signo) === -1 ? -1 : 1);
+    if (m.tipo === 'saldo_inicial') { partida[m.caja] += v; if (!partida.fecha || m.fecha > partida.fecha) partida.fecha = m.fecha; continue; }
+    eventos.push({ fecha: m.fecha, titulo: m.nota || QUE[m.tipo] || 'Movimiento', donde: m.caja === 'efectivo' ? 'Efectivo' : 'Virtual', efecto: v, grupo: m.tipo === 'traslado' ? 'pases' : (v >= 0 ? 'entro' : 'salio'), icono: v >= 0 ? '💵' : '💸' });
+  }
+  for (const m of fran.virtualMov || []) {
+    const v = m.tipo === 'entra' ? m.valor : -m.valor;
+    eventos.push({ fecha: m.fecha, titulo: m.concepto || (v >= 0 ? 'Entró' : 'Salió'), donde: 'Virtual', efecto: v, grupo: v >= 0 ? 'entro' : 'salio', icono: v >= 0 ? '💵' : '💸' });
+  }
+  // Igual que miPlata: efectivo y virtual se mueven por la cuenta; las tarjetas por su deuda.
+  const enCaja = (cuenta) => (!cuenta || cuenta.startsWith('Tarjeta') ? 0 : 1);
+  const enTarjeta = (cuenta, fecha) => {
+    const i = tarjetaDeCuenta(tarjetas, cuenta || '');
+    if (i < 0) return 0;
+    if (tarjetas[i].fecha && fecha <= tarjetas[i].fecha) return 0; // ya va dentro del extracto
+    return 1;
+  };
+  const nombreCuenta = (c) => (!c ? '' : (c === 'Efectivo' ? 'Efectivo' : (c.startsWith('Tarjeta') ? c : 'Virtual')));
+  for (const a of fran.asientos || []) {
+    if (a.libro === 'terceros') continue;
+    const v = a.valor;
+    const titulo = a.descripcion ? `${a.categoria} · ${a.descripcion}` : a.categoria;
+    if (a.tipo === 'transferencia') {
+      const efecto = -v * enCaja(a.cuenta) + v * enCaja(a.destino) - v * enTarjeta(a.cuenta, a.fecha) + v * enTarjeta(a.destino, a.fecha);
+      if (!enCaja(a.cuenta) && !enCaja(a.destino) && !enTarjeta(a.cuenta, a.fecha) && !enTarjeta(a.destino, a.fecha)) continue;
+      eventos.push({ fecha: a.fecha, titulo, donde: `${nombreCuenta(a.cuenta) || '¿?'} → ${nombreCuenta(a.destino) || '¿?'} · ${dineroTexto(v)}`, efecto, grupo: 'pases', icono: a.categoria });
+      continue;
+    }
+    const signo = a.tipo === 'ingreso' ? 1 : -1;
+    if (enCaja(a.cuenta)) eventos.push({ fecha: a.fecha, titulo, donde: nombreCuenta(a.cuenta), efecto: signo * v, grupo: signo > 0 ? 'entro' : 'salio', icono: a.categoria });
+    else if (enTarjeta(a.cuenta, a.fecha)) eventos.push({ fecha: a.fecha, titulo, donde: a.cuenta, efecto: signo * v, grupo: signo > 0 ? 'abonoTarjeta' : 'tarjeta', icono: a.categoria });
+  }
+  const debiaTarjetas = partida.tarjetas.reduce((s, t) => s + t.valor, 0);
+  const arranque = partida.efectivo + partida.virtual - debiaTarjetas;
+  const sumaEventos = eventos.reduce((s, e) => s + e.efecto, 0);
+  const hoy = miPlata(ctx);
+  const sinCuadrar = hoy.total - (arranque + sumaEventos);
+  const grupos = {};
+  for (const e of eventos) (grupos[e.grupo] = grupos[e.grupo] || []).push(e);
+  return { partida, debiaTarjetas, arranque, eventos, grupos, hoy, sinCuadrar };
+}
+
+function dineroTexto(v) {
+  return String(Math.round(Math.abs(v))).replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+}
+
 function clientesPorEstado(ctx) {
   const { datos, motor } = ctx;
   const estado = datos.estado;
@@ -293,6 +352,12 @@ function titular(id, ctx, atras, texto, mes) {
 // ---------- Piezas del diseño Lila ----------
 
 /** Monto con ⊕ o ⊖ delante. El número va siempre del color del texto. signo: 'mas', 'menos' o nada (⊖ solo si es negativo). */
+/** Igual que conSigno, pero con el signo de pesos delante (para los números grandes de las tarjetas de color). */
+function conPeso(valor, dinero, signo) {
+  const clase = signo || (valor < 0 ? 'menos' : '');
+  return `<span class="numero${clase ? ` fran-${clase}` : ''}"><i class="fran-peso">$</i>${dinero.formatear(Math.abs(valor))}</span>`;
+}
+
 function conSigno(valor, dinero, signo) {
   const clase = signo || (valor < 0 ? 'menos' : '');
   return `<span class="numero${clase ? ` fran-${clase}` : ''}">${dinero.formatear(Math.abs(valor))}</span>`;
@@ -301,9 +366,9 @@ function conSigno(valor, dinero, signo) {
 /** Tarjeta de saldo: la única en degradado de cada pantalla. cajas: [etiqueta, valor (número o texto), signo]. */
 function heroe({ etiqueta, valor, cajas = [], ruta = '', ayudaTexto = '', ilustracion = '' }, ctx) {
   const { ui, dinero } = ctx;
-  const grande = typeof valor === 'number' ? conSigno(valor, dinero) : `<span>${ui.esc(valor)}</span>`;
+  const grande = typeof valor === 'number' ? conPeso(valor, dinero) : `<span>${ui.esc(valor)}</span>`;
   const cajitas = cajas.length ? `<span class="fran-heroe__cajas${cajas.length === 4 ? ' fran-heroe__cajas--cuatro' : ''}">${cajas.map(([t, v, signo, enlace]) => {
-    const dentro = `<small>${ui.esc(t)}</small>${typeof v === 'number' ? conSigno(v, dinero, signo) : `<span>${ui.esc(v)}</span>`}`;
+    const dentro = `<small>${ui.esc(t)}</small>${typeof v === 'number' ? conPeso(v, dinero, signo) : `<span>${ui.esc(v)}</span>`}`;
     return enlace && !ruta ? `<a href="${ui.esc(enlace)}">${dentro}</a>` : `<span>${dentro}</span>`;
   }).join('')}</span>` : '';
   const etiquetaHtml = `<span class="fran-heroe__etiqueta"><small>${ui.esc(etiqueta)}</small>${ayudaTexto && !ruta ? ayuda(ayudaTexto, ui) : ''}</span>`;
@@ -655,10 +720,10 @@ function renderPrincipal(contenedor, ctx) {
     </header>
     <section class="fran-panel fran-entra" style="--i:0">
       <span class="fran-panel__etiqueta"><small>${plata.total < 0 ? 'Mi plata hoy · me hace falta' : 'Mi plata hoy · debo tener'}</small>${ayuda('Es efectivo más virtual, menos lo que debo en tarjetas. Si sale con ⊖, es lo que me hace falta. La línea muestra cómo ha ido día por día.', ui)}</span>
-      <strong class="fran-panel__valor">${conSigno(plata.total, dinero)}${serie.length >= 2 ? `<span class="fran-panel__tendencia ${serie[serie.length - 1].valor >= serie[serie.length - 2].valor ? 'sube' : 'baja'}" aria-label="${serie[serie.length - 1].valor >= serie[serie.length - 2].valor ? 'Subió desde ayer' : 'Bajó desde ayer'}"><svg viewBox="0 0 24 24"><path d="M4 16l6-6 4 4 6-7" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/><path d="M15 7h5v5" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg></span>` : ''}</strong>
+      <strong class="fran-panel__valor">${conPeso(plata.total, dinero)}${serie.length >= 2 ? `<span class="fran-panel__tendencia ${serie[serie.length - 1].valor >= serie[serie.length - 2].valor ? 'sube' : 'baja'}" aria-label="${serie[serie.length - 1].valor >= serie[serie.length - 2].valor ? 'Subió desde ayer' : 'Bajó desde ayer'}"><svg viewBox="0 0 24 24"><path d="M4 16l6-6 4 4 6-7" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/><path d="M15 7h5v5" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg></span>` : ''}</strong>
       ${graficaPlata(serie)}
       ${serie.length >= 2 ? `<span class="fran-panel__pie"><small>${ui.esc(fechas.formatear(serie[0].fecha).replace(/ \d{4}$/, ''))}</small><small>Hoy</small></span>` : ''}
-      <a href="#/liquidez" class="fran-panel__boton">Ver detalles <span aria-hidden="true">→</span></a>
+      <a href="#/mi-plata" class="fran-panel__boton">Ver detalles <span aria-hidden="true">→</span></a>
     </section>
     <div class="fran-metricas">
       ${metrica('efectivo', 'Efectivo', plata.efectivo, '', '#/efectivo', 1)}
@@ -1236,8 +1301,8 @@ function renderInformes(contenedor, id, ctx) {
     <div class="fran-heroe fran-heroe--informes">
       ${icono3d('grafica', 'fran-heroe__3d fran-heroe__3d--izq')}
       <span class="fran-heroe__etiqueta"><small>Saldo ${anio === 'todo' ? 'total' : anio}</small></span>
-      <strong class="fran-heroe__valor">${conSigno(ti - tg, dinero)}</strong>
-      <span class="fran-heroe__cajas"><span>${icono3d('billetera', 'fran-3d--28')}<span class="fran-heroe__caja-texto"><small>Gastos</small><span class="numero">${dinero.formatear(tg)}</span></span></span><span>${icono3d('grafica', 'fran-3d--28')}<span class="fran-heroe__caja-texto"><small>Ingresos</small><span class="numero">${dinero.formatear(ti)}</span></span></span></span>
+      <strong class="fran-heroe__valor"><span class="numero${ti - tg < 0 ? ' fran-menos' : ''}"><i class="fran-peso">$</i>${dinero.formatear(Math.abs(ti - tg))}</span></strong>
+      <span class="fran-heroe__cajas"><span>${icono3d('billetera', 'fran-3d--28')}<span class="fran-heroe__caja-texto"><small>Gastos</small><span class="numero"><i class="fran-peso">$</i>${dinero.formatear(tg)}</span></span></span><span>${icono3d('grafica', 'fran-3d--28')}<span class="fran-heroe__caja-texto"><small>Ingresos</small><span class="numero"><i class="fran-peso">$</i>${dinero.formatear(ti)}</span></span></span></span>
     </div>
     <div class="fran-anios">
       <button type="button" data-anio="todo" class="${anio === 'todo' ? 'activo' : ''}">Todo</button>
@@ -2159,6 +2224,53 @@ function renderLiquidez(contenedor, ctx) {
   traerDolar(ctx.hoy()).then((t) => { if (t.valor !== tasa.valor && document.body.contains(raiz)) { contenedor.innerHTML = ''; renderLiquidez(contenedor, ctx); } }).catch(() => {});
 }
 
+// ---------- Mi plata hoy: por qué da lo que da ----------
+
+function renderMiPlata(contenedor, ctx) {
+  const { ui, dinero, fechas } = ctx;
+  const c = cuentaMiPlata(ctx);
+  const { hoy, partida } = c;
+  const suma = (g) => (c.grupos[g] || []).reduce((s, e) => s + e.efecto, 0);
+  const cuantos = (g) => (c.grupos[g] || []).length;
+  const mesAntes = partida.fecha ? fechas.nombreMes(Number(fechas.sumarMeses(`${partida.fecha.slice(0, 7)}-01`, -1).slice(5, 7))).toLowerCase() : '';
+  const arranqueTexto = partida.fecha ? `Cierre de ${mesAntes}` : 'Con lo que arrancó Fran';
+  const fmt = (v) => `${v < 0 ? '−' : ''}${dinero.formatear(Math.abs(v))}`;
+  const lista = (g) => [...(c.grupos[g] || [])].sort((x, y) => y.fecha.localeCompare(x.fecha)).map((e) => fila({ ui, icono: e.icono, titulo: e.titulo, sub: `${fechas.formatear(e.fecha)} · ${e.donde}`, derecha: dinero.formatear(Math.abs(e.efecto)), clase: e.efecto > 0 ? 'fran-mas' : (e.efecto < 0 ? 'fran-menos' : '') })).join('');
+  const plegado = (g, icono, titulo, sub) => (cuantos(g) ? `<details class="fran-tachados fran-prestado-pension"><summary>${icono3dDe(icono, 'fran-3d--40')}<span class="fran-renglon__texto"><span>${ui.esc(titulo)}</span><small>${cuantos(g)} ${cuantos(g) === 1 ? 'movimiento' : 'movimientos'}${sub ? ` · ${ui.esc(sub)}` : ''}</small></span><b>${conSigno(suma(g), dinero, suma(g) > 0 ? 'mas' : (suma(g) < 0 ? 'menos' : ''))}</b></summary><div class="fran-lista">${lista(g)}</div></details>` : '');
+  const filaCuenta = (texto, v, signo) => `<p><span>${ui.esc(texto)}</span><span class="numero${signo ? ` fran-${signo}` : (v < 0 ? ' fran-menos' : '')}">${dinero.formatear(Math.abs(v))}</span></p>`;
+  const raiz = ui.el(`<div class="fran-virtual">
+    ${titular('personal', ctx, '#/inicio', 'Mi plata hoy')}
+    ${heroe({ etiqueta: hoy.total < 0 ? 'Me hace falta' : 'Debo tener', valor: hoy.total, cajas: [['Efectivo', hoy.efectivo, '', '#/efectivo'], ['Virtual', hoy.virtual, '', '#/virtual'], ['Tarjetas', -hoy.tarjetas, '', '#/tarjetas']] }, ctx)}
+    <p class="fran-nota fran-miplata__cuenta">Efectivo ${fmt(hoy.efectivo)} + virtual ${fmt(hoy.virtual)} − tarjetas ${dinero.formatear(hoy.tarjetas)} = <b>${fmt(hoy.total)}</b></p>
+    ${seccion('Cómo se llegó a este número', 'grafica')}
+    <div class="fran-virtual__cuadro">
+      ${filaCuenta(arranqueTexto, c.arranque)}
+      ${cuantos('entro') ? filaCuenta('Entró', suma('entro'), 'mas') : ''}
+      ${cuantos('salio') ? filaCuenta('Salió de efectivo y virtual', suma('salio'), 'menos') : ''}
+      ${cuantos('tarjeta') ? filaCuenta('Compras con tarjeta', suma('tarjeta'), 'menos') : ''}
+      ${cuantos('abonoTarjeta') ? filaCuenta('Devoluciones a tarjetas', suma('abonoTarjeta'), 'mas') : ''}
+      ${cuantos('pases') ? filaCuenta('Pases entre cuentas', suma('pases'), suma('pases') > 0 ? 'mas' : (suma('pases') < 0 ? 'menos' : '')) : ''}
+      ${c.sinCuadrar ? filaCuenta('Sin explicar', c.sinCuadrar) : ''}
+      <p class="fran-virtual__queda"><span>Hoy</span><span class="numero ${hoy.total < 0 ? 'fran-menos' : ''}">${dinero.formatear(Math.abs(hoy.total))}</span></p>
+    </div>
+    <details class="fran-tachados fran-prestado-pension"><summary>${icono3d('calendario', 'fran-3d--40')}<span class="fran-renglon__texto"><span>${ui.esc(arranqueTexto)}</span><small>${partida.fecha ? `Así arrancó el ${ui.esc(fechas.formatear(partida.fecha))}` : 'Lo anotado al empezar'}</small></span><b>${conSigno(c.arranque, dinero)}</b></summary>
+      <div class="fran-lista">
+        ${fila({ ui, icono: '💵', titulo: 'Efectivo', sub: 'Lo que había al cerrar', derecha: dinero.formatear(Math.abs(partida.efectivo)), clase: partida.efectivo < 0 ? 'fran-menos' : '' })}
+        ${fila({ ui, icono: '📲', titulo: 'Virtual', sub: partida.virtual < 0 ? 'Ya había usado plata de las cuentas' : 'Lo que había al cerrar', derecha: dinero.formatear(Math.abs(partida.virtual)), clase: partida.virtual < 0 ? 'fran-menos' : '' })}
+        ${partida.tarjetas.filter((t) => t.valor).map((t) => fila({ ui, icono: '💳', titulo: t.nombre, sub: t.nota ? t.nota : (t.fecha ? `Extracto al ${fechas.formatear(t.fecha)}` : 'Lo que se debía al empezar'), derecha: dinero.formatear(t.valor), clase: 'fran-menos' })).join('')}
+      </div>
+      ${partida.fecha ? `<p class="fran-nota">Lo de ${ui.esc(mesAntes)} (ingresos y gastos de Finanzas) ya está dentro de este cierre. Aquí abajo sale solo lo que movió la plata después.</p>` : ''}
+    </details>
+    ${plegado('entro', '💵', 'Entró', 'a efectivo o virtual')}
+    ${plegado('salio', '💸', 'Salió de efectivo y virtual', '')}
+    ${plegado('tarjeta', '💳', 'Compras con tarjeta', 'suben lo que debo')}
+    ${plegado('abonoTarjeta', '💳', 'Devoluciones a tarjetas', 'bajan lo que debo')}
+    ${plegado('pases', '🔁', 'Pases entre cuentas', 'pagar la tarjeta con efectivo no cambia el total')}
+    ${c.sinCuadrar ? `<p class="fran-nota">Hay ${ui.esc(dinero.formatear(Math.abs(c.sinCuadrar)))} que no sale de ningún movimiento anotado. Puede ser un saldo o un extracto que se cambió a mano.</p>` : ''}
+  </div>`);
+  contenedor.append(raiz);
+}
+
 // ---------- Tarjetas: cuánto se debe en cada una y a qué fecha ----------
 
 function renderTarjetas(contenedor, ctx) {
@@ -2558,6 +2670,7 @@ export async function render(contenedor, params, ctx) {
     case 'efectivo': return renderEfectivo(contenedor, ctx);
     case 'tarjetas': return renderTarjetas(contenedor, ctx);
     case 'liquidez': return renderLiquidez(contenedor, ctx);
+    case 'miplata': return renderMiPlata(contenedor, ctx);
     case 'credito': return renderCredito(contenedor, params.id, ctx);
     case 'soloIntereses': return renderSoloIntereses(contenedor, ctx);
     case 'propiedad': {

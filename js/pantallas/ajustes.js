@@ -624,6 +624,15 @@ function seccionCandado(ctx) {
   return seccion;
 }
 
+// Descargar: flecha hacia abajo que reposa sobre una raya, con el color del tema (pedido el 7 nov 2026).
+const SVG_YO = {
+  descargar: '<svg class="fran-3d fran-svg-yo" viewBox="0 0 64 64" aria-hidden="true"><defs><linearGradient id="yo-desc" x1="0" y1="0" x2="0" y2="1"><stop offset="0" style="stop-color:var(--luz)"/><stop offset="1" style="stop-color:var(--accent)"/></linearGradient></defs><path d="M32 8v32M18 27l14 14 14-14" fill="none" stroke="url(#yo-desc)" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/><rect x="12" y="49" width="40" height="7" rx="3.5" fill="url(#yo-desc)"/></svg>',
+};
+function iconoYo(archivo, clase = '') {
+  if (archivo.startsWith('svg:')) return SVG_YO[archivo.slice(4)].replace('class="fran-3d', `class="fran-3d ${clase}`);
+  return `<img class="fran-3d ${clase}" src="iconos/3d/${archivo}.png" alt="" aria-hidden="true" decoding="async">`;
+}
+
 const ICONO_3D_YO = { 'Categorías': 'carpeta', 'Recordatorios': 'reloj', 'Transacciones recurrentes': 'repetir', 'Respaldo y exportar Excel': 'nube', 'Face ID': 'candado', 'Nube': 'mundo', 'Instalar en el teléfono': 'celular', 'Acerca de la app': 'info' };
 const icono3dYo = (clave, emoji) => (ICONO_3D_YO[clave] ? `<img class="fran-3d fran-3d--40" src="iconos/3d/${ICONO_3D_YO[clave]}-azul.png" alt="" aria-hidden="true" decoding="async">` : `<span>${emoji}</span>`);
 
@@ -848,12 +857,12 @@ export async function render(contenedor, params, ctx) {
       ['Transacciones recurrentes', 'repetir-azul', () => seccionRecurrentes(ctx)],
     ] },
     { id: 'seguridad', nombre: 'Seguridad', icono: 'candado-azul', items: [
-      ['Respaldo y exportar Excel', 'nube-azul', () => { const d = document.createElement('div'); d.append(seccionCopia(ctx), seccionHistoricos(ctx), seccionBorrar(ctx)); return d; }],
+      ['Respaldo y exportar Excel', 'tabla-azul', () => { const d = document.createElement('div'); d.append(seccionCopia(ctx), seccionHistoricos(ctx), seccionBorrar(ctx)); return d; }],
       ['Face ID', 'candado-azul', () => seccionCandado(ctx)],
     ] },
     { id: 'app', nombre: 'Esta app', icono: 'celular-azul', items: [
-      ['Nube', 'mundo-azul', () => seccionNube(ctx)],
-      ['Instalar en el teléfono', 'celular-azul', () => seccionInstalar(ctx)],
+      ['Nube', 'nube-azul', () => seccionNube(ctx)],
+      ['Instalar en el teléfono', 'svg:descargar', () => seccionInstalar(ctx)],
       ['Acerca de la app', 'info-azul', () => seccionAcerca(ctx)],
     ] },
   ];
@@ -867,14 +876,14 @@ export async function render(contenedor, params, ctx) {
     grupos.querySelectorAll('[data-grupo]').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.grupo === seleccionYo.grupo)));
     const g = GRUPOS.find((x) => x.id === seleccionYo.grupo);
     cuadros.innerHTML = g ? g.items.map(([texto, archivo, , ruta]) => {
-      const dentro = `<img class="fran-3d" src="iconos/3d/${archivo}.png" alt="" aria-hidden="true" decoding="async"><span>${ui.esc(texto)}</span>`;
+      const dentro = `${iconoYo(archivo)}<span>${ui.esc(texto)}</span>`;
       return ruta ? `<a class="fran-yo-cuadro" href="${ruta}">${dentro}</a>` : `<button type="button" class="fran-yo-cuadro" data-item="${ui.esc(texto)}" aria-pressed="${String(texto === seleccionYo.item)}">${dentro}</button>`;
     }).join('') : '';
     cuadros.classList.toggle('abierto', !!g);
     panel.innerHTML = '';
     const it = g && g.items.find((x) => x[0] === seleccionYo.item);
     if (it && it[2]) {
-      const caja = ui.el(`<section class="fran-yo-panel__caja"><h2><img class="fran-3d fran-3d--28" src="iconos/3d/${it[1]}.png" alt="" aria-hidden="true">${ui.esc(it[0])}</h2></section>`);
+      const caja = ui.el(`<section class="fran-yo-panel__caja"><h2>${iconoYo(it[1], 'fran-3d--28')}${ui.esc(it[0])}</h2></section>`);
       caja.append(it[2]());
       panel.append(caja);
     }
