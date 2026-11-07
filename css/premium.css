@@ -395,3 +395,51 @@ html[data-modo="oscuro"] .deslizar-circulo { background: radial-gradient(circle 
 html[data-modo="claro"] .fran-enlace--destacado { background: linear-gradient(160deg, #fff, color-mix(in srgb, var(--accent) 12%, #fff)) !important; color: var(--text) !important; }
 html[data-modo="claro"] .fran-enlace--destacado .fran-renglon__texto span, html[data-modo="claro"] .fran-enlace--destacado .fran-renglon__texto small { color: var(--text) !important; }
 html[data-modo="claro"] .fran-enlace--destacado .fran-ajuste__flecha { border-color: var(--text) !important; }
+
+/* ================= iPad y pantallas anchas ================= */
+@media (min-width: 700px) {
+  html body .pantalla { max-width: 1100px; padding-left: 28px; padding-right: 28px; }
+  html body .barra-inferior { left: 50%; right: auto; width: min(640px, calc(100% - 24px)); transform: translateX(-50%); }
+  html body .sol-luna { right: max(28px, calc((100vw - 1100px) / 2 + 28px)); }
+  /* Inicio: tarjeta grande a la izquierda, métricas a la derecha; libros en 4 columnas */
+  .fran-tablero { display: grid; grid-template-columns: 1fr 1fr; column-gap: 20px; align-items: start; }
+  .fran-tablero > * { grid-column: 1 / -1; }
+  .fran-tablero .fran-panel { grid-column: 1; grid-row: 2 / span 2; margin-bottom: 0; }
+  .fran-tablero .fran-metricas { grid-column: 2; grid-row: 2; margin-bottom: 0; }
+  .fran-tablero .fran-metricas + .fran-aviso, .fran-tablero .fran-metricas + .fran-renglon { grid-column: 2; grid-row: 3; align-self: end; }
+  .fran-tablero .fran-tablero__titulo { margin-top: 24px; }
+  .fran-tablero .fran-libros { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 16px; }
+  .fran-tablero .fran-libros-chicos { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; }
+  .fran-tablero .fran-libros-chicos .fran-modulo--chico { min-height: 140px; }
+  .fran-tablero .fran-fila-tablero { margin-top: 16px; }
+  /* Libros: tarjeta de saldo arriba, lo demás en dos columnas */
+  .fran-metricas-2col, .fran-dos, .fran-accesos { gap: 16px; }
+  .fran-heroe { padding: 26px 28px; }
+  .fran-heroe__valor .numero, .fran-panel__valor .numero { font-size: 52px; }
+  .fran-heroe__3d { width: 130px !important; height: 130px !important; }
+  .fran-cuatro { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+  .fran-iconos { grid-template-columns: repeat(8, minmax(0, 1fr)) !important; }
+  .fran-tachados, .fran-renglon, .fran-tarjeta-credito { margin-bottom: 14px; }
+  /* Listas largas en dos columnas (Yo, liquidez, tabla de préstamos, efectivo, agenda) */
+  body.en-yo #pantalla > .fran-ajuste, body.en-yo #pantalla > .fran-enlace { display: inline-flex; width: calc(50% - 8px); vertical-align: top; }
+  body.en-yo #pantalla > .fran-ajuste:nth-of-type(odd) { margin-right: 16px; }
+  body.en-yo #pantalla > .fran-ajuste { display: inline-block; }
+  body.en-yo #pantalla > .fran-ajuste[open] { width: 100%; margin-right: 0; }
+  .fran-lista--tarjetas { display: grid; grid-template-columns: 1fr 1fr; gap: 0 16px; }
+  .fran-lista--tarjetas .fran-fila { margin-bottom: 12px; }
+  .fran-tabla-premium__cabeza, .fran-tabla-premium__fila { grid-template-columns: 1fr 1.2fr 1.2fr 1.2fr 20px; font-size: 16px; }
+  .fran-tabla-premium__fila { min-height: 58px; }
+  .fran-hoja, html body .fran-meses { max-width: 640px; border-radius: 28px; margin-bottom: 24px; }
+  .fran-hoja-fondo, html body .fran-meses-fondo { align-items: center; }
+}
+@media (min-width: 1000px) {
+  .fran-tablero .fran-libros { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+  .fran-iconos { grid-template-columns: repeat(10, minmax(0, 1fr)) !important; }
+}
+/* Números de las tarjetas de libro: nunca se parten */
+.fran-modulo__valor, .fran-modulo__valor .numero { white-space: nowrap; overflow-wrap: normal; }
+@media (min-width: 700px) {
+  .fran-tablero .fran-libros .fran-modulo__valor { font-size: clamp(15px, 1.9vw, 21px); }
+  .fran-tablero .fran-libros .fran-modulo__valor > span:not(.numero) { font-size: clamp(14px, 1.7vw, 19px); }
+  body.en-yo #pantalla > .fran-enlace--destacado { width: 100%; margin-right: 0; }
+}

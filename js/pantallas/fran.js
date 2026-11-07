@@ -488,6 +488,25 @@ function seccion(texto, icono3 = 'lista') {
   return `<p class="fran-seccion fran-seccion--yo">${icono3d(icono3, 'fran-3d--28')}${texto}<i></i></p>`;
 }
 
+/** Un renglón cerrado por categoría con su total; al tocarlo, los movimientos con su fecha. */
+function listaPorCategoria(lista, ctx) {
+  const { ui, dinero, fechas } = ctx;
+  const grupos = new Map();
+  for (const a of lista) { const k = `${a.tipo}|${a.categoria}`; if (!grupos.has(k)) grupos.set(k, []); grupos.get(k).push(a); }
+  const orden = [...grupos.values()].sort((x, y) => sumar(y) - sumar(x));
+  return orden.map((filas) => {
+    const a0 = filas[0];
+    const total = sumar(filas);
+    const signo = a0.tipo === 'ingreso' ? 'mas' : (a0.tipo === 'gasto' ? 'menos' : '');
+    const fs = filas.map((a) => a.fecha).sort();
+    const rango = fs[0] === fs[fs.length - 1] ? fechaLinda(fs[0], ctx) : `${fechas.formatear(fs[0]).replace(/ \d{4}$/, '')} al ${fechas.formatear(fs[fs.length - 1]).replace(/ \d{4}$/, '')}`;
+    return `<details class="fran-tachados fran-prestado-pension">
+      <summary>${icono3dDe(a0.categoria, 'fran-3d--40')}<span class="fran-renglon__texto"><span>${ui.esc(a0.categoria)}</span><small>${filas.length} ${filas.length === 1 ? 'movimiento' : 'movimientos'} · ${ui.esc(rango)}</small></span><b>${conSigno(total, dinero, signo)}</b></summary>
+      <div class="fran-lista">${[...filas].sort((x, y) => y.fecha.localeCompare(x.fecha)).map((a) => fila({ ui, ver: a.id, icono: a.categoria, titulo: a.descripcion || a.categoria, sub: a.textoFecha || fechas.formatear(a.fecha), derecha: dinero.formatear(a.valor), clase: signo ? `fran-${signo}` : '' })).join('')}</div>
+    </details>`;
+  }).join('');
+}
+
 function listaPorDia(lista, ctx) {
   const { ui, dinero } = ctx;
   const orden = [...lista].sort((a, b) => b.fecha.localeCompare(a.fecha));
@@ -770,9 +789,9 @@ function renderLibro(contenedor, id, ctx) {
     ${id === 'personal' ? tarjetaDona(deTipo(m, 'gasto'), ctx) : ''}
     ${id === 'arriendos' ? '<a class="fran-boton-secundario fran-boton--emoji" href="#/libro/arriendos/propiedades"><span class="fran-cuadro fran-cuadro--40" aria-hidden="true">🏢</span>Cuánto dio cada propiedad</a>' : ''}
     ${avisoSinDetalle(m)}
-    ${m.length ? `<div class="fran-lista">${listaPorDia(m, ctx)}</div>` : vacioConSalto(lista, ctx, 'No hay movimientos en este mes.')}
+    ${m.length ? listaPorCategoria(m, ctx) : vacioConSalto(lista, ctx, 'No hay movimientos en este mes.')}
   </div>`);
-  conectarMes(raiz, mes, ctx, redibujar);
+    conectarMes(raiz, mes, ctx, redibujar);
   conectarVer(raiz, m, contenedor, id, redibujar, ctx);
   contenedor.append(raiz);
 }
