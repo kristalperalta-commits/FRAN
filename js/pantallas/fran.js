@@ -779,10 +779,14 @@ function renderPension(contenedor, ctx) {
   // Las cuentas en dólares van juntas en un renglón; al tocarlo se ven una por una.
   const usdTotal = p.cuentas.reduce((t, c) => t + c.usd, 0);
   const pesosDolares = p.cuentas.reduce((t, c) => t + Math.round(c.usd * p.tasa), 0);
+  // El dólar de hoy contra la tasa a la que ella compró (pedido el 6 nov 2026).
+  const hoyDolar = tasaDolar(fran);
+  const diferenciaDolar = Math.round(usdTotal * hoyDolar.valor) - pesosDolares;
   const raiz = ui.el(`<div>
     ${titular('pension', ctx, '#/inicio')}
-    ${heroe({ etiqueta: 'Total pensión', valor: totalPension(fran), ayudaTexto: p.origen ? `Origen: ${p.origen.charAt(0).toLowerCase() + p.origen.slice(1)}.` : '' }, ctx)}
-    <button type="button" id="fran-tasa" class="fran-pildora">Tasa del día ${dinero.formatear(p.tasa)} ✏️</button>
+    ${heroe({ etiqueta: 'Total pensión', valor: totalPension(fran), ayudaTexto: `Los dólares están contados a ${dinero.formatear(p.tasa)}, la tasa a la que los compraste.${p.origen ? ` Origen: ${p.origen.charAt(0).toLowerCase() + p.origen.slice(1)}.` : ''}`, cajas: hoyDolar.fuente === 'internet' ? [['Con el dólar de hoy', totalPension(fran) + diferenciaDolar], [diferenciaDolar < 0 ? 'Perdería hoy' : 'Ganaría hoy', diferenciaDolar, diferenciaDolar < 0 ? 'menos' : 'mas']] : [] }, ctx)}
+    ${hoyDolar.fuente === 'internet' ? `<p class="fran-nota">Dólar: compraste a ${dinero.formatear(p.tasa)} · hoy está a ${dinero.formatear(hoyDolar.valor)} (${diferenciaDolar < 0 ? 'pierdes' : 'ganas'} ${dinero.formatear(Math.abs(hoyDolar.valor - p.tasa))} por dólar).</p>` : '<p class="fran-nota">Sin la tasa de hoy: falta internet.</p>'}
+    <button type="button" id="fran-tasa" class="fran-pildora">Compré a ${dinero.formatear(p.tasa)} ✏️</button>
     <form id="fran-tasa-form" class="fran-tasa oculto"><input name="tasa" inputmode="numeric" value="${ui.esc(p.tasa)}" aria-label="Tasa del día"><button class="boton boton--primario">Guardar</button></form>
     ${p.cuentas.length ? `<details class="fran-tachados fran-prestado-pension">
       <summary><span class="fran-cuadro fran-cuadro--40" aria-hidden="true">💵</span><span class="fran-renglon__texto"><span>Dinero en dólares</span><small>${ui.esc(String(Math.round(usdTotal * 100) / 100).replace('.', ','))} USD · toca para ver las cuentas</small></span><b class="numero">${dinero.formatear(pesosDolares)}</b></summary>
@@ -803,12 +807,13 @@ function renderPension(contenedor, ctx) {
   </div>`);
   const form = raiz.querySelector('#fran-tasa-form');
   raiz.querySelector('#fran-tasa').addEventListener('click', () => form.classList.toggle('oculto'));
+  traerDolar(ctx.hoy()).then((t) => { if (t.valor !== hoyDolar.valor && document.body.contains(raiz)) { contenedor.innerHTML = ''; renderPension(contenedor, ctx); } }).catch(() => {});
   form.addEventListener('submit', async (e) => {
     e.preventDefault();
     const tasa = Number(String(form.tasa.value).replace(/\D/g, ''));
     if (!(tasa > 0)) { ui.toast('Escribe una tasa válida.'); return; }
     await datos.actualizarFran({ pension: { ...p, tasa } });
-    ui.toast('Tasa guardada.');
+    ui.toast('Tasa de compra guardada.');
   });
   contenedor.append(raiz);
 }
@@ -1925,9 +1930,11 @@ export function fondosLiquidez(ctx, tasa) {
   const p = fran.pension;
   const usd = p.cuentas.reduce((s, c) => s + c.usd, 0);
   const filasPension = [{ texto: `Dólares: ${String(Math.round(usd * 100) / 100).replace('.', ',')} USD a ${ctx.dinero.formatear(tasa.valor)}`, valor: Math.round(usd * tasa.valor), ruta: '#/libro/pension' }];
+  const perdida = Math.round(usd * tasa.valor) - Math.round(usd * p.tasa);
+  if (tasa.fuente === 'internet' && perdida) filasPension.push({ texto: `Comprados a ${ctx.dinero.formatear(p.tasa)}: ${perdida < 0 ? 'perderías hoy' : 'ganarías hoy'}`, valor: perdida, aparte: true });
   for (const o of p.otros.filter((x) => x.liquido)) filasPension.push({ texto: o.nombre, valor: o.cop });
   grupos.push({ icono: '🐷', titulo: 'Pensión (solo lo que está disponible)', filas: filasPension, nota: 'Lo prestado y el carro no cuentan: no están en tu bolsillo.' });
-  for (const g of grupos) if (g.total === undefined) g.total = g.filas.reduce((s, f) => s + f.valor, 0);
+  for (const g of grupos) if (g.total === undefined) g.total = g.filas.filter((f) => !f.aparte).reduce((s, f) => s + f.valor, 0);
   return { grupos, total: grupos.reduce((s, g) => s + g.total, 0) };
 }
 
