@@ -438,3 +438,16 @@ button.fran-campana { border: 0; padding: 0; cursor: pointer; }
 .fran-apariencia__letra span.grande { font-size: 24px; }
 .fran-apariencia__letra input { flex: 1; min-width: 0; height: 44px; accent-color: var(--accent); }
 .fran-apariencia .fran-boton-principal { width: 100%; margin-top: 18px; }
+
+/* ---------- Barra de abajo pegada abajo, como Mis Gastos (pedido el 6 nov 2026) ----------
+   Antes medía 84 más todo el espacio de la rayita del iPhone: los iconos quedaban 1 cm arriba.
+   Ahora mide 56 y solo usa la mitad de ese espacio. */
+html:root[data-tema] { --alto-barra: 56px; --abajo-seguro: calc(env(safe-area-inset-bottom, 0px) * 0.45); }
+html body .barra-inferior { height: calc(var(--alto-barra) + var(--abajo-seguro)); padding-bottom: var(--abajo-seguro); }
+html body .pantalla { padding-bottom: calc(var(--alto-barra) + var(--abajo-seguro) + 28px); }
+html body .toast-contenedor { bottom: calc(var(--alto-barra) + var(--abajo-seguro) + 12px); }
+html body .pestana--mas span { width: 58px; height: 58px; margin-top: -24px; }
+html body .pestana__texto { font-size: 10.5px; }
+
+/* Notas largas: dos renglones en la lista; completas al tocar el movimiento. */
+.fran-fila__texto small { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
