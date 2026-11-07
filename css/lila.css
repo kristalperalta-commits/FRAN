@@ -520,3 +520,7 @@ html body .fran-form-sale > label:first-child { box-shadow: inset 0 0 0 2px var(
 .fran-tarjeta-credito__cabeza { display: flex; align-items: center; gap: 12px; }
 .fran-tarjeta-credito__cabeza b { flex: none; font-size: 16px; }
 .fran-tarjeta-credito .fran-boton-secundario { align-self: flex-start; }
+
+/* Pensión: renglón fijo (el carro) con la misma forma que los que se abren */
+.fran-pension-fija { display: flex; align-items: center; gap: 12px; min-height: 64px; color: var(--text); }
+.fran-pension-fija b { flex: none; font-size: 15px; }

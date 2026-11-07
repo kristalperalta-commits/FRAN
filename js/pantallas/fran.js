@@ -774,15 +774,19 @@ function renderPension(contenedor, ctx) {
   const esDelNegocio = (o) => /debe el negocio/i.test(o.nota || '');
   const prestados = p.otros.filter((o) => /prestado/i.test(o.nombre) || esDelNegocio(o));
   const otrosPropios = p.otros.filter((o) => !prestados.includes(o));
+  // Las cuentas en dólares van juntas en un renglón; al tocarlo se ven una por una.
+  const usdTotal = p.cuentas.reduce((t, c) => t + c.usd, 0);
+  const pesosDolares = p.cuentas.reduce((t, c) => t + Math.round(c.usd * p.tasa), 0);
   const raiz = ui.el(`<div>
     ${titular('pension', ctx, '#/inicio')}
     ${heroe({ etiqueta: 'Total pensión', valor: totalPension(fran), ayudaTexto: p.origen ? `Origen: ${p.origen.charAt(0).toLowerCase() + p.origen.slice(1)}.` : '' }, ctx)}
     <button type="button" id="fran-tasa" class="fran-pildora">Tasa del día ${dinero.formatear(p.tasa)} ✏️</button>
     <form id="fran-tasa-form" class="fran-tasa oculto"><input name="tasa" inputmode="numeric" value="${ui.esc(p.tasa)}" aria-label="Tasa del día"><button class="boton boton--primario">Guardar</button></form>
-    <div class="fran-lista">
-      ${p.cuentas.map((c) => filaPension({ icono: '💵', titulo: c.nombre, pesos: Math.round(c.usd * p.tasa), usd: c.usd }, ctx)).join('')}
-      ${otrosPropios.map((o) => filaPension({ icono: /carro/i.test(o.nombre) ? '🚗' : '👛', titulo: o.nombre, sub: o.nota, pesos: o.cop, usd: Number.isFinite(o.usd) ? o.usd : null }, ctx)).join('')}
-    </div>
+    ${p.cuentas.length ? `<details class="fran-tachados fran-prestado-pension">
+      <summary><span class="fran-cuadro fran-cuadro--40" aria-hidden="true">💵</span><span class="fran-renglon__texto"><span>Dinero en dólares</span><small>${ui.esc(String(Math.round(usdTotal * 100) / 100).replace('.', ','))} USD · toca para ver las cuentas</small></span><b class="numero">${dinero.formatear(pesosDolares)}</b></summary>
+      <div class="fran-lista">${p.cuentas.map((c) => filaPension({ icono: '💵', titulo: c.nombre, pesos: Math.round(c.usd * p.tasa), usd: c.usd }, ctx)).join('')}</div>
+    </details>` : ''}
+    ${otrosPropios.map((o) => `<div class="fran-tachados fran-prestado-pension fran-pension-fija"><span class="fran-cuadro fran-cuadro--40" aria-hidden="true">${/carro/i.test(o.nombre) ? '🚗' : '👛'}</span><span class="fran-renglon__texto"><span>${ui.esc(o.nombre)}</span>${o.nota ? `<small>${ui.esc(o.nota)}</small>` : ''}</span><b class="numero">${dinero.formatear(o.cop)}</b></div>`).join('')}
     ${prestados.length ? `<details class="fran-tachados fran-prestado-pension">
       <summary><span class="fran-cuadro fran-cuadro--40" aria-hidden="true">🤝</span><span class="fran-renglon__texto"><span>Prestado de la pensión</span><small>Toca para ver a quién</small></span><b class="numero">${dinero.formatear(prestados.reduce((s, o) => s + o.cop, 0))}</b></summary>
       <div class="fran-lista">${prestados.map((o) => filaPension({ icono: esDelNegocio(o) ? '🏦' : '🤝', titulo: esDelNegocio(o) ? 'Lo debe el negocio de préstamos' : o.nombre.replace(/^Prestado a /i, ''), sub: esDelNegocio(o) ? 'Lorena lo devolvió y se volvió a prestar. El negocio se lo debe a la pensión.' : o.nota, pesos: o.cop }, ctx)).join('')}</div>
