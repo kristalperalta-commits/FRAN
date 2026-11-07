@@ -1,7 +1,7 @@
 // Categorías de Agregar y nombres de los ingresos en Finanzas.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { adivinarCategoria, categoriasDe, delLibro, evaluarMonto, INGRESOS_DE_OTRO_LIBRO, repartirPagos, gananciasDe, cobrosDeCliente } from '../js/pantallas/fran.js';
+import { adivinarCategoria, categoriasDe, delLibro, evaluarMonto, INGRESOS_DE_OTRO_LIBRO, repartirPagos, gananciasDe, cobrosDeCliente, renglonesPrestamos } from '../js/pantallas/fran.js';
 
 const vacio = { categoriasExtra: {}, categoriasOcultas: {} };
 const gasto = (categoria, fecha) => ({ libro: 'personal', tipo: 'gasto', categoria, fecha, valor: 1 });
@@ -100,4 +100,21 @@ test('el cobro dice capital, interés y nota, y no inventa lo que no se sabe', (
   assert.deepEqual([perdon.titulo, perdon.perdon, perdon.interes], ['Perdón de intereses', true, 0]);
   assert.deepEqual([viejo.titulo, viejo.capital, viejo.medio, viejo.nota, viejo.prestamoId], ['Abono a capital', 100, '', '', '']);
   assert.equal(conNota.nota, 'Rosa pago');
+});
+
+test('tabla de préstamos: un renglón por préstamo, el más reciente primero, los sin fecha al final', () => {
+  const estado = {
+    clientes: [{ id: 'c1', nombre: 'Familia Uno' }, { id: 'c2', nombre: 'Cliente Dos' }],
+    prestamos: [
+      { id: 'p1', clienteId: 'c2', fecha: '2000-01-01', capital: 300, porConfirmar: { fecha: '15 del mes' } },
+      { id: 'p2', clienteId: 'c2', fecha: '2026-10-03', capital: 500, nombreExcel: 'Dos' },
+      { id: 'p3', clienteId: 'c1', fecha: '2024-05-11', capital: 900, detalle: [{ nombre: 'Hija', fecha: '2025-02-01', capital: 400 }, { nombre: 'Mamá', capital: 500, texto: '25 del mes' }] },
+    ],
+  };
+  const filas = renglonesPrestamos(estado, (p) => (p.id === 'p2' ? 'al_dia' : ''));
+  assert.deepEqual(filas.map((f) => [f.nombre, f.fecha, f.capital]), [['Dos', '2026-10-03', 500], ['Hija', '2025-02-01', 400], ['Cliente Dos', null, 300], ['Mamá', null, 500]].sort((a, b) => (b[1] || '').localeCompare(a[1] || '') || b[2] - a[2]));
+  assert.equal(filas.find((f) => f.nombre === 'Cliente Dos').textoFecha, '15 del mes');
+  assert.equal(filas.find((f) => f.nombre === 'Hija').cliente, 'Familia Uno');
+  assert.equal(filas.find((f) => f.nombre === 'Dos').estado, 'al_dia');
+  assert.equal(filas.reduce((s, f) => s + f.capital, 0), 1700);
 });

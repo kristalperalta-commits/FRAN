@@ -51,6 +51,9 @@ export const CATEGORIAS_BASE = {
 const CUENTAS = ['Efectivo', 'Nequi propio', 'Nequi papá', 'Uno propio', 'Uno Garu', 'Bancolombia', 'Tarjeta comida', 'Tarjeta gasolina', 'Tarjeta Gold'];
 // Colores de la dona y las barras, en orden (diseño Lila): rojo, cian, naranja, lila, rosado y más.
 const COLORES = ['#F87171', '#22D3EE', '#FB923C', '#A5B4FC', '#F9A8D4', '#6EE7B7', '#FDBA74', '#C4B5FD'];
+// Ingresos, intereses y ahorro van en verdes: el rojo se entiende como salida (pedido por ella el 6 nov 2026).
+const VERDES = ['#34D399', '#2DD4BF', '#A3E635', '#22D3EE', '#86EFAC', '#5EEAD4', '#BEF264', '#67E8F9'];
+export const coloresDe = (tipo) => (tipo === 'ingreso' || tipo === 'ahorro' ? VERDES : COLORES);
 
 const ICONOS = [
   [/aliment|comida|mercado/, '🍎'], [/vivienda|hogar/, '🏠'], [/carro|auto/, '🚗'], [/gasolina|combustible/, '⛽'],
@@ -683,6 +686,7 @@ function renderPrestamos(contenedor, ctx, redibujar) {
     <div class="fran-accesos">
       <a href="#/clientes"><span class="fran-cuadro fran-cuadro--40" aria-hidden="true">👥</span>Clientes</a>
       <a href="#/agenda"><span class="fran-cuadro fran-cuadro--40" aria-hidden="true">⏰</span>Agenda de cobros</a>
+      <a href="#/libro/prestamos/tabla" class="fran-accesos__ancho"><span class="fran-cuadro fran-cuadro--40" aria-hidden="true">📋</span>Tabla de préstamos, como en el Excel</a>
     </div>
     <p class="fran-seccion">Movimientos del mes</p>
     ${avisoSinDetalle(delMes(lista, mes))}
@@ -770,13 +774,13 @@ function renderTerceros(contenedor, ctx) {
 
 // ---------- Gráficos (boceto 5) ----------
 
-function dona(grupos, total, centro = null) {
+function dona(grupos, total, centro = null, colores = COLORES) {
   const r = 42;
   const circ = 2 * Math.PI * r;
   let giro = 0;
   const arcos = grupos.map((g, i) => {
     const largo = total ? (g[1] / total) * circ : 0;
-    const arco = `<circle cx="60" cy="60" r="${r}" fill="none" stroke="${COLORES[i % COLORES.length]}" stroke-width="18" stroke-dasharray="${Math.max(largo - 0.8, 0)} ${circ}" stroke-dashoffset="${-giro}" transform="rotate(-90 60 60)"/>`;
+    const arco = `<circle cx="60" cy="60" r="${r}" fill="none" stroke="${colores[i % colores.length]}" stroke-width="18" stroke-dasharray="${Math.max(largo - 0.8, 0)} ${circ}" stroke-dashoffset="${-giro}" transform="rotate(-90 60 60)"/>`;
     giro += largo;
     return arco;
   }).join('');
@@ -809,12 +813,12 @@ function renderGraficos(contenedor, id, ctx) {
     const filas = [...p.cuentas.map((c) => [c.nombre, Math.round(c.usd * p.tasa)]), ...p.otros.map((o) => [o.nombre, o.cop])].sort((a, b) => b[1] - a[1]);
     const total = filas.reduce((s, f) => s + f[1], 0);
     contenedor.append(ui.el(`<div>${titular(id, ctx, `#/libro/${id}`, 'Gráficos')}
-      ${total ? `<div class="fran-grafico">${dona(filas.slice(0, 7), total)}</div>` : ''}
-      <div class="fran-lista">${filas.map(([n, v], i) => `<div class="fran-barra-fila"><span class="fran-ico" style="background:${COLORES[i % COLORES.length]}"></span><span class="fran-barra-fila__c"><span class="fran-barra-fila__l"><strong>${ui.esc(n)}</strong><span class="numero">${dinero.formatear(v)}</span></span><span class="fran-barra-fila__l"><span class="fran-barra" style="width:${(v / filas[0][1]) * 80}%"></span><small>${((v / total) * 100).toFixed(1).replace('.', ',')}%</small></span></span></div>`).join('')}</div>
+      ${total ? `<div class="fran-grafico">${dona(filas.slice(0, 7), total, null, VERDES)}</div>` : ''}
+      <div class="fran-lista">${filas.map(([n, v], i) => `<div class="fran-barra-fila"><span class="fran-ico" style="background:${VERDES[i % VERDES.length]}"></span><span class="fran-barra-fila__c"><span class="fran-barra-fila__l"><strong>${ui.esc(n)}</strong><span class="numero">${dinero.formatear(v)}</span></span><span class="fran-barra-fila__l"><span class="fran-barra" style="width:${(v / filas[0][1]) * 80}%"></span><small>${((v / total) * 100).toFixed(1).replace('.', ',')}%</small></span></span></div>`).join('')}</div>
     </div>`));
     return;
   }
-  if (!vista.tipo) vista.tipo = ['arriendos', 'redes'].includes(id) ? 'ingreso' : 'gasto';
+  if (!vista.tipo) vista.tipo = ['arriendos', 'redes', 'prestamos'].includes(id) ? 'ingreso' : 'gasto';
   const lista = delLibro(asientos(ctx), id);
   const mes = mesVisible(ctx, lista);
   const m = deTipo(delMes(lista, mes), vista.tipo);
@@ -833,12 +837,12 @@ function renderGraficos(contenedor, id, ctx) {
     </div>
     ${tiraDeMeses(mes, asientos(ctx), ctx)}
     ${avisoSinDetalle(m)}
-    ${total ? `<div class="fran-grafico fran-grafico--leyenda">${dona(grupos, total)}<div class="fran-grafico__leyenda">${grupos.map(([n, v], i) => `<p><i style="border-color:${COLORES[i % COLORES.length]}"></i><span>${ui.esc(n)}</span><b class="numero">${pct(v)}%</b></p>`).join('')}</div></div>` : vacioConSalto(deTipo(lista, vista.tipo), ctx, `No hay ${vista.tipo === 'ingreso' ? 'ingresos' : 'gastos'} en este mes.`)}
+    ${total ? `<div class="fran-grafico fran-grafico--leyenda">${dona(grupos, total, null, coloresDe(vista.tipo))}<div class="fran-grafico__leyenda">${grupos.map(([n, v], i) => `<p><i style="border-color:${coloresDe(vista.tipo)[i % 8]}"></i><span>${ui.esc(n)}</span><b class="numero">${pct(v)}%</b></p>`).join('')}</div></div>` : vacioConSalto(deTipo(lista, vista.tipo), ctx, `No hay ${vista.tipo === 'ingreso' ? 'ingresos' : 'gastos'} en este mes.`)}
     <div class="fran-lista">${filas.map(([cat, v], i) => `<a href="#/libro/${id}/categoria/${vista.tipo}/${encodeURIComponent(cat)}" class="fran-barra-fila">
       <span class="fran-ico">${ui.esc(iconoDe(cat))}</span>
       <span class="fran-barra-fila__c">
         <span class="fran-barra-fila__l"><strong>${ui.esc(cat)}</strong><span class="numero ${vista.tipo === 'ingreso' ? 'fran-mas' : 'fran-menos'}">${dinero.formatear(v)}</span></span>
-        <span class="fran-barra-fila__l"><span class="fran-barra" style="width:${Math.max(1.5, (v / filas[0][1]) * 80)}%;background:${COLORES[Math.min(i, 4) % COLORES.length]}"></span><small>${pct(v)}%</small></span>
+        <span class="fran-barra-fila__l"><span class="fran-barra" style="width:${Math.max(1.5, (v / filas[0][1]) * 80)}%;background:${coloresDe(vista.tipo)[Math.min(i, 4)]}"></span><small>${pct(v)}%</small></span>
       </span>
     </a>`).join('')}</div>
   </div>`);
@@ -850,6 +854,7 @@ function renderGraficos(contenedor, id, ctx) {
 
 /** Gráfica de línea del mes, día por día, como la de Mis Gastos. */
 function graficaDelMes(lista, mes, ctx) {
+  const colores = coloresDe(lista.length && lista.every((a) => a.tipo === 'ingreso') ? 'ingreso' : 'gasto');
   const dias = new Date(Number(mes.slice(0, 4)), Number(mes.slice(5, 7)), 0).getDate();
   const porDia = new Array(dias).fill(0);
   for (const a of lista) porDia[Number(a.fecha.slice(8)) - 1] += a.valor;
@@ -861,8 +866,8 @@ function graficaDelMes(lista, mes, ctx) {
     <line x1="44" y1="10" x2="44" y2="110" /><line x1="44" y1="110" x2="330" y2="110" />
     <text x="40" y="14" text-anchor="end">${corto(maximo)}</text><text x="40" y="64" text-anchor="end">${corto(maximo / 2)}</text><text x="40" y="114" text-anchor="end">0</text>
     ${[1, 8, 15, 22, 29].filter((d) => d <= dias).map((d) => `<text x="${x(d - 1).toFixed(1)}" y="124" text-anchor="middle">${d}</text>`).join('')}
-    ${porDia.slice(1).map((v, i) => `<line class="fran-linea__tramo" style="stroke:${COLORES[i % COLORES.length]}" x1="${x(i).toFixed(1)}" y1="${y(porDia[i]).toFixed(1)}" x2="${x(i + 1).toFixed(1)}" y2="${y(v).toFixed(1)}" />`).join('')}
-    ${porDia.map((v, i) => `<circle style="fill:${COLORES[i % COLORES.length]}" cx="${x(i).toFixed(1)}" cy="${y(v).toFixed(1)}" r="${v ? 3 : 1.8}" />`).join('')}
+    ${porDia.slice(1).map((v, i) => `<line class="fran-linea__tramo" style="stroke:${colores[i % colores.length]}" x1="${x(i).toFixed(1)}" y1="${y(porDia[i]).toFixed(1)}" x2="${x(i + 1).toFixed(1)}" y2="${y(v).toFixed(1)}" />`).join('')}
+    ${porDia.map((v, i) => `<circle style="fill:${colores[i % colores.length]}" cx="${x(i).toFixed(1)}" cy="${y(v).toFixed(1)}" r="${v ? 3 : 1.8}" />`).join('')}
   </svg>`;
 }
 
@@ -1501,6 +1506,81 @@ function verCobro(contenedor, m, cobros, cliente, volver, ctx) {
   window.scrollTo(0, 0);
 }
 
+// ---------- Tabla de préstamos, como en su Excel ----------
+
+const NOMBRE_ESTADO = { al_dia: 'Al día', atrasado: 'Atrasado', vencido: 'Atrasado', pagado: 'Pagado', perdido: 'Perdido', legal: 'Legal', congelado: 'Congelado', familia: 'Familia', por_confirmar: 'Por confirmar' };
+
+/** Un renglón por cada préstamo del Excel o anotado después. Los núcleos de familia muestran cada préstamo por dentro. */
+export function renglonesPrestamos(estado, estadoDe = () => '') {
+  const clientes = new Map(estado.clientes.map((c) => [c.id, c]));
+  const sinFecha = (f) => !f || f < '2001';
+  const filas = [];
+  for (const p of estado.prestamos) {
+    const c = clientes.get(p.clienteId) || { nombre: 'Cliente', id: p.clienteId };
+    const base = { clienteId: c.id, cliente: c.nombre, estado: estadoDe(p) };
+    if (Array.isArray(p.detalle) && p.detalle.length) {
+      for (const d of p.detalle) filas.push({ ...base, fecha: sinFecha(d.fecha) ? null : d.fecha, textoFecha: d.texto || '', nombre: d.nombre || c.nombre, capital: d.capital || 0 });
+    } else {
+      filas.push({ ...base, fecha: sinFecha(p.fecha) ? null : p.fecha, textoFecha: (p.porConfirmar && p.porConfirmar.fecha) || '', nombre: (p.nombreExcel || c.nombre).trim(), capital: p.capital });
+    }
+  }
+  return filas.sort((a, b) => (b.fecha || '').localeCompare(a.fecha || '') || b.capital - a.capital);
+}
+
+function renderTablaPrestamos(contenedor, ctx) {
+  const { ui, dinero, datos, motor, fechas } = ctx;
+  const estado = datos.estado;
+  const hoy = ctx.hoy();
+  const pagos = pagosRepartidos(estado);
+  // Estado de cada préstamo, calculado por cliente como en su ficha.
+  const estadoPorPrestamo = new Map();
+  for (const c of estado.clientes) {
+    const propios = estado.prestamos.filter((p) => p.clienteId === c.id);
+    if (!propios.length) continue;
+    const r = motor.resumenCliente(c, propios, pagos.filter((g) => g.clienteId === c.id), hoy);
+    for (const x of r.resultados) estadoPorPrestamo.set(x.prestamoId, c.tipo === 'familia' ? 'familia' : x.estado);
+  }
+  const filas = renglonesPrestamos(estado, (p) => estadoPorPrestamo.get(p.id) || '');
+  if (!vista.tabla) vista.tabla = 'mes';
+  const dibujar = () => { contenedor.innerHTML = ''; renderTablaPrestamos(contenedor, ctx); };
+  const punto = (e) => (e ? `<i class="fran-punto fran-punto--${ui.esc(e)}" aria-hidden="true"></i>${ui.esc(NOMBRE_ESTADO[e] || e)}` : '');
+  const mismo = (a, b) => norm(a) === norm(b);
+  const renglon = (f, conDia) => `<a class="fran-tabla-fila" href="#/cliente/${encodeURIComponent(f.clienteId)}">
+    <span class="fran-tabla-fila__dia">${f.fecha ? ui.esc(conDia ? String(Number(f.fecha.slice(8))) : fechas.formatear(f.fecha)) : `<small>${ui.esc(f.textoFecha || 'sin fecha')}</small>`}</span>
+    <span class="fran-tabla-fila__nombre"><span>${ui.esc(f.nombre)}</span><small>${punto(f.estado)}${mismo(f.nombre, f.cliente) ? '' : `${f.estado ? ' · ' : ''}${ui.esc(f.cliente)}`}</small></span>
+    <span class="numero">${dinero.formatear(f.capital)}</span>
+  </a>`;
+  const cabeza = (titulo, lista) => `<div class="fran-tabla-cabeza"><span>${ui.esc(titulo)}</span><span>${lista.length} · <b class="numero">${dinero.formatear(sumar(lista.map((f) => ({ valor: f.capital }))))}</b></span></div>`;
+
+  let cuerpo = '';
+  if (vista.tabla === 'mes') {
+    const meses = new Map();
+    for (const f of filas) { const k = f.fecha ? f.fecha.slice(0, 7) : 'sin'; if (!meses.has(k)) meses.set(k, []); meses.get(k).push(f); }
+    cuerpo = [...meses].map(([k, lista]) => `<section class="fran-tabla-bloque">
+      ${cabeza(k === 'sin' ? 'Sin fecha en el Excel' : fechas.formatearMes(k), lista)}
+      <div class="fran-tabla-titulos"><span>${k === 'sin' ? 'Cuándo' : 'Día'}</span><span>Nombre</span><span>Capital</span></div>
+      ${lista.map((f) => renglon(f, true)).join('')}
+    </section>`).join('');
+  } else {
+    const porCliente = new Map();
+    for (const f of filas) { if (!porCliente.has(f.clienteId)) porCliente.set(f.clienteId, []); porCliente.get(f.clienteId).push(f); }
+    cuerpo = [...porCliente.values()].map((lista) => `<details class="fran-tabla-bloque fran-tabla-cliente">
+      <summary>${cabeza(lista[0].cliente, lista)}<small>${punto(lista[0].estado)}${lista.length > 1 ? `${lista[0].estado ? ' · ' : ''}${lista.length} préstamos` : ''}</small></summary>
+      <div class="fran-tabla-titulos"><span>Fecha</span><span>Nombre</span><span>Capital</span></div>
+      ${lista.map((f) => renglon(f, false)).join('')}
+    </details>`).join('');
+  }
+
+  const raiz = ui.el(`<div class="fran-tabla-prestamos">
+    ${titular('prestamos', ctx, '#/libro/prestamos', 'Tabla de préstamos')}
+    ${heroe({ etiqueta: 'Total de la tabla', valor: sumar(filas.map((f) => ({ valor: f.capital }))), ayudaTexto: 'Es el capital anotado en tu Excel y lo que has prestado después en Fran, sin intereses. Los núcleos de familia muestran cada préstamo por dentro.', cajas: [['Préstamos', String(filas.length)], ['Clientes', String(new Set(filas.map((f) => f.clienteId)).size)], ['Sin fecha', String(filas.filter((f) => !f.fecha).length)]] }, ctx)}
+    <div class="fran-segmento"><button type="button" data-tabla="mes" class="${vista.tabla === 'mes' ? 'activo' : ''}">Por mes</button><button type="button" data-tabla="cliente" class="${vista.tabla === 'cliente' ? 'activo' : ''}">Por cliente</button></div>
+    ${filas.length ? cuerpo : '<p class="fran-vacio">Todavía no hay préstamos en este aparato.</p>'}
+  </div>`);
+  raiz.querySelectorAll('[data-tabla]').forEach((b) => b.addEventListener('click', () => { vista.tabla = b.dataset.tabla; dibujar(); }));
+  contenedor.append(raiz);
+}
+
 function renderFicha(contenedor, id, ctx) {
   const { ui, dinero, datos, motor, fechas } = ctx;
   const estado = datos.estado;
@@ -1827,6 +1907,7 @@ export async function render(contenedor, params, ctx) {
     case 'virtual': return renderVirtual(contenedor, ctx);
     case 'ganancias': return renderGanancias(contenedor, ctx);
     case 'propiedades': return renderPropiedades(contenedor, ctx);
+    case 'tablaPrestamos': return renderTablaPrestamos(contenedor, ctx);
     case 'propiedad': {
       const { delAnio } = arriendosDelAnio(ctx);
       const anio = vista.anioPropiedad === 'todo' ? '' : ` · ${vista.anioPropiedad}`;

@@ -14,8 +14,8 @@
   const LISTA = [
     { id: 'oscuro', nombre: 'Lila oscuro', detalle: '(predeterminado)', fondo: '#13112B', texto: '#FFFFFF', muestra: '#8B6CFF' },
     { id: 'claro', nombre: 'Lila claro', fondo: '#F4F2FB', texto: '#1F1B33', muestra: '#6A3DE8' },
-    { id: 'menta', nombre: 'Verde menta', fondo: '#04211A', texto: '#FFFFFF', muestra: '#6EE7B7' },
-    { id: 'rosa', nombre: 'Rosa', fondo: '#24081A', texto: '#FFFFFF', muestra: '#F9A8D4' },
+    { id: 'menta', nombre: 'Verde menta', fondo: '#ECFBF4', texto: '#0E2E25', muestra: '#34C79A' },
+    { id: 'rosa', nombre: 'Rosa', fondo: '#FDF1F7', texto: '#3A1230', muestra: '#EE6AAE' },
     { id: 'dorado', nombre: 'Dorado', fondo: '#221505', texto: '#FFFFFF', muestra: '#FCD34D' }
   ];
 

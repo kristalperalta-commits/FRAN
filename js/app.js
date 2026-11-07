@@ -11,7 +11,7 @@
 
 import * as ui from './ui.js';
 
-const VERSION_APP = '3.13.0';
+const VERSION_APP = '3.14.0';
 const contenedor = document.getElementById('pantalla');
 
 // ---------- Rutas (sección 7 de la especificación) ----------
@@ -23,7 +23,8 @@ const RUTAS = [
   { patron: '/otros', pantalla: 'fran', vista: 'otros', pestana: null, sinBarra: true },
   { patron: '/libro/arriendos/propiedades', pantalla: 'fran', vista: 'propiedades', pestana: 'inicio', libro: 'arriendos' },
   { patron: '/libro/arriendos/propiedad/:nombre', pantalla: 'fran', vista: 'propiedad', pestana: 'inicio', libro: 'arriendos' },
-  { patron: '/libro/prestamos/personas', pantalla: 'fran', vista: 'personas', pestana: 'informes', libro: 'prestamos' },
+  { patron: '/libro/prestamos/tabla', pantalla: 'fran', vista: 'tablaPrestamos', pestana: 'inicio', libro: 'prestamos' },
+  { patron: '/libro/prestamos/personas',pantalla: 'fran', vista: 'personas', pestana: 'informes', libro: 'prestamos' },
   { patron: '/libro/prestamos/persona/:nombre', pantalla: 'fran', vista: 'persona', pestana: 'informes', libro: 'prestamos' },
   { patron: '/libro/prestamos/registrar/:tipo', pantalla: 'fran', vista: 'registrar', pestana: 'inicio', libro: 'prestamos', sinBarra: true },
   { patron: '/libro/prestamos/registrar/:tipo/:clienteId', pantalla: 'fran', vista: 'registrar', pestana: 'inicio', libro: 'prestamos', sinBarra: true },

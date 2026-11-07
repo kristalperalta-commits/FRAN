@@ -41,30 +41,33 @@ html:root[data-tema="claro"] {
   --hero: linear-gradient(160deg, #6A3DE8, #8446E0);
   --accent: #6A3DE8;
   --cta: #E8590C;
-  --plus: #6A3DE8;
+  --plus: #12A06E; /* verde: los ingresos se ven en verde en todos los temas */
   --minus: #D9590C;
   --alert: #E8590C;
   --shadow: 0 6px 18px rgba(80, 50, 160, 0.08);
   --activa: var(--accent);
 }
 
-/* Verde menta, Rosa y Dorado: la misma estructura, con sus tonos. */
+/* Rosa y Verde menta: fondo clarito, tarjetas blancas y letra oscura (pedido por ella el 6 nov 2026). */
 html:root[data-tema="menta"] {
-  color-scheme: dark;
-  --bg: #04211A; --surface: #0A3026; --tile: #114034; --line: rgba(255, 255, 255, 0.06);
-  --text: #FFFFFF; --text-2: #A3D9C6;
-  --hero: linear-gradient(135deg, #0F766E, #059669); --accent: #34D399; --cta: var(--hero);
-  --plus: #6EE7B7; --minus: #F9A8D4; --alert: #FDBA74; --shadow: none; --activa: var(--text);
+  color-scheme: light;
+  --bg: #ECFBF4; --surface: #FFFFFF; --tile: #D9F7EA; --line: #DDF1E8;
+  --text: #0E2E25; --text-2: #557A6D;
+  --hero: linear-gradient(160deg, #0E9F7A, #34C79A); --accent: #0E9F7A; --cta: var(--hero);
+  --plus: #0E9F7A; --minus: #E8590C; --alert: #E8590C;
+  --shadow: 0 6px 18px rgba(20, 110, 80, 0.08); --activa: var(--accent);
 }
 
 html:root[data-tema="rosa"] {
-  color-scheme: dark;
-  --bg: #24081A; --surface: #350D27; --tile: #481435; --line: rgba(255, 255, 255, 0.06);
-  --text: #FFFFFF; --text-2: #E3AECB;
-  --hero: linear-gradient(135deg, #BE185D, #DB2777); --accent: #F472B6; --cta: var(--hero);
-  --plus: #6EE7B7; --minus: #F9A8D4; --alert: #FDBA74; --shadow: none; --activa: var(--text);
+  color-scheme: light;
+  --bg: #FDF1F7; --surface: #FFFFFF; --tile: #FCE4F0; --line: #F5E1EC;
+  --text: #3A1230; --text-2: #8B5C7A;
+  --hero: linear-gradient(160deg, #D63384, #EE6AAE); --accent: #D63384; --cta: var(--hero);
+  --plus: #12A06E; --minus: #E8590C; --alert: #E8590C;
+  --shadow: 0 6px 18px rgba(170, 40, 110, 0.08); --activa: var(--accent);
 }
 
+/* Dorado sigue oscuro. */
 html:root[data-tema="dorado"] {
   color-scheme: dark;
   --bg: #221505; --surface: #33200A; --tile: #452D10; --line: rgba(255, 255, 255, 0.06);
@@ -104,7 +107,7 @@ html:root[data-tema] {
   --texto-estado-congelado: var(--text);
   --texto-estado-familia: var(--text);
 }
-html:root[data-tema="claro"] { --primario: var(--accent); }
+html:root:is([data-tema="claro"], [data-tema="rosa"], [data-tema="menta"]) { --primario: var(--accent); }
 
 /* ---------- Letra delgada en toda la app ---------- */
 body { font-family: var(--fuente); font-weight: 400; background: var(--bg); color: var(--text); }
@@ -236,7 +239,7 @@ html body .fran-segmento button, html body .fran-segmento a { min-height: 44px; 
   background: var(--surface); box-shadow: var(--shadow); color: var(--text) !important; font: inherit; font-size: 15px; text-decoration: none; cursor: pointer;
 }
 html body .fran-borrar, .fran-boton--44 { min-height: 44px; padding: 0 16px; border-radius: 14px; font-size: 14px; }
-html:root[data-tema="claro"] .fran-boton-secundario, html:root[data-tema="claro"] .boton--secundario, html:root[data-tema="claro"] .boton--peligro, html:root[data-tema="claro"] .fran-borrar { background: transparent; box-shadow: inset 0 0 0 1.5px var(--accent); }
+html:root:is([data-tema="claro"], [data-tema="rosa"], [data-tema="menta"]) .fran-boton-secundario, html:root:is([data-tema="claro"], [data-tema="rosa"], [data-tema="menta"]) .boton--secundario, html:root:is([data-tema="claro"], [data-tema="rosa"], [data-tema="menta"]) .boton--peligro, html:root:is([data-tema="claro"], [data-tema="rosa"], [data-tema="menta"]) .fran-borrar { background: transparent; box-shadow: inset 0 0 0 1.5px var(--accent); }
 .fran-tarjeta .fran-boton-secundario, .fran-fila .fran-boton-secundario, .fran-tarjeta .fran-borrar, .fran-fila .fran-borrar { background: var(--tile); box-shadow: none; }
 .fran-boton--emoji { width: 100%; justify-content: flex-start; padding: 0 12px; margin-bottom: 12px; }
 .boton { border-radius: 18px; min-height: 48px; }
@@ -313,6 +316,7 @@ html body .pestana--mas span::before {
   mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2.8' stroke-linecap='round'%3E%3Cpath d='M12 4v16M4 12h16'/%3E%3C/svg%3E") center / contain no-repeat;
 }
 html:root[data-tema="claro"] .pestana--mas span { box-shadow: 0 8px 20px rgba(232, 89, 12, 0.35); }
+html:root:is([data-tema="rosa"], [data-tema="menta"]) .pestana--mas span { box-shadow: 0 8px 20px rgba(0, 0, 0, 0.15); }
 
 /* ---------- Temas en Yo: píldoras con un circulito de su color ---------- */
 html body .ajustes-temas { display: flex; flex-wrap: wrap; gap: 8px; }
@@ -334,3 +338,34 @@ html body .candado__cara circle.ojo { fill: var(--text); }
 html body .candado__texto, html body .candado__nota, html body .candado__error { color: var(--text); }
 html body .candado__boton { background: var(--hero); color: #FFFFFF; border-radius: 18px; font-size: 15px; }
 html body .candado__enlace { min-height: 44px; width: 100%; border-radius: 18px; background: var(--surface); color: var(--text); text-decoration: none; }
+
+/* ---------- Tabla de préstamos, como en su Excel ---------- */
+html body .fran-accesos .fran-accesos__ancho { grid-column: 1 / -1; }
+.fran-tabla-bloque { display: block; margin-bottom: 14px; padding: 4px 14px 6px; border-radius: 20px; background: var(--surface); box-shadow: var(--shadow); }
+.fran-tabla-cabeza { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; padding: 10px 0 6px; font-size: 15px; }
+.fran-tabla-cabeza > span:first-child { text-transform: capitalize; }
+.fran-tabla-cabeza > span:last-child { flex: none; color: var(--text-2); font-size: 12px; }
+.fran-tabla-cabeza b { color: var(--text); font-size: 14px; }
+.fran-tabla-titulos, .fran-tabla-fila { display: grid; grid-template-columns: 58px minmax(0, 1fr) auto; align-items: center; gap: 10px; }
+.fran-tabla-titulos { padding: 4px 0; border-bottom: 1px solid var(--line); color: var(--text-2); font-size: 11px; }
+.fran-tabla-titulos span:last-child { text-align: right; }
+.fran-tabla-fila { min-height: 54px; padding: 6px 0; border-bottom: 1px solid var(--line); color: var(--text); text-decoration: none; }
+.fran-tabla-fila:last-child { border-bottom: 0; }
+.fran-tabla-fila__dia { color: var(--text-2); font-size: 13px; line-height: 1.2; overflow-wrap: anywhere; }
+.fran-tabla-fila__dia small { font-size: 11px; }
+.fran-tabla-fila__nombre { display: flex; flex-direction: column; min-width: 0; font-size: 14.5px; line-height: 1.25; }
+.fran-tabla-fila__nombre > span { overflow-wrap: anywhere; text-transform: capitalize; }
+.fran-tabla-fila__nombre small, .fran-tabla-cliente summary > small { display: flex; align-items: center; gap: 5px; flex-wrap: wrap; color: var(--text-2); font-size: 11.5px; }
+.fran-tabla-fila .numero { font-size: 14.5px; text-align: right; }
+.fran-punto { flex: none; width: 7px; height: 7px; border-radius: 50%; background: var(--text-2); }
+.fran-punto--al_dia, .fran-punto--pagado { background: var(--plus); }
+.fran-punto--atrasado, .fran-punto--vencido { background: var(--alert); }
+.fran-punto--legal, .fran-punto--perdido { background: var(--minus); }
+.fran-punto--familia { background: var(--accent); }
+.fran-tabla-cliente summary { list-style: none; cursor: pointer; padding-bottom: 8px; }
+.fran-tabla-cliente summary::-webkit-details-marker { display: none; }
+.fran-tabla-cliente summary .fran-tabla-cabeza { padding-bottom: 2px; }
+.fran-tabla-cliente summary .fran-tabla-cabeza > span:first-child::after { content: ' ›'; color: var(--text-2); }
+.fran-tabla-cliente[open] summary .fran-tabla-cabeza > span:first-child::after { content: ' ⌄'; }
+.fran-tabla-cliente .fran-tabla-fila__dia { font-size: 11.5px; }
+.fran-tabla-cliente .fran-tabla-titulos, .fran-tabla-cliente .fran-tabla-fila { grid-template-columns: 74px minmax(0, 1fr) auto; }
