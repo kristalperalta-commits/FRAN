@@ -11,7 +11,7 @@
 
 import * as ui from './ui.js';
 
-const VERSION_APP = '3.28.0';
+const VERSION_APP = '3.28.1';
 const contenedor = document.getElementById('pantalla');
 
 // ---------- Rutas (sección 7 de la especificación) ----------
@@ -368,6 +368,29 @@ function activarDeslizarParaActualizar() {
   });
 }
 
+/**
+ * El iPhone a veces se queda con la app vieja guardada. Al abrir (y al volver a Fran) se mira en
+ * internet cuál es la última versión; si esta es más vieja, se borra lo guardado y se recarga.
+ * Una sola vez por versión, para no quedar en un ciclo.
+ */
+async function revisarVersion() {
+  try {
+    const texto = await (await fetch(`./sw.js?v=${Date.now()}`, { cache: 'no-store' })).text();
+    const ultima = (texto.match(/VERSION = '([\d.]+)'/) || [])[1];
+    if (!ultima || ultima === VERSION_APP) return;
+    if (window.sessionStorage.getItem('fran-forzado') === ultima) return;
+    window.sessionStorage.setItem('fran-forzado', ultima);
+    if (registroSW) await registroSW.update().catch(() => {});
+    if ('caches' in window) {
+      const nombres = await caches.keys();
+      await Promise.all(nombres.map((n) => caches.delete(n)));
+    }
+    window.location.reload();
+  } catch (_error) {
+    // Sin internet: sigue con la versión que tiene.
+  }
+}
+
 function registrarServiceWorker() {
   const protocolo = window.location.protocol;
   if (protocolo !== 'http:' && protocolo !== 'https:') return;
@@ -384,9 +407,10 @@ function registrarServiceWorker() {
     registroSW = registro;
     registro.update().catch(() => {});
     setInterval(() => registro.update().catch(() => {}), 30 * 60000);
+    revisarVersion();
     // Instalada en el teléfono, la app casi nunca se recarga: al volver a ella se busca la versión nueva.
     document.addEventListener('visibilitychange', () => {
-      if (document.visibilityState === 'visible') registro.update().catch(() => {});
+      if (document.visibilityState === 'visible') { registro.update().catch(() => {}); revisarVersion(); }
     });
   }).catch((error) => {
     console.warn('No se pudo registrar el service worker:', error);
