@@ -11,7 +11,7 @@
 
 import * as ui from './ui.js';
 
-const VERSION_APP = '3.26.1';
+const VERSION_APP = '3.27.0';
 const contenedor = document.getElementById('pantalla');
 
 // ---------- Rutas (sección 7 de la especificación) ----------
@@ -298,6 +298,61 @@ function bloquearZoom() {
   }, { passive: false });
 }
 
+let registroSW = null;
+
+/**
+ * Deslizar hacia abajo en Inicio = actualizar (pedido el 6 nov 2026): sincroniza con la nube,
+ * busca si hay versión nueva de Fran y vuelve a dibujar.
+ */
+function activarDeslizarParaActualizar() {
+  const aviso = document.createElement('div');
+  aviso.className = 'deslizar-aviso';
+  aviso.setAttribute('aria-live', 'polite');
+  document.body.append(aviso);
+  let inicioY = null;
+  let tirando = 0;
+  let ocupado = false;
+  const UMBRAL = 80;
+  const mostrar = (texto, alto) => {
+    aviso.textContent = texto;
+    aviso.style.transform = `translate(-50%, ${Math.min(alto, 110) - 60}px)`;
+    aviso.classList.toggle('visible', alto > 10);
+  };
+  document.addEventListener('touchstart', (e) => {
+    if (ocupado || e.touches.length !== 1 || !document.body.classList.contains('en-inicio') || window.scrollY > 0) { inicioY = null; return; }
+    if (document.querySelector('.fran-hoja-fondo, .fran-meses-fondo, .dialogo-fondo')) { inicioY = null; return; }
+    inicioY = e.touches[0].clientY;
+    tirando = 0;
+  }, { passive: true });
+  document.addEventListener('touchmove', (e) => {
+    if (inicioY === null) return;
+    tirando = Math.max(0, e.touches[0].clientY - inicioY);
+    if (window.scrollY > 0) { inicioY = null; mostrar('', 0); return; }
+    if (tirando > 10) mostrar(tirando >= UMBRAL ? '↑ Suelta para actualizar' : '↓ Desliza para actualizar', tirando);
+  }, { passive: true });
+  document.addEventListener('touchend', async () => {
+    if (inicioY === null) return;
+    inicioY = null;
+    if (tirando < UMBRAL) { mostrar('', 0); return; }
+    ocupado = true;
+    mostrar('Actualizando…', UMBRAL + 20);
+    try {
+      let resultado = 'apagada';
+      if (ctx.nube) resultado = await ctx.nube.sincronizar('manual');
+      if (registroSW) await registroSW.update().catch(() => {});
+      await renderizar({ conservarScroll: false });
+      if (resultado === 'apagada') ui.toast('Para traer los datos de la nube, entra en Yo → Nube.');
+      else if (resultado === 'error') ui.toast('No pude conectar con la nube. Revisa el internet e intenta otra vez.', 5000);
+      else ui.toast('Listo, todo al día.');
+    } catch (error) {
+      ui.toast(`No se pudo actualizar: ${error.message || error}`, 5000);
+    } finally {
+      ocupado = false;
+      mostrar('', 0);
+    }
+  });
+}
+
 function registrarServiceWorker() {
   const protocolo = window.location.protocol;
   if (protocolo !== 'http:' && protocolo !== 'https:') return;
@@ -311,6 +366,7 @@ function registrarServiceWorker() {
     window.location.reload();
   });
   navigator.serviceWorker.register('./sw.js').then((registro) => {
+    registroSW = registro;
     // Instalada en el teléfono, la app casi nunca se recarga: al volver a ella se busca la versión nueva.
     document.addEventListener('visibilitychange', () => {
       if (document.visibilityState === 'visible') registro.update().catch(() => {});
@@ -367,6 +423,7 @@ async function arrancar() {
     modulo.abrirMas(libroActual, ctx);
   });
   registrarServiceWorker();
+  activarDeslizarParaActualizar();
   try {
     ctx.candado = await import('./candado.js');
     await ctx.candado.exigir(ctx);

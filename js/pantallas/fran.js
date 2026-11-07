@@ -1972,7 +1972,7 @@ function renderTarjetas(contenedor, ctx) {
     ${titular('personal', ctx, '#/inicio', 'Tarjetas')}
     ${heroe({ etiqueta: 'Debo en tarjetas', valor: -total, ayudaTexto: 'Cada tarjeta parte de lo que se debía en su último extracto (o lo anotado al empezar Fran) y suma lo que pagaste con ella después. Lo que le abonas a la tarjeta lo resta.' }, ctx)}
     ${tarjetas.map((t, i) => `<section class="fran-tarjeta fran-tarjeta-credito">
-      <span class="fran-tarjeta-credito__cabeza"><span class="fran-cuadro fran-cuadro--40" aria-hidden="true">${ICONO(t.nombre)}</span><span class="fran-renglon__texto"><span>${ui.esc(t.nombre)}</span><small>${t.fecha ? `Extracto al ${ui.esc(fechas.formatear(t.fecha))}: ${dinero.formatear(t.base)}` : `Al empezar Fran: ${dinero.formatear(t.base)}`}${t.pagoHasta ? ` · Pagar antes del ${ui.esc(fechas.formatear(t.pagoHasta))}` : ''}</small></span><b>${conSigno(-t.deudaHoy, dinero)}</b></span>
+      <span class="fran-tarjeta-credito__cabeza"><span class="fran-cuadro fran-cuadro--40" aria-hidden="true">${ICONO(t.nombre)}</span><span class="fran-renglon__texto"><span>${ui.esc(t.nombre)}</span><small>${t.nota ? `${ui.esc(t.nota)}: ${dinero.formatear(t.base)}` : (t.fecha ? `Extracto al ${ui.esc(fechas.formatear(t.fecha))}: ${dinero.formatear(t.base)}` : `Al empezar Fran: ${dinero.formatear(t.base)}`)}${t.pagoHasta ? ` · Pagar antes del ${ui.esc(fechas.formatear(t.pagoHasta))}` : ''}</small></span><b>${conSigno(-t.deudaHoy, dinero)}</b></span>
       ${t.movimientos.length ? `<div class="fran-lista">${t.movimientos.sort((a, b) => b.fecha.localeCompare(a.fecha)).map((a) => fila({ ui, icono: iconoDe(a.categoria), titulo: a.categoria, sub: `${fechas.formatear(a.fecha)}${a.descripcion ? ` · ${a.descripcion}` : ''}`, derecha: `${a.efecto > 0 ? '−' : '+'}${dinero.formatear(Math.abs(a.efecto))}`, clase: a.efecto > 0 ? 'fran-menos' : 'fran-mas' })).join('')}</div>` : '<p class="fran-nota">Sin compras anotadas después de esa fecha.</p>'}
       <button type="button" class="fran-boton-secundario fran-boton--44" data-extracto="${i}">Actualizar con el extracto</button>
       <form class="fran-campos fran-campos--grande oculto" data-form-extracto="${i}" novalidate>
@@ -1991,7 +1991,7 @@ function renderTarjetas(contenedor, ctx) {
     const texto = f.valor.value.trim();
     const valor = Number(texto.replace(/\D/g, ''));
     if (!texto || !Number.isInteger(valor)) { ui.toast('Escribe cuánto se debe.'); return; }
-    const lista = (fran.tarjetas || []).map((t, j) => (j === i ? { ...t, deuda: valor, fecha: f.fecha.value || hoy, ...(f.pagoHasta.value ? { pagoHasta: f.pagoHasta.value } : {}) } : t));
+    const lista = (fran.tarjetas || []).map((t, j) => { if (j !== i) return t; const { nota, ...resto } = t; return { ...resto, deuda: valor, fecha: f.fecha.value || hoy, ...(f.pagoHasta.value ? { pagoHasta: f.pagoHasta.value } : {}) }; });
     await datos.actualizarFran({ tarjetas: lista });
     ui.toast('Tarjeta actualizada.');
     dibujar();
