@@ -1,0 +1,336 @@
+/*
+  Diseño Lila (plan del 6 nov 2026). Se carga de último y manda sobre los demás estilos.
+  Paso 1: variables y letra. Paso 2: piezas que se repiten. Paso 3: Inicio y libros.
+  Los nombres viejos (--fondo, --texto...) se apoyan en los nuevos (--bg, --text...),
+  así cada pantalla toma el tema sin cambiar su HTML.
+*/
+
+/* ---------- Letra: Poppins 300, 400 y 500. Nunca 600 ni 700. ---------- */
+@font-face { font-family: 'Poppins'; font-style: normal; font-weight: 300; font-display: swap; src: url('../fuentes/poppins-300.woff2') format('woff2'); }
+@font-face { font-family: 'Poppins'; font-style: normal; font-weight: 400; font-display: swap; src: url('../fuentes/poppins-400.woff2') format('woff2'); }
+@font-face { font-family: 'Poppins'; font-style: normal; font-weight: 500; font-display: swap; src: url('../fuentes/poppins-500.woff2') format('woff2'); }
+
+/* ---------- Variables por tema ---------- */
+html:root,
+html:root[data-tema="oscuro"] {
+  color-scheme: dark;
+  --bg: #13112B;
+  --surface: #1E1B3F;
+  --tile: #2A2654;
+  --line: rgba(255, 255, 255, 0.06);
+  --text: #FFFFFF;
+  --text-2: #B7B3D9;
+  --hero: linear-gradient(135deg, #5B3FE0, #8A3FD6);
+  --accent: #8B6CFF;
+  --cta: var(--hero);
+  --plus: #6EE7B7;
+  --minus: #F9A8D4;
+  --alert: #FDBA74;
+  --shadow: none;
+  --activa: var(--text);
+}
+
+html:root[data-tema="claro"] {
+  color-scheme: light;
+  --bg: #F4F2FB;
+  --surface: #FFFFFF;
+  --tile: #EFEAFE;
+  --line: #EEECF5;
+  --text: #1F1B33;
+  --text-2: #6B6785;
+  --hero: linear-gradient(160deg, #6A3DE8, #8446E0);
+  --accent: #6A3DE8;
+  --cta: #E8590C;
+  --plus: #6A3DE8;
+  --minus: #D9590C;
+  --alert: #E8590C;
+  --shadow: 0 6px 18px rgba(80, 50, 160, 0.08);
+  --activa: var(--accent);
+}
+
+/* Verde menta, Rosa y Dorado: la misma estructura, con sus tonos. */
+html:root[data-tema="menta"] {
+  color-scheme: dark;
+  --bg: #04211A; --surface: #0A3026; --tile: #114034; --line: rgba(255, 255, 255, 0.06);
+  --text: #FFFFFF; --text-2: #A3D9C6;
+  --hero: linear-gradient(135deg, #0F766E, #059669); --accent: #34D399; --cta: var(--hero);
+  --plus: #6EE7B7; --minus: #F9A8D4; --alert: #FDBA74; --shadow: none; --activa: var(--text);
+}
+
+html:root[data-tema="rosa"] {
+  color-scheme: dark;
+  --bg: #24081A; --surface: #350D27; --tile: #481435; --line: rgba(255, 255, 255, 0.06);
+  --text: #FFFFFF; --text-2: #E3AECB;
+  --hero: linear-gradient(135deg, #BE185D, #DB2777); --accent: #F472B6; --cta: var(--hero);
+  --plus: #6EE7B7; --minus: #F9A8D4; --alert: #FDBA74; --shadow: none; --activa: var(--text);
+}
+
+html:root[data-tema="dorado"] {
+  color-scheme: dark;
+  --bg: #221505; --surface: #33200A; --tile: #452D10; --line: rgba(255, 255, 255, 0.06);
+  --text: #FFFFFF; --text-2: #DCC08A;
+  --hero: linear-gradient(135deg, #A16207, #CA8A04); --accent: #FBBF24; --cta: var(--hero);
+  --plus: #6EE7B7; --minus: #F9A8D4; --alert: #FDBA74; --shadow: none; --activa: var(--text);
+}
+
+/* Los nombres viejos toman los nuevos, en todos los temas. */
+html:root[data-tema] {
+  --fuente: 'Poppins', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif;
+  --fuente-numeros: var(--fuente);
+  --fondo: var(--bg);
+  --fondo-tarjeta: var(--surface);
+  --fondo-suave: var(--tile);
+  --borde: var(--line);
+  --texto: var(--text);
+  --texto-suave: var(--text-2);
+  --primario: var(--text);
+  --primario-oscuro: var(--accent);
+  --destacado: var(--hero);
+  --destacado-texto: #FFFFFF;
+  --acento: var(--alert);
+  --peligro: var(--minus);
+  --peligro-texto: var(--text);
+  --entra: var(--text);
+  --sale: var(--text);
+  --sombra: var(--shadow);
+  --libro: var(--accent);
+  --alto-barra: 84px;
+  --texto-estado-al-dia: var(--text);
+  --texto-estado-atrasado: var(--text);
+  --texto-estado-vencido: var(--text);
+  --texto-estado-pagado: var(--text);
+  --texto-estado-perdido: var(--text);
+  --texto-estado-legal: var(--text);
+  --texto-estado-congelado: var(--text);
+  --texto-estado-familia: var(--text);
+}
+html:root[data-tema="claro"] { --primario: var(--accent); }
+
+/* ---------- Letra delgada en toda la app ---------- */
+body { font-family: var(--fuente); font-weight: 400; background: var(--bg); color: var(--text); }
+html body *, html body *::before, html body *::after { font-weight: 400 !important; }
+html body h1, html body .fran-titulo h1, html body .encabezado__titulo, html body .fran-meses h2 { font-weight: 500 !important; }
+html body small, html body .fran-dia, html body .fran-dia *, html body .fran-nota, html body .fran-explica,
+html body .fila__detalle, html body .campo__ayuda, html body .tarjeta__detalle, html body .fran-tabla td,
+html body .fran-heroe__etiqueta small { font-weight: 300 !important; }
+.numero, .fila__monto, .tarjeta__valor, .fran-heroe__valor { font-variant-numeric: tabular-nums; letter-spacing: 0; }
+small, .pequeno { color: var(--text-2); }
+
+/* ---------- Símbolos ⊕ y ⊖: el símbolo lleva el color, el número no ---------- */
+.numero.fran-mas, .numero.fran-menos { color: var(--text) !important; }
+.numero.fran-mas::before, .numero.fran-menos::before, .fran-signo {
+  content: '' !important;
+  display: inline-block !important;
+  width: 15px !important; height: 15px !important;
+  margin: 0 6px 0 0 !important; padding: 0 !important;
+  border: 0 !important; border-radius: 0 !important;
+  vertical-align: -2px !important;
+  font-size: 0 !important;
+  -webkit-mask: var(--simbolo) center / contain no-repeat;
+  mask: var(--simbolo) center / contain no-repeat;
+}
+.numero.fran-mas::before, .fran-signo--mas {
+  background: var(--plus) !important;
+  --simbolo: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='none' stroke='%23000' stroke-width='1.8' stroke-linecap='round'%3E%3Ccircle cx='8' cy='8' r='6.3'/%3E%3Cpath d='M5 8h6M8 5v6'/%3E%3C/svg%3E");
+}
+.numero.fran-menos::before, .fran-signo--menos {
+  background: var(--minus) !important;
+  --simbolo: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='none' stroke='%23000' stroke-width='1.8' stroke-linecap='round'%3E%3Ccircle cx='8' cy='8' r='6.3'/%3E%3Cpath d='M5 8h6'/%3E%3C/svg%3E");
+}
+.fran-signo { margin-right: 8px !important; vertical-align: -2px !important; }
+
+/* ---------- Cuadro de emoji ---------- */
+.fran-cuadro { flex: none; display: inline-grid; place-items: center; width: 46px; height: 46px; border-radius: 30%; background: var(--tile); font-size: 26px; line-height: 1; }
+.fran-cuadro--28 { width: 28px; height: 28px; font-size: 16px; border-radius: 9px; }
+.fran-cuadro--40 { width: 40px; height: 40px; font-size: 22px; }
+.fran-cuadro--52 { width: 52px; height: 52px; font-size: 29px; }
+.fran-ico { width: 46px; height: 46px; border-radius: 14px !important; background: var(--tile) !important; color: var(--text) !important; font-size: 26px; }
+
+/* ---------- Tarjeta de saldo (una sola en degradado por pantalla) ---------- */
+.fran-heroe { display: flex; flex-direction: column; gap: 2px; padding: 18px 20px 20px; margin-bottom: 14px; border-radius: 24px; background: var(--hero); color: #FFFFFF; text-decoration: none; box-shadow: var(--shadow); --plus: rgba(255, 255, 255, 0.92); --minus: rgba(255, 255, 255, 0.92); --text: #FFFFFF; }
+.fran-heroe__etiqueta { display: flex; align-items: center; justify-content: space-between; gap: 8px; min-height: 22px; }
+.fran-heroe__etiqueta small { color: rgba(255, 255, 255, 0.82); font-size: 13px; }
+.fran-heroe__etiqueta .fran-info { margin: -12px -12px -12px 0; color: #FFFFFF; }
+.fran-heroe__valor { font-size: 36px; line-height: 1.15; color: #FFFFFF; overflow-wrap: anywhere; }
+.fran-heroe__valor .numero.fran-menos::before { width: 26px !important; height: 26px !important; vertical-align: -3px !important; margin-right: 8px !important; }
+.fran-heroe__cajas { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); gap: 8px; margin-top: 14px; }
+.fran-heroe__cajas > span { display: flex; flex-direction: column; gap: 2px; min-width: 0; padding: 8px 10px; border-radius: 14px; background: rgba(255, 255, 255, 0.14); }
+.fran-heroe__cajas small { color: rgba(255, 255, 255, 0.82); font-size: 11px; line-height: 1.2; }
+.fran-heroe__cajas > span { padding: 8px 8px; }
+.fran-heroe__cajas > span > span { font-size: 14px; color: #FFFFFF; white-space: nowrap; line-height: 1.25; }
+@media (max-width: 360px) { .fran-heroe__cajas > span > span { font-size: 12.5px; } }
+.fran-heroe__cajas .numero::before { width: 13px !important; height: 13px !important; margin-right: 4px !important; }
+
+/* ---------- Cabecera de Inicio ---------- */
+.fran-hola { display: flex; align-items: center; justify-content: space-between; margin: 2px 0 14px; }
+.fran-hola small { display: block; color: var(--text-2); font-size: 13px; }
+.fran-hola h1 { margin: 0; font-size: 22px; line-height: 1.2; }
+.fran-campana { position: relative; display: grid; place-items: center; width: 44px; height: 44px; border-radius: 50%; background: var(--surface); box-shadow: var(--shadow); color: var(--text); }
+.fran-campana svg { width: 22px; height: 22px; fill: currentColor; }
+.fran-campana i { position: absolute; top: 10px; right: 11px; width: 8px; height: 8px; border-radius: 50%; background: var(--alert); }
+
+/* ---------- Renglón tocable (Cobros de hoy, otros libros) ---------- */
+.fran-renglon { display: flex; align-items: center; gap: 12px; min-height: 56px; padding: 8px 12px; margin-bottom: 10px; border-radius: 18px; background: var(--surface); box-shadow: var(--shadow); color: var(--text); text-decoration: none; }
+.fran-renglon__texto { flex: 1; min-width: 0; display: flex; flex-direction: column; font-size: 15px; }
+.fran-renglon__texto small { font-size: 12px; color: var(--text-2); overflow-wrap: anywhere; }
+.fran-renglon__valor { flex: none; font-size: 15px; }
+.fran-contador { flex: none; display: grid; place-items: center; min-width: 24px; height: 24px; padding: 0 6px; border-radius: 12px; background: var(--alert); color: #1F1B33; font-size: 13px; }
+.fran-flecha { flex: none; color: var(--text-2); font-size: 22px; line-height: 1; }
+.fran-tarjeta-lista .fran-renglon { margin-bottom: 8px; }
+.fran-renglon-con-info { display: flex; align-items: center; gap: 4px; }
+.fran-renglon-con-info .fran-renglon { flex: 1; min-width: 0; }
+
+/* ---------- Tarjetas de libro en Inicio: sin color de fondo propio ---------- */
+.fran-libros { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+.fran-libros-chicos { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; margin-top: 10px; }
+html body .fran-libro { position: static; display: flex; flex-direction: column; align-items: flex-start; justify-content: flex-start; gap: 4px; min-height: 0; padding: 14px; border-radius: 22px; background: var(--surface); box-shadow: var(--shadow); color: var(--text); text-decoration: none; overflow: hidden; }
+html body .fran-libro .fran-cuadro { margin-bottom: 8px; }
+html body .fran-libro small { color: var(--text-2); font-size: 12px; line-height: 1.2; }
+html body .fran-libro__valor { font-size: 18px; line-height: 1.2; text-shadow: none; overflow-wrap: anywhere; }
+html body .fran-libro--chica { padding: 12px 10px; border-radius: 20px; }
+html body .fran-libro--chica .fran-cuadro { margin-bottom: 6px; }
+html body .fran-libro--chica small { font-size: 11px; }
+html body .fran-libro--chica .fran-libro__valor { font-size: 14px; }
+.fran-libro .numero.fran-menos::before { width: 13px !important; height: 13px !important; margin-right: 4px !important; }
+
+/* ---------- Cabecera de pantalla y botón de volver (44 px, igual en todas) ---------- */
+.fran-titulo h1 { font-size: 18px; }
+html body .fran-titulo__atras, .encabezado__atras { width: 44px; height: 44px; border-radius: 50%; background: var(--surface); box-shadow: var(--shadow); color: var(--text); font-size: 0 !important; display: grid; place-items: center; margin: 0; }
+html body .fran-titulo__atras::before, .encabezado__atras::before {
+  content: ''; width: 20px; height: 20px; background: var(--text);
+  -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M15 5l-7 7 7 7'/%3E%3C/svg%3E") center / contain no-repeat;
+  mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M15 5l-7 7 7 7'/%3E%3C/svg%3E") center / contain no-repeat;
+}
+.fran-titulo--libro { justify-content: flex-start; gap: 10px; }
+.fran-titulo--libro .fran-titulo__atras { position: static; flex: none; }
+.fran-titulo--libro h1 { flex: 1; min-width: 0; display: flex; align-items: center; gap: 8px; padding: 0; text-align: left; font-size: 17px; }
+.fran-titulo--libro h1 > span:last-child { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.fran-titulo__mes { flex: none; }
+
+/* ---------- Píldoras (mes, filtros, tasas, frecuencias, cuentas) ---------- */
+.fran-pildora, .fran-mes button.fran-mes__elegir, .opcion, .fran-chips button, .fran-anios button {
+  display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+  min-height: 44px; padding: 0 16px; border: 0; border-radius: 22px;
+  background: var(--surface); box-shadow: var(--shadow); color: var(--text); font: inherit; font-size: 14px; cursor: pointer;
+}
+.fran-pildora i, .fran-mes__elegir i { font-style: normal; color: var(--text-2); font-size: 11px; }
+.opcion--activa, .opcion[aria-pressed="true"], html body .fran-chips .activo, html body .fran-anios .activo, html body .fran-segmento .activo {
+  background: var(--accent) !important; color: #FFFFFF !important; border-color: transparent !important;
+}
+#fran-tasa { margin: 0 0 12px; }
+
+/* Control de píldoras (Gastos/Ingresos y parecidos) */
+html body .fran-segmento { gap: 6px; padding: 4px; border: 0; border-radius: 24px; background: var(--surface); box-shadow: var(--shadow); }
+html body .fran-segmento button, html body .fran-segmento a { min-height: 44px; border-radius: 20px; color: var(--text); font-size: 14px; }
+
+/* ---------- Botones: principal en degradado, secundario sin rojo ---------- */
+.fran-boton-principal, .boton--primario, html body .fran-guardar {
+  display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+  min-height: 56px; padding: 0 20px; border: 0; border-radius: 18px;
+  background: var(--hero) !important; color: #FFFFFF !important; font: inherit; font-size: 15px; text-decoration: none; cursor: pointer;
+  --plus: #FFFFFF; --minus: #FFFFFF;
+}
+.fran-boton-secundario, .boton--secundario, .boton--peligro, html body .fran-borrar {
+  display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+  min-height: 56px; padding: 0 18px; border: 0; border-radius: 18px;
+  background: var(--surface); box-shadow: var(--shadow); color: var(--text) !important; font: inherit; font-size: 15px; text-decoration: none; cursor: pointer;
+}
+html body .fran-borrar, .fran-boton--44 { min-height: 44px; padding: 0 16px; border-radius: 14px; font-size: 14px; }
+html:root[data-tema="claro"] .fran-boton-secundario, html:root[data-tema="claro"] .boton--secundario, html:root[data-tema="claro"] .boton--peligro, html:root[data-tema="claro"] .fran-borrar { background: transparent; box-shadow: inset 0 0 0 1.5px var(--accent); }
+.fran-tarjeta .fran-boton-secundario, .fran-fila .fran-boton-secundario, .fran-tarjeta .fran-borrar, .fran-fila .fran-borrar { background: var(--tile); box-shadow: none; }
+.fran-boton--emoji { width: 100%; justify-content: flex-start; padding: 0 12px; margin-bottom: 12px; }
+.boton { border-radius: 18px; min-height: 48px; }
+.fran-virtual__botones .fran-boton-principal, .fran-virtual__botones .fran-boton-secundario { width: 100%; }
+.fran-virtual__cuentas .fran-boton-secundario { align-self: flex-start; margin-top: 8px; }
+
+/* ---------- Ayuda ⓘ y hoja desde abajo ---------- */
+.fran-info { flex: none; display: inline-grid; place-items: center; width: 44px; height: 44px; padding: 0; border: 0; border-radius: 50%; background: none; color: var(--text-2); font: inherit; font-size: 20px; line-height: 1; cursor: pointer; }
+.fran-tarjeta__cabeza { display: flex; align-items: center; justify-content: space-between; gap: 6px; margin: -10px -10px 0 0; }
+.fran-hoja-fondo, html body .fran-meses-fondo { position: fixed; inset: 0; z-index: 400; display: flex; align-items: flex-end; justify-content: center; padding: 0; background: rgba(0, 0, 0, 0.6); }
+.fran-hoja, html body .fran-meses { width: 100%; max-width: 600px; padding: 22px 18px calc(18px + env(safe-area-inset-bottom, 0px)); border-radius: 24px 24px 0 0; background: var(--surface); color: var(--text); box-shadow: none; }
+.fran-hoja p { margin: 0 0 18px; font-size: 15px; line-height: 1.45; }
+.fran-hoja .fran-boton-principal { width: 100%; }
+
+/* Elegir mes: meses en píldoras, Cancelar secundario y Confirmar principal */
+html body .fran-meses__lista button { min-height: 44px; border: 0; border-radius: 22px; background: var(--tile); color: var(--text); }
+html body .fran-meses__lista .hoy { box-shadow: inset 0 0 0 1.5px var(--accent); }
+html body .fran-meses__lista .activo { background: var(--accent); color: #FFFFFF; }
+html body .fran-meses__pie { gap: 10px; }
+html body .fran-meses__pie button { min-height: 56px; border-radius: 18px; background: var(--tile); color: var(--text); font-size: 15px; }
+html body .fran-meses__pie button[data-confirmar] { background: var(--hero); color: #FFFFFF; }
+
+/* ---------- Filas de movimiento ---------- */
+html body .fran-fila { min-height: 64px; gap: 12px; border-bottom: 1px solid var(--line); }
+.fran-fila__texto strong { font-size: 15px; }
+.fran-fila__texto small { font-size: 12px; color: var(--text-2); }
+.fran-fila__valor { font-size: 15px; }
+.fran-fila__valor--doble { display: flex; flex-direction: column; align-items: flex-end; }
+.fran-fila__valor--doble small { font-size: 12px; color: var(--text-2); }
+html body .fran-dia { padding: 14px 0 6px; border-bottom: 0; color: var(--text-2); font-size: 12px; }
+.fran-dia b { color: var(--text-2); }
+.fran-seccion { color: var(--text-2); font-size: 13px; border-bottom: 0; }
+.fran-explica { background: var(--surface); color: var(--text-2); font-size: 13px; }
+
+/* ---------- Tarjetas comunes ---------- */
+.fran-tarjeta, .fran-virtual__cuadro, .tarjeta, .lista, .vacio, .fran-ajuste, .fran-enlace { background: var(--surface); box-shadow: var(--shadow); border-radius: 18px; }
+.fran-tarjeta strong { font-size: 18px; }
+.fran-virtual .fran-tarjeta strong { font-size: 22px; }
+
+/* Dona de gastos en Finanzas */
+.fran-tarjeta-dona { display: grid; grid-template-columns: 44% 1fr; align-items: center; gap: 14px; padding: 14px 16px; margin-bottom: 14px; border-radius: 22px; background: var(--surface); box-shadow: var(--shadow); color: var(--text); text-decoration: none; }
+.fran-tarjeta-dona .fran-dona { width: 100%; max-width: none; }
+.fran-tarjeta-dona__leyenda { display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+.fran-tarjeta-dona__leyenda > span { display: grid; grid-template-columns: 8px 1fr auto; align-items: center; gap: 8px; font-size: 13px; }
+.fran-tarjeta-dona__leyenda i { width: 8px; height: 8px; border-radius: 50%; }
+.fran-tarjeta-dona__leyenda span span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.fran-dona__n { font-size: 12px; fill: var(--text); }
+.fran-dona__t { font-size: 8.5px; fill: var(--text-2); }
+
+/* ---------- Estados: punto y texto, sin etiqueta rellena ---------- */
+html body .fran-pastilla, html body .chip-estado { display: inline-flex; align-items: center; gap: 6px; min-height: 32px; padding: 0 4px 0 0; border-radius: 0; background: none !important; color: var(--text); font-size: 12px; }
+html body .fran-pastilla i { width: 8px; height: 8px; background: var(--text-2); }
+html body .fran-pastilla.verde i { background: var(--plus); }
+html body .fran-pastilla.amarillo i { background: var(--alert); }
+html body .fran-pastilla.rojo i { background: var(--minus); }
+html body .fran-pastillas { gap: 4px 14px; margin-bottom: 12px; }
+html body .chip-estado::before { content: ''; width: 8px; height: 8px; border-radius: 50%; background: var(--text-2); }
+html body .chip-estado--al_dia::before, html body .chip-estado--pagado::before { background: var(--plus); }
+html body .chip-estado--atrasado::before, html body .chip-estado--vencido::before { background: var(--alert); }
+html body .chip-estado--legal::before, html body .chip-estado--perdido::before { background: var(--minus); }
+
+/* Accesos de Préstamos: botones de 56 con emoji */
+html body .fran-accesos a { justify-content: flex-start; gap: 10px; min-height: 56px; padding: 8px 10px; border-radius: 18px; background: var(--surface); font-size: 14px; text-align: left; }
+
+/* ---------- Barra inferior ---------- */
+html body .barra-inferior { height: calc(var(--alto-barra) + env(safe-area-inset-bottom, 0px)); padding: 0 6px env(safe-area-inset-bottom, 0px); border-top: 0; border-radius: 24px 24px 0 0; background: var(--surface); box-shadow: 0 -6px 18px rgba(0, 0, 0, 0.18); }
+html body .pestana { color: var(--text-2); }
+html body .pestana__texto { font-size: 11px; }
+html body .pestana--activa { color: var(--activa); }
+html body .pestana--mas span { position: relative; display: block; width: 62px; height: 62px; margin: -28px auto 0; border: 0; border-radius: 50%; background: var(--cta); box-shadow: 0 8px 20px rgba(91, 63, 224, 0.4); font-size: 0; color: #FFFFFF; }
+html body .pestana--mas span::before {
+  content: ''; position: absolute; inset: 0; margin: auto; width: 26px; height: 26px; background: #FFFFFF;
+  -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2.8' stroke-linecap='round'%3E%3Cpath d='M12 4v16M4 12h16'/%3E%3C/svg%3E") center / contain no-repeat;
+  mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2.8' stroke-linecap='round'%3E%3Cpath d='M12 4v16M4 12h16'/%3E%3C/svg%3E") center / contain no-repeat;
+}
+html:root[data-tema="claro"] .pestana--mas span { box-shadow: 0 8px 20px rgba(232, 89, 12, 0.35); }
+
+/* ---------- Temas en Yo: píldoras con un circulito de su color ---------- */
+html body .ajustes-temas { display: flex; flex-wrap: wrap; gap: 8px; }
+html body .ajustes-tema { display: inline-flex; align-items: center; gap: 8px; min-height: 44px; padding: 0 14px; border: 0; border-radius: 22px; background: var(--tile); color: var(--text); font: inherit; font-size: 14px; }
+html body .ajustes-tema small { color: var(--text-2); font-size: 11px; }
+html body .ajustes-tema[aria-pressed="true"] { box-shadow: inset 0 0 0 2px var(--accent); background: var(--tile); color: var(--text); }
+.ajustes-tema__color { width: 14px; height: 14px; border-radius: 50%; }
+
+/* ---------- Agregar: la categoría elegida lleva borde, sin relleno ---------- */
+html body .fran-iconos span { border-radius: 30%; background: var(--tile); }
+html body .fran-iconos .activo span { background: var(--tile); box-shadow: 0 0 0 2px var(--accent); }
+
+/* ---------- Entrada con Face ID ---------- */
+html body .candado { background: var(--bg); color: var(--text); }
+html body .candado__logo { background: var(--hero); -webkit-background-clip: text; background-clip: text; color: transparent; font-weight: 500 !important; }
+html body .candado__logo::before { background: var(--hero); }
+html body .candado__cara { stroke: var(--text); }
+html body .candado__cara circle.ojo { fill: var(--text); }
+html body .candado__texto, html body .candado__nota, html body .candado__error { color: var(--text); }
+html body .candado__boton { background: var(--hero); color: #FFFFFF; border-radius: 18px; font-size: 15px; }
+html body .candado__enlace { min-height: 44px; width: 100%; border-radius: 18px; background: var(--surface); color: var(--text); text-decoration: none; }

@@ -104,8 +104,8 @@ function seccionTemas(ctx) {
       <div class="ajustes-temas">
         ${temas.lista.map((tema) => `
           <button type="button" class="ajustes-tema" data-tema-opcion="${ui.esc(tema.id)}"
-            aria-pressed="${tema.id === temas.actual()}"
-            style="background:${ui.esc(tema.fondo)};color:${ui.esc(tema.texto)}">
+            aria-pressed="${tema.id === temas.actual()}">
+            <i class="ajustes-tema__color" style="background:${ui.esc(tema.muestra || tema.fondo)}" aria-hidden="true"></i>
             <span class="ajustes-tema__nombre">${ui.esc(tema.nombre)}</span>
             ${tema.detalle ? `<small>${ui.esc(tema.detalle)}</small>` : ''}
           </button>

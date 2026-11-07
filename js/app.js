@@ -11,7 +11,7 @@
 
 import * as ui from './ui.js';
 
-const VERSION_APP = '3.12.1';
+const VERSION_APP = '3.13.0';
 const contenedor = document.getElementById('pantalla');
 
 // ---------- Rutas (sección 7 de la especificación) ----------
@@ -103,20 +103,13 @@ function navegar(ruta) {
 
 // La barra es la de Mis Gastos: Inicio, Gráficos, +, Informes y Yo, siempre del libro actual.
 let libroActual = 'personal';
-const COLOR_LIBRO = { personal: '#BFE8A8', prestamos: '#A9CDF5', pension: '#CDB8F2', productos: '#F6C6A0', arriendos: '#F2DE9B', redes: '#F4B8D2', terceros: '#C5CCD6' };
-
-const DEGRADADO_LIBRO = {
-  personal: ['#15803d', '#14532d'], prestamos: ['#2563eb', '#1e3a8a'], pension: ['#9333ea', '#581c87'], productos: ['#c2410c', '#7c2d12'],
-  arriendos: ['#a16207', '#713f12'], redes: ['#be185d', '#831843'], terceros: ['#475569', '#1e293b'],
-};
+const COLOR_LIBRO = { personal: 1, prestamos: 1, pension: 1, productos: 1, arriendos: 1, redes: 1, terceros: 1 };
 
 function marcarPestana(nombre, resuelta = null) {
   document.body.classList.toggle('sin-barra', !!(resuelta && resuelta.sinBarra));
   if (resuelta && resuelta.libro && COLOR_LIBRO[resuelta.libro]) libroActual = resuelta.libro;
-  document.documentElement.style.setProperty('--libro', COLOR_LIBRO[libroActual]);
-  const [g1, g2] = DEGRADADO_LIBRO[libroActual];
-  document.documentElement.style.setProperty('--libro-g1', g1);
-  document.documentElement.style.setProperty('--libro-g2', g2);
+  // Diseño Lila: los libros ya no se pintan de su color; el acento sale del tema (css/lila.css).
+  document.documentElement.dataset.libro = libroActual;
   const rutas = { inicio: `#/libro/${libroActual}`, graficos: `#/libro/${libroActual}/graficos`, informes: `#/libro/${libroActual}/informes`, yo: '#/ajustes' };
   document.querySelectorAll('.barra-inferior .pestana').forEach((pestana) => {
     const clave = pestana.dataset.pestana;

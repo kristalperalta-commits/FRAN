@@ -5,7 +5,7 @@
   Al cambiar VERSION se crea un caché nuevo y se borran los viejos al activar.
 */
 
-const VERSION = '3.12.1';
+const VERSION = '3.13.0';
 const NOMBRE_CACHE = `mis-prestamos-v${VERSION}`;
 
 // Lista fija de todo lo que compone la app (incluye archivos de pantallas aunque
@@ -22,6 +22,10 @@ const ARCHIVOS = [
   './css/pantallas/agenda.css',
   './css/pantallas/ajustes.css',
   './css/pantallas/fran.css',
+  './css/lila.css',
+  './fuentes/poppins-300.woff2',
+  './fuentes/poppins-400.woff2',
+  './fuentes/poppins-500.woff2',
   './js/tema.js',
   './js/app.js',
   './js/candado.js',

@@ -9,14 +9,14 @@
   const CLAVE = 'mis-prestamos-tema';
   const POR_DEFECTO = 'oscuro';
 
+  // Noche morada se quitó: quedaba casi igual al Lila oscuro. Quien la tenía pasa al Lila oscuro.
   // fondo y texto solo sirven para pintar la muestra y la barra del teléfono.
   const LISTA = [
-    { id: 'oscuro', nombre: 'Oscuro', detalle: '(predeterminado)', fondo: '#14161a', texto: '#eef0f3' },
-    { id: 'claro', nombre: 'Claro', fondo: '#e4e6ea', texto: '#1c2026' },
-    { id: 'morada', nombre: 'Noche morada', fondo: '#1f1b3d', texto: '#c4b5fd' },
-    { id: 'menta', nombre: 'Verde menta', fondo: '#0a3026', texto: '#6ee7b7' },
-    { id: 'rosa', nombre: 'Rosa', fondo: '#350d27', texto: '#f9a8d4' },
-    { id: 'dorado', nombre: 'Dorado', fondo: '#33200a', texto: '#fcd34d' }
+    { id: 'oscuro', nombre: 'Lila oscuro', detalle: '(predeterminado)', fondo: '#13112B', texto: '#FFFFFF', muestra: '#8B6CFF' },
+    { id: 'claro', nombre: 'Lila claro', fondo: '#F4F2FB', texto: '#1F1B33', muestra: '#6A3DE8' },
+    { id: 'menta', nombre: 'Verde menta', fondo: '#04211A', texto: '#FFFFFF', muestra: '#6EE7B7' },
+    { id: 'rosa', nombre: 'Rosa', fondo: '#24081A', texto: '#FFFFFF', muestra: '#F9A8D4' },
+    { id: 'dorado', nombre: 'Dorado', fondo: '#221505', texto: '#FFFFFF', muestra: '#FCD34D' }
   ];
 
   function buscar(id) {
