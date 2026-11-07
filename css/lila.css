@@ -405,3 +405,7 @@ html body .fran-campos--grande > label.oculto { display: none; }
 /* ---------- Tamaño de la letra en Yo ---------- */
 html body .ajustes-letra__titulo { display: block; margin: 0 0 10px; color: var(--text); font-size: 15px; }
 .ajustes-letra__muestra { color: var(--text); line-height: 1; }
+/* Con letra muy grande, las cajitas de la tarjeta de saldo se parten en dos renglones si no caben. */
+html[data-letra="muy-grande"] .fran-heroe__cajas > span > span, html[data-letra="enorme"] .fran-heroe__cajas > span > span { white-space: normal; overflow-wrap: anywhere; font-size: 13px; }
+html[data-letra="enorme"] .fran-heroe__cajas { grid-auto-flow: row; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+html body .ajustes-tema { flex-direction: row; }
