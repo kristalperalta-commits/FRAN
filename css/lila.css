@@ -495,3 +495,14 @@ html body .pestana__texto { font-size: 10.5px; }
 .fran-heroe__cajas > a:active { background: rgba(255, 255, 255, 0.24); }
 /* Número de cobros de hoy en la campana */
 .fran-campana__numero { position: absolute; top: 4px; right: 2px; min-width: 20px; height: 20px; padding: 0 5px; border-radius: 10px; background: var(--alert); color: #1F1B33; font-size: 11px; line-height: 20px; text-align: center; }
+
+/* ---------- Sol y luna en todas las pantallas ---------- */
+.sol-luna { position: absolute; z-index: 40; top: calc(16px + env(safe-area-inset-top, 0px)); right: max(16px, calc((100vw - 600px) / 2 + 16px)); display: grid; place-items: center; width: 44px; height: 44px; padding: 0; border: 0; border-radius: 50%; background: var(--surface); box-shadow: var(--shadow); color: var(--text); cursor: pointer; }
+.sol-luna svg { width: 22px; height: 22px; fill: currentColor; }
+body.en-inicio .sol-luna, body.con-candado .sol-luna { display: none; }
+/* Las cabeceras dejan espacio a la derecha para el botón */
+html body .fran-titulo { padding-right: 52px; }
+html body .fran-titulo:not(.fran-titulo--libro) h1 { padding-right: 52px; }
+html body .fran-titulo__der { right: 52px; }
+html body .encabezado { padding-right: 52px; }
+html body .fran-agregar__cabeza { padding-right: 52px; }

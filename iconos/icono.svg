@@ -1,4 +1,15 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
-  <rect width="512" height="512" rx="110" fill="#14161a"/>
-  <text x="256" y="345" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="280" font-weight="bold" fill="#22C55E">F</text>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <defs>
+    <linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#5B3FE0"/><stop offset="1" stop-color="#8A3FD6"/></linearGradient>
+    <linearGradient id="oro" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#FDE68A"/><stop offset="1" stop-color="#F59E0B"/></linearGradient>
+  </defs>
+  <rect width="512" height="512" fill="url(#g)"/>
+  <path d="M206 132c18 12 82 12 100 0l-22 54h-56z" fill="#fff"/>
+  <path d="M228 186h56c78 40 120 108 104 166-12 44-62 62-132 62s-120-18-132-62c-16-58 26-126 104-166z" fill="#fff"/>
+  <rect x="218" y="176" width="76" height="20" rx="10" fill="#6EE7B7"/>
+  <rect x="222" y="244" width="34" height="122" rx="17" fill="#6A3DE8"/>
+  <rect x="222" y="244" width="88" height="34" rx="17" fill="#6A3DE8"/>
+  <rect x="222" y="297" width="66" height="32" rx="16" fill="#6A3DE8"/>
+  <circle cx="378" cy="372" r="46" fill="url(#oro)"/>
+  <circle cx="378" cy="372" r="30" fill="none" stroke="#FEF3C7" stroke-width="6"/>
 </svg>

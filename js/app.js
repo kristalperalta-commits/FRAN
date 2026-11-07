@@ -11,7 +11,7 @@
 
 import * as ui from './ui.js';
 
-const VERSION_APP = '3.22.0';
+const VERSION_APP = '3.23.0';
 const contenedor = document.getElementById('pantalla');
 
 // ---------- Rutas (sección 7 de la especificación) ----------
@@ -107,11 +107,38 @@ function navegar(ruta) {
 let libroActual = 'personal';
 const COLOR_LIBRO = { personal: 1, prestamos: 1, pension: 1, productos: 1, arriendos: 1, redes: 1, terceros: 1 };
 
+// Sol y luna en todas las pantallas (pedido el 6 nov 2026). En Inicio va dentro de su cabecera.
+const ICONO_SOL = '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4.5"/><path d="M12 1.5v3M12 19.5v3M1.5 12h3M19.5 12h3M4.6 4.6l2.1 2.1M17.3 17.3l2.1 2.1M4.6 19.4l2.1-2.1M17.3 6.7l2.1-2.1" stroke="currentColor" stroke-width="2" stroke-linecap="round" fill="none"/></svg>';
+const ICONO_LUNA = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20.5 14.6A8.5 8.5 0 0 1 9.4 3.5 8.5 8.5 0 1 0 20.5 14.6z"/></svg>';
+let botonSolLuna = null;
+function pintarSolLuna() {
+  if (!botonSolLuna || !window.Tema) return;
+  botonSolLuna.innerHTML = window.Tema.modo() === 'claro' ? ICONO_LUNA : ICONO_SOL;
+}
+function ponerSolLuna() {
+  if (botonSolLuna) return;
+  botonSolLuna = document.createElement('button');
+  botonSolLuna.type = 'button';
+  botonSolLuna.className = 'sol-luna';
+  botonSolLuna.setAttribute('aria-label', 'Cambiar entre claro y oscuro');
+  botonSolLuna.addEventListener('click', () => {
+    if (window.Tema) window.Tema.cambiarModo();
+    pintarSolLuna();
+    const propio = document.querySelector('[data-modo-cambiar]');
+    if (propio) propio.innerHTML = botonSolLuna.innerHTML;
+  });
+  document.body.append(botonSolLuna);
+  pintarSolLuna();
+}
+
 function marcarPestana(nombre, resuelta = null) {
   document.body.classList.toggle('sin-barra', !!(resuelta && resuelta.sinBarra));
   if (resuelta && resuelta.libro && COLOR_LIBRO[resuelta.libro]) libroActual = resuelta.libro;
   // Diseño Lila: los libros ya no se pintan de su color; el acento sale del tema (css/lila.css).
   document.documentElement.dataset.libro = libroActual;
+  document.body.classList.toggle('en-inicio', !!(resuelta && resuelta.ruta === '/inicio'));
+  ponerSolLuna();
+  pintarSolLuna();
   // Si ese libro tiene su propio tema, se pone; en Inicio y lo demás, el de toda la app.
   if (window.Tema && window.Tema.aplicarPara) window.Tema.aplicarPara(resuelta && resuelta.libro ? resuelta.libro : null);
   const rutas = { inicio: `#/libro/${libroActual}`, graficos: `#/libro/${libroActual}/graficos`, informes: `#/libro/${libroActual}/informes`, yo: '#/ajustes' };

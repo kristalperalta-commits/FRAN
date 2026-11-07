@@ -81,7 +81,7 @@ export async function activar() {
         attestation: 'none',
       },
     });
-    escribir({ ...leer(), credId: aTexto(cred.rawId), pospuesto: false });
+    escribir({ ...leer(), credId: aTexto(cred.rawId), pospuesto: false, reactivado: true });
   } finally {
     verificando = false;
     salidaEn = 0;
@@ -295,7 +295,10 @@ export function exigir(contexto) {
   vigilar();
   return new Promise((resolver) => {
     (async () => {
-      const c = leer();
+      let c = leer();
+      // Ella pidió apagarlo el 6 nov 2026: la llave guardada antes de esa fecha se quita.
+      // Si después la vuelve a activar en Yo, queda marcada como reactivada y sí se respeta.
+      if (c.credId && !c.reactivado) { desactivar(); c = leer(); }
       // El iPhone cierra la app seguido: si la usó hace poco, abre sin pedir la cara.
       const reciente = c.credId && c.ultimaVez && Date.now() - c.ultimaVez < estado().minutos * 60000;
       if (reciente) {
