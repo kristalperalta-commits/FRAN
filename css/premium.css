@@ -552,3 +552,4 @@ img.fran-heroe__3d[src*="-azul"] { filter: hue-rotate(var(--giro-3d, 0deg)) drop
 html[data-relieve="plano"] img.fran-3d[src*="-azul"], html[data-relieve="plano"] img.fran-heroe__3d[src*="-azul"] { filter: hue-rotate(var(--giro-3d, 0deg)) !important; }
 .fran-tabla-premium__cabeza, .fran-tabla-premium__fila { grid-template-columns: 0.75fr 1fr 1fr 1.15fr 14px !important; }
 .fran-tabla-premium__fila > .numero { font-size: clamp(8px, 3.7cqi, 15px) !important; }
+.fran-heroe--informes .fran-heroe__valor .numero { font-size: inherit !important; }
