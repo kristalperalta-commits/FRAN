@@ -817,8 +817,6 @@ export async function render(contenedor, params, ctx) {
   contenedor.append(plegable('🔒', 'Face ID', seccionCandado(ctx), ui));
   contenedor.append(ui.el('<p class="fran-seccion">Esta app</p>'));
   contenedor.append(plegable('🌐', 'Nube', seccionNube(ctx), ui));
-  contenedor.append(ui.el('<a class="fran-enlace" href="#/virtual"><span>📲</span>Plata virtual</a>'));
-  contenedor.append(ui.el('<a class="fran-enlace" href="#/caja"><span>🧾</span>Caja efectivo y virtual</a>'));
   contenedor.append(plegable('📲', 'Instalar en el teléfono', seccionInstalar(ctx), ui));
   contenedor.append(plegable('ℹ️', 'Acerca de la app', seccionAcerca(ctx), ui));
   contenedor.append(ui.el(`<p class="fran-version">Versión ${ui.esc(ctx.version || '')}</p>`));

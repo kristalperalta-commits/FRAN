@@ -530,6 +530,10 @@ function renderPrincipal(contenedor, ctx) {
     ${avisoAnotar ? renglon({ ruta: '#/libro/personal/agregar/gasto', icono: '📝', texto: 'Hoy no has anotado nada' }, ui) : ''}
     <div class="fran-libros">${['personal', 'prestamos', 'pension', 'productos'].map((id) => tarjetaLibro(id, false)).join('')}</div>
     <div class="fran-libros-chicos">${['arriendos', 'redes', 'terceros'].map((id) => tarjetaLibro(id, true)).join('')}</div>
+    <div class="fran-libros-dos">
+      <a href="#/virtual" class="fran-libro fran-libro--chica"><span class="fran-cuadro fran-cuadro--40" aria-hidden="true">📲</span><small>Plata virtual</small><span class="fran-libro__valor">${fran.virtualPorDefinir ? 'por confirmar' : conSigno(plata.virtual, dinero)}</span></a>
+      <a href="#/caja" class="fran-libro fran-libro--chica"><span class="fran-cuadro fran-cuadro--40" aria-hidden="true">💵</span><small>Efectivo y caja</small><span class="fran-libro__valor">${conSigno(plata.efectivo, dinero)}</span></a>
+    </div>
   </div>`);
   principal.querySelector('[data-apariencia]').addEventListener('click', () => abrirApariencia(''));
   contenedor.append(principal);
