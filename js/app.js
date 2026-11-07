@@ -11,7 +11,7 @@
 
 import * as ui from './ui.js';
 
-const VERSION_APP = '3.32.0';
+const VERSION_APP = '3.33.0';
 const contenedor = document.getElementById('pantalla');
 
 // ---------- Rutas (sección 7 de la especificación) ----------
@@ -415,6 +415,32 @@ async function revisarVersion() {
   }
 }
 
+/** Las tachadas hechas desde el botón "Ya lo hice" del aviso se aplican a la agenda. */
+async function aplicarOrdenesDeAvisos(orden = null) {
+  try {
+    let ordenes = [];
+    if ('caches' in window) {
+      const cache = await caches.open('fran-ordenes');
+      ordenes = await cache.match('./ordenes.json').then((r) => (r ? r.json() : [])).catch(() => []);
+      if (ordenes.length) await cache.delete('./ordenes.json');
+    }
+    if (orden && orden.accion === 'hecho' && orden.id) ordenes.push({ tipo: 'hecho', id: orden.id });
+    if (!ordenes.length) return;
+    const hoy = hoyLocal();
+    const agenda = ctx.datos.estado.fran.agenda || [];
+    let cambio = false;
+    const lista = agenda.map((x) => {
+      if (!ordenes.some((o) => o.id === x.id)) return x;
+      cambio = true;
+      const conHistorial = { ...x, historial: [...(x.historial || []), hoy] };
+      return x.repite ? { ...conHistorial, hechoEn: hoy } : { ...conHistorial, hecho: true, hechoEl: hoy };
+    });
+    if (cambio) { await ctx.datos.actualizarFran({ agenda: lista }); ui.toast('Tachado desde el aviso.'); renderizar({ conservarScroll: true }); }
+  } catch (error) {
+    console.warn('No se pudieron aplicar las órdenes de los avisos:', error);
+  }
+}
+
 function registrarServiceWorker() {
   const protocolo = window.location.protocol;
   if (protocolo !== 'http:' && protocolo !== 'https:') return;
@@ -489,6 +515,8 @@ async function arrancar() {
   });
   registrarServiceWorker();
   activarDeslizarParaActualizar();
+  aplicarOrdenesDeAvisos();
+  if ('serviceWorker' in navigator) navigator.serviceWorker.addEventListener('message', (e) => { if (e.data && e.data.tipo === 'orden-aviso') aplicarOrdenesDeAvisos(e.data); });
   try {
     ctx.candado = await import('./candado.js');
     await ctx.candado.exigir(ctx);

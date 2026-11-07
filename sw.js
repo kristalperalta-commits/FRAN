@@ -5,7 +5,7 @@
   Al cambiar VERSION se crea un caché nuevo y se borran los viejos al activar.
 */
 
-const VERSION = '3.32.0';
+const VERSION = '3.33.0';
 const NOMBRE_CACHE = `mis-prestamos-v${VERSION}`;
 
 // Lista fija de todo lo que compone la app (incluye archivos de pantallas aunque
@@ -113,6 +113,7 @@ const ARCHIVOS = [
   './fuentes/inter-700.woff2',
   './js/tema.js',
   './js/apariencia.js',
+  './js/avisos.js',
   './js/app.js',
   './js/candado.js',
   './js/texto.js',
@@ -201,4 +202,43 @@ self.addEventListener('fetch', (evento) => {
       }
     })
   );
+});
+
+
+// ---------- Avisos que llegan aunque Fran esté cerrada (Web Push) ----------
+// La nube manda { titulo, cuerpo, id, url }. Se muestra con "Ya lo hice" y "Todavía no".
+self.addEventListener('push', (evento) => {
+  let datos = {};
+  try { datos = evento.data ? evento.data.json() : {}; } catch (_error) { datos = { cuerpo: evento.data ? evento.data.text() : '' }; }
+  const titulo = datos.titulo || 'Fran · pendiente de hoy';
+  evento.waitUntil(self.registration.showNotification(titulo, {
+    body: datos.cuerpo || '',
+    icon: './iconos/icono-192.png',
+    badge: './iconos/icono-192.png',
+    tag: `fran-${datos.id || 'aviso'}`,
+    renotify: true,
+    requireInteraction: true,
+    data: { id: datos.id || '', url: datos.url || '#/agenda' },
+    actions: [{ action: 'hecho', title: 'Ya lo hice' }, { action: 'luego', title: 'Todavía no' }],
+  }));
+});
+
+// Al tocar: "Ya lo hice" lo tacha en la app (si está abierta) o deja la orden guardada para cuando abra.
+self.addEventListener('notificationclick', (evento) => {
+  const n = evento.notification;
+  n.close();
+  const accion = evento.action;
+  const id = n.data && n.data.id;
+  evento.waitUntil((async () => {
+    if (accion === 'hecho' && id && id !== 'prueba') {
+      const cache = await caches.open('fran-ordenes');
+      const previas = await cache.match('./ordenes.json').then((r) => (r ? r.json() : [])).catch(() => []);
+      await cache.put('./ordenes.json', new Response(JSON.stringify([...previas, { tipo: 'hecho', id, cuando: new Date().toISOString() }]), { headers: { 'Content-Type': 'application/json' } }));
+    }
+    if (accion === 'luego') return; // vuelve a avisar en el próximo turno de la nube
+    const clientes = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
+    const url = new URL((n.data && n.data.url) || '#/agenda', self.location.href).href;
+    for (const c of clientes) { if ('focus' in c) { c.postMessage({ tipo: 'orden-aviso', accion, id }); return c.focus(); } }
+    return self.clients.openWindow(url);
+  })());
 });

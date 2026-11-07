@@ -17,6 +17,7 @@
 import { CATEGORIAS_BASE, INGRESOS_DE_OTRO_LIBRO, LIBROS, categoriasDe, iconoDe, icono3dDe } from './fran.js';
 import { calendarioIcs } from '../recordatorios.js';
 import { abrirApariencia } from '../apariencia.js';
+import * as avisos from '../avisos.js';
 
 export const titulo = 'Yo';
 
@@ -684,7 +685,10 @@ function seccionRecordatorios(ctx) {
   const s = ui.el(`<section class="tarjeta ajustes-seccion">
     <label class="fran-campo-yo"><small>Cobros de hoy</small><input type="time" name="cobros" value="${ui.esc(r.cobros)}"></label>
     <label class="fran-campo-yo"><small>Anotar gastos e ingresos</small><input type="time" name="gastos" value="${ui.esc(r.gastos)}"></label>
-    <div class="ajustes-botones"><button type="button" class="boton boton--primario boton--grande" id="boton-avisos">Poner avisos en el calendario</button></div>
+    <div class="fran-renglon fran-renglon--dato" id="estado-push"><img class="fran-3d fran-3d--40" src="iconos/3d/reloj-azul.png" alt="" aria-hidden="true"><span class="fran-renglon__texto"><span>Avisos en el teléfono</span><small>Cargando…</small></span></div>
+    <div class="ajustes-botones"><button type="button" class="fran-boton-principal" id="boton-push">Activar avisos en el teléfono</button><button type="button" class="fran-boton-secundario" id="boton-push-probar">Ver un aviso de prueba</button></div>
+    <p class="ajustes-ayuda">Los pendientes de la agenda te llegan como notificación aunque Fran esté cerrada, con los botones "Ya lo hice" y "Todavía no". Si no lo marcas, vuelve a avisar. En iPhone, Fran debe estar agregada a la pantalla de inicio.</p>
+    <div class="ajustes-botones"><button type="button" class="fran-boton-secundario" id="boton-avisos">Poner avisos en el calendario</button></div>
     <p class="ajustes-ayuda">Se descarga un archivo. Ábrelo y elige Agregar: el calendario te avisa a esas horas aunque Fran esté cerrada. Si cambian los cobros, vuelve a tocar este botón.</p>
     <p class="ajustes-ayuda">Dentro de Fran, el inicio te muestra los cobros de hoy y te recuerda anotar.</p>
   </section>`);
@@ -693,6 +697,36 @@ function seccionRecordatorios(ctx) {
     if (f.cobros && f.gastos) await datos.actualizarFran({ recordatorios: f });
   };
   s.querySelectorAll('input').forEach((i) => i.addEventListener('change', guardarHoras));
+  const pintarPush = async () => {
+    const e = s.querySelector('#estado-push small');
+    const b = s.querySelector('#boton-push');
+    if (!avisos.disponible()) { e.textContent = 'Este navegador no puede recibir avisos.'; b.disabled = true; return; }
+    if (!avisos.instaladaEnIphone()) { e.textContent = 'Primero agrega Fran a la pantalla de inicio (compartir → Agregar a inicio).'; b.disabled = true; return; }
+    if (avisos.estado() === 'denied') { e.textContent = 'Los avisos están bloqueados en los ajustes del teléfono.'; b.disabled = true; return; }
+    const activa = await avisos.activada();
+    e.textContent = activa ? 'Activos en este aparato.' : 'Apagados en este aparato.';
+    b.textContent = activa ? 'Quitar los avisos de este aparato' : 'Activar avisos en el teléfono';
+    b.dataset.activa = activa ? '1' : '';
+  };
+  s.querySelector('#boton-push').addEventListener('click', async () => {
+    const b = s.querySelector('#boton-push');
+    try {
+      if (b.dataset.activa) { await avisos.desactivar(ctx.nube); ui.toast('Avisos apagados en este aparato.'); }
+      else {
+        const r = await avisos.activar(ctx.nube);
+        const textos = { ok: 'Listo: los pendientes te van a llegar al teléfono.', negado: 'No diste permiso. Puedes darlo en los ajustes del teléfono.', 'sin-nube': 'Primero entra a la nube en Yo → Nube.', 'sin-instalar': 'Agrega Fran a la pantalla de inicio y vuelve a intentar.', 'no-soportado': 'Este navegador no puede recibir avisos.' };
+        ui.toast(textos[r] || r, 6000);
+      }
+    } catch (error) { ui.toast(error.message, 7000); }
+    pintarPush();
+  });
+  s.querySelector('#boton-push-probar').addEventListener('click', async () => {
+    try {
+      if (avisos.estado() !== 'granted') { const r = await Notification.requestPermission(); if (r !== 'granted') { ui.toast('No diste permiso para avisos.'); return; } }
+      await avisos.probar();
+    } catch (error) { ui.toast(error.message, 6000); }
+  });
+  pintarPush();
   s.querySelector('#boton-avisos').addEventListener('click', async () => {
     try {
       await guardarHoras();
