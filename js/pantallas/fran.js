@@ -64,7 +64,7 @@ const ICONOS = [
   [/interes|prestamo/, '💵'], [/prado|laguna|bodega|piso|apartamento|franklin|arriendo/, '🏢'], [/mano de obra/, '👷'],
   [/remodel/, '🎨'], [/material/, '🧱'], [/tramite/, '📑'], [/casas/, '🏗️'], [/redes|youtube|video/, '📺'], [/audiovisual/, '🎬'],
   [/inventario|venta|producto/, '📦'], [/inversion/, '📈'], [/salario|ingreso|tiempo|premio/, '💰'], [/abuelo|esposo/, '🤝'],
-  [/transferencia/, '🔁'], [/total|resto/, '🧾'],
+  [/transferencia/, '🔁'], [/total|resto/, '🧾'], [/ferreter/, '🔨'], [/parqueadero/, '🅿️'],
 ];
 
 const vista = { mes: null, tipo: null, orden: 'cantidad', anio: null };
@@ -1962,7 +1962,7 @@ function renderVirtual(contenedor, ctx) {
   const raiz = ui.el(`<div class="fran-virtual">
     ${titular('personal', ctx, '#/inicio', 'Plata virtual')}
     ${heroe({ etiqueta: 'Mi cuenta virtual', valor: miSaldo, ayudaTexto: miSaldo < 0 ? 'Debo esto: ya usé plata de mi pareja.' : 'Esto me queda.' }, ctx)}
-    <div class="fran-tarjeta fran-virtual__cuentas"><span class="fran-tarjeta__cabeza"><small>Hay en las cuentas, entre los dos</small>${ayuda(`${cuentas ? `Al ${fechas.formatear(cuentas.fecha)}. ` : ''}No es mía. Es lo que mi pareja me puede prestar.`, ui)}</span><strong class="numero">${cuentas ? dinero.formatear(cuentas.valor) : 'Sin anotar'}</strong>
+    <div class="fran-tarjeta fran-virtual__cuentas"><span class="fran-tarjeta__cabeza"><small>Hay en las cuentas, entre los dos</small>${ayuda(`${cuentas ? `Al ${fechas.formatear(cuentas.fecha)}. ` : ''}No es mía. Es lo que mi pareja me puede prestar.`, ui)}</span><strong>${cuentas ? conSigno(cuentas.valor, dinero) : 'Sin anotar'}</strong>
       <button type="button" class="fran-boton-secundario fran-boton--44" data-cuentas>Actualizar</button>
       ${cuentas && cuentas.detalle && cuentas.detalle.length ? `<details class="fran-virtual__detalle"><summary>De dónde sale</summary>${cuentas.detalle.map((d) => `<p><span>${ui.esc(d.concepto)}</span><span class="numero">${dinero.formatear(d.valor)}</span></p>`).join('')}</details>` : ''}
     </div>
