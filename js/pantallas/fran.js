@@ -565,7 +565,9 @@ function renderPrincipal(contenedor, ctx) {
     ${avisoAnotar ? renglon({ ruta: '#/libro/personal/agregar/gasto', icono: '📝', texto: 'Hoy no has anotado nada' }, ui) : ''}
     <div class="fran-libros">${['personal', 'prestamos', 'pension', 'productos'].map((id) => tarjetaLibro(id, false)).join('')}</div>
     <div class="fran-libros-chicos">${['arriendos', 'redes', 'terceros'].map((id) => tarjetaLibro(id, true)).join('')}</div>
+    ${sinDatos ? '' : `<a href="#/liquidez" class="fran-liquidez-boton"><span class="fran-cuadro fran-cuadro--40" aria-hidden="true">💧</span><span class="fran-renglon__texto"><span>Liquidez real</span><small>Toda la plata que puedo mover hoy</small></span><b>${conSigno(fondosLiquidez(ctx, tasaDolar(fran)).total, dinero)}</b><span class="fran-flecha" aria-hidden="true">›</span></a>`}
   </div>`);
+  if (!sinDatos) traerDolar(ctx.hoy()).catch(() => {});
   principal.querySelector('[data-apariencia]').addEventListener('click', () => abrirApariencia(''));
   // Sol y luna: en oscuro se ve el sol (para pasar a claro); en claro, la luna.
   const botonModo = principal.querySelector('[data-modo-cambiar]');
@@ -1873,6 +1875,82 @@ function marcarEntraSale(raiz, boton, form, entra) {
   form.querySelector('[data-titulo]').textContent = entra ? '⊕ Entró: ¿de quién o de qué?' : '⊖ Salió: ¿para quién o para qué?';
 }
 
+// ---------- Liquidez real: toda la plata que se puede mover hoy ----------
+
+const CLAVE_DOLAR = 'fran-dolar-hoy';
+
+/** Tasa del dólar de hoy guardada en este aparato; si no hay, la tasa anotada en la pensión. */
+function tasaDolar(fran) {
+  try {
+    const t = JSON.parse(window.localStorage.getItem(CLAVE_DOLAR));
+    if (t && t.valor > 0) return { valor: t.valor, fecha: t.fecha, fuente: 'internet' };
+  } catch (_error) { /* sin almacenamiento */ }
+  return { valor: fran.pension.tasa, fecha: null, fuente: 'anotada' };
+}
+
+/** Pide la tasa del dólar de hoy (gratis, sin clave). Una vez por día. */
+async function traerDolar(hoy) {
+  try {
+    const t = JSON.parse(window.localStorage.getItem(CLAVE_DOLAR) || 'null');
+    if (t && t.fecha === hoy) return t;
+  } catch (_error) { /* nada */ }
+  const r = await fetch('https://open.er-api.com/v6/latest/USD');
+  const j = await r.json();
+  const valor = Math.round(j && j.rates && j.rates.COP);
+  if (!(valor > 0)) throw new Error('Sin tasa');
+  const t = { valor, fecha: hoy };
+  try { window.localStorage.setItem(CLAVE_DOLAR, JSON.stringify(t)); } catch (_error) { /* nada */ }
+  return t;
+}
+
+/** Cada fondo de plata disponible, agrupado por de dónde sale. */
+export function fondosLiquidez(ctx, tasa) {
+  const fran = ctx.datos.estado.fran;
+  const plata = miPlata(ctx);
+  const grupos = [];
+  grupos.push({ icono: '💵', titulo: 'Efectivo de préstamos y personal', filas: [{ texto: 'Efectivo hoy (incluye lo apartado)', valor: plata.efectivo, ruta: '#/efectivo' }] });
+  const cuentas = fran.virtualCuentas;
+  if (cuentas) {
+    const detalle = (cuentas.detalle || []).filter((x) => !/tarjeta/i.test(x.concepto));
+    const usable = detalle.length ? detalle.reduce((s, x) => s + x.valor, 0) : cuentas.valor;
+    grupos.push({ icono: '📲', titulo: 'Cuentas virtuales (lo que queda para usar)', filas: detalle.length ? detalle.map((x) => ({ texto: x.concepto, valor: x.valor })) : [{ texto: 'En las cuentas', valor: usable }], total: usable, nota: 'No resta lo que debes en tarjetas.' });
+  }
+  const ventas = (fran.asientos || []).filter((a) => a.libro === 'productos' && a.disponible);
+  if (ventas.length) {
+    grupos.push({ icono: '💻', titulo: 'Negocio tecnológico (con tu pareja)', filas: ventas.flatMap((a) => [
+      ...(a.disponible.efectivo ? [{ texto: `${a.descripcion.split(' · ')[0]} · en efectivo`, valor: a.disponible.efectivo }] : []),
+      ...(a.disponible.virtual ? [{ texto: `${a.descripcion.split(' · ')[0]} · en virtual`, valor: a.disponible.virtual }] : []),
+    ]) });
+  }
+  const p = fran.pension;
+  const usd = p.cuentas.reduce((s, c) => s + c.usd, 0);
+  const filasPension = [{ texto: `Dólares: ${String(Math.round(usd * 100) / 100).replace('.', ',')} USD a ${ctx.dinero.formatear(tasa.valor)}`, valor: Math.round(usd * tasa.valor), ruta: '#/libro/pension' }];
+  for (const o of p.otros.filter((x) => x.liquido)) filasPension.push({ texto: o.nombre, valor: o.cop });
+  grupos.push({ icono: '🐷', titulo: 'Pensión (solo lo que está disponible)', filas: filasPension, nota: 'Lo prestado y el carro no cuentan: no están en tu bolsillo.' });
+  for (const g of grupos) if (g.total === undefined) g.total = g.filas.reduce((s, f) => s + f.valor, 0);
+  return { grupos, total: grupos.reduce((s, g) => s + g.total, 0) };
+}
+
+function renderLiquidez(contenedor, ctx) {
+  const { ui, dinero, fechas, datos } = ctx;
+  const fran = datos.estado.fran;
+  const tasa = tasaDolar(fran);
+  const { grupos, total } = fondosLiquidez(ctx, tasa);
+  const raiz = ui.el(`<div>
+    ${titular('personal', ctx, '#/inicio', 'Liquidez real')}
+    ${heroe({ etiqueta: 'Plata que puedo mover hoy', valor: total, ayudaTexto: 'Suma la plata que de verdad está disponible: efectivo, lo que queda en las cuentas, la plata del negocio tecnológico y los dólares de la pensión a la tasa de hoy. No cuenta lo prestado ni el carro, y no resta lo que debes en tarjetas.' }, ctx)}
+    <p class="fran-nota">Dólar: ${dinero.formatear(tasa.valor)} ${tasa.fuente === 'internet' ? `· tasa de hoy (${ui.esc(fechas.formatear(tasa.fecha))})` : '· tasa anotada en la pensión'}</p>
+    ${grupos.map((g) => `<section class="fran-tachados fran-liquidez">
+      <p class="fran-liquidez__cabeza"><span class="fran-cuadro fran-cuadro--40" aria-hidden="true">${g.icono}</span><span>${ui.esc(g.titulo)}</span><b>${conSigno(g.total, dinero)}</b></p>
+      <div class="fran-lista">${g.filas.map((f) => `<${f.ruta ? `a href="${ui.esc(f.ruta)}"` : 'div'} class="fran-liquidez__fila"><span>${ui.esc(f.texto)}</span>${conSigno(f.valor, dinero)}</${f.ruta ? 'a' : 'div'}>`).join('')}</div>
+      ${g.nota ? `<p class="fran-nota">${ui.esc(g.nota)}</p>` : ''}
+    </section>`).join('')}
+  </div>`);
+  contenedor.append(raiz);
+  // Trae el dólar de hoy y vuelve a dibujar si cambió.
+  traerDolar(ctx.hoy()).then((t) => { if (t.valor !== tasa.valor && document.body.contains(raiz)) { contenedor.innerHTML = ''; renderLiquidez(contenedor, ctx); } }).catch(() => {});
+}
+
 // ---------- Tarjetas: cuánto se debe en cada una y a qué fecha ----------
 
 function renderTarjetas(contenedor, ctx) {
@@ -2237,6 +2315,7 @@ export async function render(contenedor, params, ctx) {
     case 'tablaPrestamos': return renderTablaPrestamos(contenedor, ctx);
     case 'efectivo': return renderEfectivo(contenedor, ctx);
     case 'tarjetas': return renderTarjetas(contenedor, ctx);
+    case 'liquidez': return renderLiquidez(contenedor, ctx);
     case 'soloIntereses': return renderSoloIntereses(contenedor, ctx);
     case 'propiedad': {
       const { delAnio } = arriendosDelAnio(ctx);

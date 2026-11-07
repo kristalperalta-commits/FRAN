@@ -11,7 +11,7 @@
 
 import * as ui from './ui.js';
 
-const VERSION_APP = '3.25.4';
+const VERSION_APP = '3.26.0';
 const contenedor = document.getElementById('pantalla');
 
 // ---------- Rutas (sección 7 de la especificación) ----------
@@ -23,6 +23,7 @@ const RUTAS = [
   { patron: '/otros', pantalla: 'fran', vista: 'otros', pestana: null, sinBarra: true },
   { patron: '/libro/arriendos/propiedades', pantalla: 'fran', vista: 'propiedades', pestana: 'inicio', libro: 'arriendos' },
   { patron: '/libro/arriendos/propiedad/:nombre', pantalla: 'fran', vista: 'propiedad', pestana: 'inicio', libro: 'arriendos' },
+  { patron: '/liquidez', pantalla: 'fran', vista: 'liquidez', pestana: 'inicio', libro: 'personal' },
   { patron: '/tarjetas', pantalla: 'fran', vista: 'tarjetas', pestana: 'inicio', libro: 'personal' },
   { patron: '/efectivo', pantalla: 'fran', vista: 'efectivo', pestana: 'inicio', libro: 'personal' },
   { patron: '/libro/prestamos/solo-intereses', pantalla: 'fran', vista: 'soloIntereses', pestana: 'inicio', libro: 'prestamos' },
