@@ -7,8 +7,8 @@
 */
 
 const CLAVE = 'fran-candado';
-// Pedido el 6 nov 2026: que no pida la cara a cada rato. Si usó Fran hace menos de esto, abre directo.
-const MINUTOS_POR_DEFECTO = 30;
+// Si usó Fran hace menos de esto, abre directo sin pedir la cara. Ella lo puede cambiar en Yo.
+const MINUTOS_POR_DEFECTO = 5;
 
 let ctx = null;
 let capa = null;
@@ -295,10 +295,7 @@ export function exigir(contexto) {
   vigilar();
   return new Promise((resolver) => {
     (async () => {
-      let c = leer();
-      // Ella pidió apagarlo el 6 nov 2026: la llave guardada antes de esa fecha se quita.
-      // Si después la vuelve a activar en Yo, queda marcada como reactivada y sí se respeta.
-      if (c.credId && !c.reactivado) { desactivar(); c = leer(); }
+      const c = leer();
       // El iPhone cierra la app seguido: si la usó hace poco, abre sin pedir la cara.
       const reciente = c.credId && c.ultimaVez && Date.now() - c.ultimaVez < estado().minutos * 60000;
       if (reciente) {
