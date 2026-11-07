@@ -28,7 +28,7 @@ export function abrirApariencia(libroInicial = '') {
   fondo.className = 'fran-hoja-fondo';
   fondo.innerHTML = `<div class="fran-hoja fran-apariencia" role="dialog" aria-modal="true" aria-label="Apariencia">
     <h2>Apariencia</h2>
-    <div class="fran-apariencia__modo"><button type="button" data-modo="claro">☀️ Claro</button><button type="button" data-modo="oscuro">🌙 Oscuro</button></div>
+    <div class="fran-apariencia__modo"><button type="button" data-modo-elegir="claro">☀️ Claro</button><button type="button" data-modo-elegir="oscuro">🌙 Oscuro</button></div>
     <p class="fran-apariencia__etiqueta">Color para</p>
     <div class="fran-apariencia__partes">${PARTES.map(([id, ic, nombre]) => `<button type="button" data-parte="${id}"><span>${ic}</span>${esc(nombre)}</button>`).join('')}</div>
     <div class="fran-apariencia__temas"></div>
@@ -45,14 +45,15 @@ export function abrirApariencia(libroInicial = '') {
     fondo.querySelector('.fran-apariencia__temas').innerHTML = opciones.map(([id, nombre, color]) => `<button type="button" class="ajustes-tema" data-tema-elegir="${id}" aria-pressed="${(propio || '') === id}">${color ? `<i class="ajustes-tema__color" style="background:${color}"></i>` : '<i class="ajustes-tema__color ajustes-tema__color--igual"></i>'}<span>${esc(nombre)}</span></button>`).join('');
     Tema.aplicarPara(parte || null);
   };
-  const pintarModo = () => fondo.querySelectorAll('[data-modo]').forEach((b) => b.classList.toggle('activo', b.dataset.modo === Tema.modo()));
+  const pintarModo = () => fondo.querySelectorAll('[data-modo-elegir]').forEach((b) => b.classList.toggle('activo', b.dataset.modoElegir === Tema.modo()));
   const pintarLetra = () => { fondo.querySelector('[data-pct]').textContent = `${Letra.actual()} %`; };
 
   const cerrar = () => { fondo.remove(); Tema.aplicarPara(antes); };
   fondo.addEventListener('click', (e) => {
     if (e.target === fondo || e.target.closest('[data-listo]')) { cerrar(); return; }
-    const m = e.target.closest('[data-modo]');
-    if (m) { Tema.cambiarModo(m.dataset.modo); Tema.aplicarPara(parte || null); pintarModo(); return; }
+    // Ojo: <html> lleva data-modo, por eso estos botones usan data-modo-elegir.
+    const m = e.target.closest('[data-modo-elegir]');
+    if (m) { Tema.cambiarModo(m.dataset.modoElegir); Tema.aplicarPara(parte || null); pintarModo(); return; }
     const p = e.target.closest('[data-parte]');
     if (p) { parte = p.dataset.parte; pintarTemas(); return; }
     const t = e.target.closest('[data-tema-elegir]');
