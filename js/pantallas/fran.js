@@ -850,12 +850,12 @@ function renderPension(contenedor, ctx) {
   const diferenciaDolar = Math.round(usdTotal * hoyDolar.valor) - pesosDolares;
   const raiz = ui.el(`<div>
     ${titular('pension', ctx, '#/inicio')}
-    ${heroe({ etiqueta: 'Total pensión', valor: totalPension(fran), ayudaTexto: `Los dólares están contados a ${dinero.formatear(p.tasa)}, la tasa a la que los compraste.${p.origen ? ` Origen: ${p.origen.charAt(0).toLowerCase() + p.origen.slice(1)}.` : ''}`, cajas: hoyDolar.fuente === 'internet' ? [['Con el dólar de hoy', totalPension(fran) + diferenciaDolar], [diferenciaDolar < 0 ? 'Perdería hoy' : 'Ganaría hoy', diferenciaDolar, diferenciaDolar < 0 ? 'menos' : 'mas']] : [] }, ctx)}
+    ${heroe({ etiqueta: 'Total pensión', valor: totalPension(fran), ayudaTexto: `Los dólares están contados a ${dinero.formatear(p.tasa)}, la tasa a la que los compraste.${p.origen ? ` Origen: ${p.origen.charAt(0).toLowerCase() + p.origen.slice(1)}.` : ''}`, cajas: hoyDolar.fuente === 'internet' ? [['Dólares a la tasa de hoy', pesosDolares + diferenciaDolar], [diferenciaDolar < 0 ? 'Perdería hoy' : 'Ganaría hoy', diferenciaDolar, diferenciaDolar < 0 ? 'menos' : 'mas']] : [] }, ctx)}
     ${hoyDolar.fuente === 'internet' ? `<p class="fran-nota">Dólar: compraste a ${dinero.formatear(p.tasa)} · hoy está a ${dinero.formatear(hoyDolar.valor)} (${diferenciaDolar < 0 ? 'pierdes' : 'ganas'} ${dinero.formatear(Math.abs(hoyDolar.valor - p.tasa))} por dólar).</p>` : '<p class="fran-nota">Sin la tasa de hoy: falta internet.</p>'}
     <button type="button" id="fran-tasa" class="fran-pildora">Compré a ${dinero.formatear(p.tasa)} ✏️</button>
     <form id="fran-tasa-form" class="fran-tasa oculto"><input name="tasa" inputmode="numeric" value="${ui.esc(p.tasa)}" aria-label="Tasa del día"><button class="boton boton--primario">Guardar</button></form>
     ${p.cuentas.length ? `<details class="fran-tachados fran-prestado-pension">
-      <summary><span class="fran-cuadro fran-cuadro--40" aria-hidden="true">💵</span><span class="fran-renglon__texto"><span>Dinero en dólares</span><small>${ui.esc(String(Math.round(usdTotal * 100) / 100).replace('.', ','))} USD · toca para ver las cuentas</small></span><b class="numero">${dinero.formatear(pesosDolares)}</b></summary>
+      <summary><span class="fran-cuadro fran-cuadro--40" aria-hidden="true">💵</span><span class="fran-renglon__texto"><span>Dinero en dólares</span><small>${ui.esc(String(Math.round(usdTotal * 100) / 100).replace('.', ','))} USD · comprados a ${dinero.formatear(p.tasa)}${hoyDolar.fuente === 'internet' ? ` · hoy valen ${dinero.formatear(pesosDolares + diferenciaDolar)}` : ''}</small></span><b class="numero">${dinero.formatear(pesosDolares)}</b></summary>
       <div class="fran-lista">${p.cuentas.map((c) => filaPension({ icono: '💵', titulo: c.nombre, pesos: Math.round(c.usd * p.tasa), usd: c.usd }, ctx)).join('')}</div>
     </details>` : ''}
     ${otrosPropios.map((o) => {
