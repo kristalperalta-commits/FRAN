@@ -14,7 +14,7 @@
   Toda operación que guarda va dentro de try/catch y avisa con ui.toast.
 */
 
-import { CATEGORIAS_BASE, INGRESOS_DE_OTRO_LIBRO, LIBROS, categoriasDe, iconoDe } from './fran.js';
+import { CATEGORIAS_BASE, INGRESOS_DE_OTRO_LIBRO, LIBROS, categoriasDe, iconoDe, icono3dDe } from './fran.js';
 import { calendarioIcs } from '../recordatorios.js';
 import { abrirApariencia } from '../apariencia.js';
 
@@ -622,7 +622,7 @@ function seccionCandado(ctx) {
 }
 
 const ICONO_3D_YO = { 'Categorías': 'carpeta', 'Recordatorios': 'reloj', 'Transacciones recurrentes': 'repetir', 'Respaldo y exportar Excel': 'nube', 'Face ID': 'candado', 'Nube': 'mundo', 'Instalar en el teléfono': 'celular', 'Acerca de la app': 'info' };
-const icono3dYo = (clave, emoji) => (ICONO_3D_YO[clave] ? `<img class="fran-3d fran-3d--40" src="iconos/3d/${ICONO_3D_YO[clave]}.png" alt="" aria-hidden="true" decoding="async">` : `<span>${emoji}</span>`);
+const icono3dYo = (clave, emoji) => (ICONO_3D_YO[clave] ? `<img class="fran-3d fran-3d--40" src="iconos/3d/${ICONO_3D_YO[clave]}-azul.png" alt="" aria-hidden="true" decoding="async">` : `<span>${emoji}</span>`);
 
 function plegable(icono, texto, seccion, ui) {
   const caja = ui.el(`<details class="fran-ajuste"${abiertos.has(texto) ? ' open' : ''}><summary>${icono3dYo(texto, icono)}${ui.esc(texto)}<i class="fran-ajuste__flecha" aria-hidden="true"></i></summary></details>`);
@@ -650,7 +650,7 @@ function seccionCategorias(ctx) {
   const s = ui.el(`<section class="tarjeta ajustes-seccion">
     <label class="fran-campo-yo"><small>Libro</small><select name="lista">${LISTAS_CATEGORIAS.map((l, i) => `<option value="${i}"${i === listaCategorias ? ' selected' : ''}>${ui.esc(l[3])}</option>`).join('')}</select></label>
     <div class="fran-lista">${todas.map((c) => `<div class="fran-fila">
-      <span class="fran-ico">${ui.esc(iconoDe(c))}</span>
+      ${icono3dDe(c)}
       <span class="fran-fila__texto"><strong>${ui.esc(c)}</strong></span>
       <button type="button" class="fran-borrar" data-cat="${ui.esc(c)}">${ocultas.includes(c) ? 'Mostrar' : 'Ocultar'}</button>
     </div>`).join('')}</div>
@@ -715,7 +715,7 @@ function seccionRecurrentes(ctx) {
   const libros = ['personal', 'arriendos', 'redes', 'productos'];
   const s = ui.el(`<section class="tarjeta ajustes-seccion">
     <div class="fran-lista">${lista.map((r) => `<div class="fran-fila">
-      <span class="fran-ico">${ui.esc(iconoDe(r.categoria))}</span>
+      ${icono3dDe(r.categoria)}
       <span class="fran-fila__texto"><strong>${ui.esc(r.descripcion || r.categoria)}</strong><small>${ui.esc(NOMBRE_FRECUENCIA[r.frecuencia])} · sigue ${ui.esc(fechas.formatear(r.proxima))}</small></span>
       <span class="fran-fila__valor numero">${dinero.formatear(r.valor)}</span>
       <button type="button" class="fran-borrar" data-quitar="${ui.esc(r.id)}">Quitar</button>
@@ -808,7 +808,7 @@ export async function render(contenedor, params, ctx) {
   const apariencia = ui.el('<button type="button" class="fran-enlace fran-enlace--boton fran-enlace--destacado"><img class="fran-3d fran-3d--48" src="iconos/3d/paleta.png" alt="" aria-hidden="true"><span class="fran-renglon__texto"><span>Apariencia</span><small>Temas y tamaño de la letra</small></span><i class="fran-ajuste__flecha" aria-hidden="true"></i></button>');
   apariencia.addEventListener('click', () => abrirApariencia(''));
   contenedor.append(apariencia);
-  contenedor.append(ui.el('<p class="fran-seccion fran-seccion--yo"><img class="fran-3d fran-3d--28" src="iconos/3d/engranaje.png" alt="" aria-hidden="true">Ajustes<i></i></p>'));
+  contenedor.append(ui.el('<p class="fran-seccion fran-seccion--yo"><img class="fran-3d fran-3d--28" src="iconos/3d/engranaje-azul.png" alt="" aria-hidden="true">Ajustes<i></i></p>'));
   contenedor.append(plegable('⚙️', 'Categorías', seccionCategorias(ctx), ui));
   contenedor.append(ui.el('<a class="fran-enlace" href="#/libro/pension"><img class="fran-3d fran-3d--40" src="iconos/3d/monedas.png" alt="" aria-hidden="true">Moneda COP · tasa USD<i class="fran-ajuste__flecha" aria-hidden="true"></i></a>'));
   contenedor.append(plegable('⏰', 'Recordatorios', seccionRecordatorios(ctx), ui));
@@ -818,7 +818,7 @@ export async function render(contenedor, params, ctx) {
   respaldo.append(seccionBorrar(ctx));
   contenedor.append(respaldo);
   contenedor.append(plegable('🔒', 'Face ID', seccionCandado(ctx), ui));
-  contenedor.append(ui.el('<p class="fran-seccion fran-seccion--yo"><img class="fran-3d fran-3d--28" src="iconos/3d/celular.png" alt="" aria-hidden="true">Esta app<i></i></p>'));
+  contenedor.append(ui.el('<p class="fran-seccion fran-seccion--yo"><img class="fran-3d fran-3d--28" src="iconos/3d/celular-azul.png" alt="" aria-hidden="true">Esta app<i></i></p>'));
   contenedor.append(plegable('🌐', 'Nube', seccionNube(ctx), ui));
   contenedor.append(plegable('📲', 'Instalar en el teléfono', seccionInstalar(ctx), ui));
   contenedor.append(plegable('ℹ️', 'Acerca de la app', seccionAcerca(ctx), ui));

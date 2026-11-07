@@ -11,7 +11,7 @@
 
 import * as ui from './ui.js';
 
-const VERSION_APP = '3.30.0';
+const VERSION_APP = '3.32.0';
 const contenedor = document.getElementById('pantalla');
 
 // ---------- Rutas (sección 7 de la especificación) ----------
@@ -306,6 +306,18 @@ let registroSW = null;
  * Deslizar hacia abajo en Inicio = actualizar (pedido el 6 nov 2026): sincroniza con la nube,
  * busca si hay versión nueva de Fran y vuelve a dibujar.
  */
+/** Una línea de luz que recorre todo el contorno de la pantalla y desaparece (pedido el 7 nov 2026). */
+function destelloBorde() {
+  const viejo = document.querySelector('.destello-borde');
+  if (viejo) viejo.remove();
+  const capa = document.createElement('div');
+  capa.className = 'destello-borde';
+  capa.setAttribute('aria-hidden', 'true');
+  capa.innerHTML = '<svg viewBox="0 0 100 100" preserveAspectRatio="none"><rect x="1" y="1" width="98" height="98" rx="8" ry="8" pathLength="100"/></svg>';
+  document.body.append(capa);
+  setTimeout(() => capa.remove(), 1700);
+}
+
 function activarDeslizarParaActualizar() {
   // Un círculo arriba: se llena mientras se hala, gira mientras actualiza y termina con ✓ (pedido el 7 nov 2026).
   const aviso = document.createElement('div');
@@ -370,7 +382,7 @@ function activarDeslizarParaActualizar() {
       aviso.classList.remove('girando');
       if (resultado === 'apagada') ui.toast('Para traer los datos de la nube, entra en Yo → Nube.');
       else if (resultado === 'error') ui.toast('No pude conectar con la nube. Revisa el internet e intenta otra vez.', 5000);
-      else { aviso.classList.add('hecho'); await new Promise((r) => setTimeout(r, 700)); }
+      else { aviso.classList.add('hecho'); destelloBorde(); await new Promise((r) => setTimeout(r, 700)); }
     } catch (error) {
       ui.toast(`No se pudo actualizar: ${error.message || error}`, 5000);
     } finally {

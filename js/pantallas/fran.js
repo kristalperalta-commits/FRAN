@@ -86,6 +86,24 @@ export function iconoDe(categoria) {
   return '🔖';
 }
 
+// Emoji → ilustración 3D de la misma familia (app/iconos/3d). Todo lo que se ve en Fran es 3D.
+const EMOJI_3D = {
+  '🍎': 'manzana', '🏠': 'casa', '🚗': 'carro', '⛽': 'gasolina', '💡': 'bombilla', '🛍️': 'bolsas', '💊': 'pastilla', '⚖️': 'balanza',
+  '👥': 'personas', '✈️': 'avion', '📱': 'celular', '💄': 'labial', '⚽': 'balon', '🎬': 'claqueta', '🚌': 'bus', '📚': 'libros',
+  '🎁': 'regalo', '💧': 'gota', '👕': 'camiseta', '💳': 'tarjeta', '❓': 'pregunta', '📄': 'documento', '💵': 'billete', '🏢': 'edificio',
+  '👷': 'obrero', '🎨': 'paleta', '🧱': 'ladrillo', '📑': 'lista', '🏗️': 'edificio', '📺': 'tv', '📦': 'caja', '📈': 'grafica',
+  '💰': 'bolsa', '🤝': 'manos', '🔁': 'repetir', '🧾': 'recibo', '🔨': 'ladrillo', '🅿️': 'carro', '🔖': 'marcador', '↩️': 'repetir',
+  '💸': 'porcentaje', '⏰': 'reloj', '✎': 'lapiz', '⚙️': 'engranaje', '+': 'mas', '◎': 'monedas', '🐷': 'alcancia', '💯': 'recibo',
+  '📲': 'celular', '💻': 'portatil', '🏛️': 'clasico', '🛒': 'bolsas', '🔔': 'reloj', '📝': 'lapiz', '🏦': 'banco', '👛': 'billetera', '📋': 'tabla', '📅': 'calendario', '📞': 'telefono', '💬': 'chat', '🔍': 'lista', '✓': 'recibo', '🔥': 'bombilla', '⬇️': 'repetir', '⬆️': 'repetir', '🔴': 'pregunta', '🤝': 'manos', '🏢': 'edificio',
+};
+/** Imagen 3D de una categoría (o de un emoji). Si no hay dibujo, devuelve el emoji en su cuadro. */
+export function icono3dDe(categoriaOEmoji, clase = 'fran-3d--40') {
+  const emoji = EMOJI_3D[categoriaOEmoji] ? categoriaOEmoji : iconoDe(categoriaOEmoji);
+  const archivo = EMOJI_3D[emoji];
+  if (!archivo) return `<span class="fran-ico">${emoji}</span>`;
+  return `<img class="fran-3d ${clase} fran-ico--3d" src="iconos/3d/${archivo}.png" alt="" aria-hidden="true" decoding="async">`;
+}
+
 export const titulo = (params) => (params && LIBROS[params.libro] ? LIBROS[params.libro].nombre : '');
 
 // ---------- Cálculos ----------
@@ -267,7 +285,7 @@ function titular(id, ctx, atras, texto, mes) {
   const l = LIBROS[id];
   return `<header class="fran-titulo fran-titulo--libro">
     ${atras ? `<a href="${ui.esc(atras)}" class="fran-titulo__atras" aria-label="Volver">‹</a>` : ''}
-    <h1><span class="fran-cuadro fran-cuadro--28" aria-hidden="true">${ui.esc(l.icono)}</span><span>${ui.esc(texto || l.corto)}</span></h1>
+    <h1>${ICONO_3D[id] ? icono3d(id, 'fran-3d--28') : `<span class="fran-cuadro fran-cuadro--28" aria-hidden="true">${ui.esc(l.icono)}</span>`}<span>${ui.esc(texto || l.corto)}</span></h1>
     ${mes ? `<button type="button" class="fran-pildora fran-titulo__mes" data-elegir-mes aria-label="Elegir mes">${ui.esc(MESES_CORTOS[Number(mes.slice(5, 7)) - 1])}${mes.slice(0, 4) !== ctx.hoy().slice(0, 4) ? ` ${mes.slice(2, 4)}` : ''} <i aria-hidden="true">▾</i></button>` : ''}
   </header>`;
 }
@@ -281,7 +299,7 @@ function conSigno(valor, dinero, signo) {
 }
 
 /** Tarjeta de saldo: la única en degradado de cada pantalla. cajas: [etiqueta, valor (número o texto), signo]. */
-function heroe({ etiqueta, valor, cajas = [], ruta = '', ayudaTexto = '' }, ctx) {
+function heroe({ etiqueta, valor, cajas = [], ruta = '', ayudaTexto = '', ilustracion = '' }, ctx) {
   const { ui, dinero } = ctx;
   const grande = typeof valor === 'number' ? conSigno(valor, dinero) : `<span>${ui.esc(valor)}</span>`;
   const cajitas = cajas.length ? `<span class="fran-heroe__cajas${cajas.length === 4 ? ' fran-heroe__cajas--cuatro' : ''}">${cajas.map(([t, v, signo, enlace]) => {
@@ -289,7 +307,7 @@ function heroe({ etiqueta, valor, cajas = [], ruta = '', ayudaTexto = '' }, ctx)
     return enlace && !ruta ? `<a href="${ui.esc(enlace)}">${dentro}</a>` : `<span>${dentro}</span>`;
   }).join('')}</span>` : '';
   const etiquetaHtml = `<span class="fran-heroe__etiqueta"><small>${ui.esc(etiqueta)}</small>${ayudaTexto && !ruta ? ayuda(ayudaTexto, ui) : ''}</span>`;
-  const interior = `${etiquetaHtml}<strong class="fran-heroe__valor">${grande}</strong>${cajitas}`;
+  const interior = `${ilustracion ? icono3d(ilustracion, 'fran-heroe__3d') : ''}${etiquetaHtml}<strong class="fran-heroe__valor">${grande}</strong>${cajitas}`;
   return ruta ? `<a href="${ui.esc(ruta)}" class="fran-heroe">${interior}</a>` : `<div class="fran-heroe">${interior}</div>`;
 }
 
@@ -319,9 +337,9 @@ if (typeof document !== 'undefined') {
 }
 
 /** Renglón tocable sobre la tarjeta: emoji en cuadro, texto, valor o número de aviso, y flecha. */
-function renglon({ ruta, icono, texto, sub = '', derecha = '', contador = 0 }, ui) {
+function renglon({ ruta, icono, texto, sub = '', derecha = '', contador = 0, icono3 = '' }, ui) {
   return `<a href="${ui.esc(ruta)}" class="fran-renglon">
-    <span class="fran-cuadro fran-cuadro--40" aria-hidden="true">${ui.esc(icono)}</span>
+    ${icono3 ? icono3d(icono3, 'fran-3d--40') : icono3dDe(icono)}
     <span class="fran-renglon__texto"><span>${ui.esc(texto)}</span>${sub ? `<small>${ui.esc(sub)}</small>` : ''}</span>
     ${derecha}${contador ? `<span class="fran-contador">${contador}</span>` : ''}
     <span class="fran-flecha" aria-hidden="true">›</span>
@@ -457,12 +475,17 @@ function avisoSinDetalle(lista) {
   return '<p class="fran-explica">ⓘ Este mes solo tiene el total de cada categoría, tomado de Mis Gastos. Los movimientos uno por uno aparecen cuando se carguen los pantallazos de ese mes.</p>';
 }
 
-function fila({ icono, titulo: t, sub, derecha, clase = '', ruta, ui, ver }) {
-  const interior = `<span class="fran-ico">${ui.esc(icono)}</span>
+function fila({ icono, titulo: t, sub, derecha, clase = '', ruta, ui, ver, icono3 = '' }) {
+  const interior = `${icono3 ? icono3d(icono3, 'fran-3d--40 fran-ico--3d') : icono3dDe(icono)}
     <span class="fran-fila__texto"><strong>${ui.esc(t)}</strong>${sub ? `<small>${ui.esc(sub)}</small>` : ''}</span>
     <span class="fran-fila__valor numero ${clase}">${ui.esc(clase ? String(derecha).replace(/^[+−-]\s*/, '') : derecha)}</span>`;
   if (ver) return `<div class="fran-fila" role="button" tabindex="0" data-ver="${ui.esc(ver)}">${interior}</div>`;
   return ruta ? `<a class="fran-fila" href="${ui.esc(ruta)}">${interior}</a>` : `<div class="fran-fila">${interior}</div>`;
+}
+
+/** Título de sección como en la referencia: icono 3D pequeño, texto y una línea que se desvanece. */
+function seccion(texto, icono3 = 'lista') {
+  return `<p class="fran-seccion fran-seccion--yo">${icono3d(icono3, 'fran-3d--28')}${texto}<i></i></p>`;
 }
 
 function listaPorDia(lista, ctx) {
@@ -571,8 +594,13 @@ const ICONO_3D = {
   redes: 'personas', terceros: 'manos', efectivo: 'billete', virtual: 'celular', tarjetas: 'tarjeta',
   ganancia: 'grafica', credito: 'clasico', liquidez: 'bolsa',
 };
+// En la referencia, los iconos de renglones y tarjetas son azules; los de los libros conservan su color.
+const AZULES_3D = new Set(['carpeta', 'reloj', 'repetir', 'nube', 'candado', 'mundo', 'info', 'celular', 'calendario', 'tabla', 'recibo', 'lista', 'documento', 'porcentaje', 'personas', 'grafica', 'billete', 'tarjeta', 'clasico', 'engranaje']);
+const LIBROS_3D = new Set(['personal', 'prestamos', 'pension', 'productos', 'arriendos', 'redes', 'terceros', 'efectivo', 'virtual', 'tarjetas', 'ganancia', 'liquidez', 'credito']);
 function icono3d(clave, clase = '') {
-  return `<img class="fran-3d ${clase}" src="iconos/3d/${ICONO_3D[clave]}.png" alt="" aria-hidden="true" decoding="async">`;
+  const archivo = ICONO_3D[clave] || clave;
+  const azul = AZULES_3D.has(archivo) && !LIBROS_3D.has(clave);
+  return `<img class="fran-3d ${clase}" src="iconos/3d/${archivo}${azul ? '-azul' : ''}.png" alt="" aria-hidden="true" decoding="async">`;
 }
 
 const ICONO_SOL = '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4.5"/><path d="M12 1.5v3M12 19.5v3M1.5 12h3M19.5 12h3M4.6 4.6l2.1 2.1M17.3 17.3l2.1 2.1M4.6 19.4l2.1-2.1M17.3 6.7l2.1-2.1" stroke="currentColor" stroke-width="2" stroke-linecap="round" fill="none"/></svg>';
@@ -681,14 +709,14 @@ function renderGanancias(contenedor, ctx) {
       <div class="fran-tarjeta"><small>Saqué</small><strong class="numero">${dinero.formatear(sacado)}</strong></div>
       <div class="fran-tarjeta"><small>Para reinvertir</small><strong class="numero">${dinero.formatear(total - sacado)}</strong></div>
     </div>
-    <p class="fran-seccion">Por negocio</p>
+    ${seccion('Por negocio', 'grafica')}
     <div class="fran-lista">${NEGOCIOS.map((id) => [id, sumar(enMes.filter((a) => a.libro === id))]).filter((x) => x[1]).map(([id, v]) => fila({ ui, icono: LIBROS[id].icono, titulo: LIBROS[id].corto, derecha: `+${dinero.formatear(v)}`, clase: 'fran-mas', ruta: `#/libro/${id}` })).join('') || '<p class="fran-vacio">Sin ganancias este mes.</p>'}</div>
-    <form class="fran-campos" novalidate>
+    <form class="fran-campos fran-campos--grande" novalidate>
       <label><small>Saqué para mí</small><input name="valor" inputmode="numeric" autocomplete="off" placeholder="0"></label>
       <label><small>Fecha</small><input type="date" name="fecha" value="${ui.esc(hoy)}"></label>
       <button class="boton boton--primario fran-guardar">Anotar</button>
     </form>
-    <p class="fran-seccion">Día a día</p>
+    ${seccion('Día a día', 'calendario')}
     ${dias.map((d) => `<div class="fran-dia"><span>${ui.esc(fechaLinda(d, ctx))}</span><span>Ganancia <b class="numero">${dinero.formatear(sumar(enMes.filter((a) => a.fecha === d)))}</b></span></div><div class="fran-lista">${filasDia(d)}</div>`).join('') || '<p class="fran-vacio">Nada todavía.</p>'}
   </div>`);
   conectarMes(raiz, mes, ctx, dibujar);
@@ -794,12 +822,12 @@ function renderPrestamos(contenedor, ctx, redibujar) {
   const pastilla = (t, n, clase) => `<a href="#/clientes" class="fran-pastilla ${clase}"><i></i>${ui.esc(t)} ${n}</a>`;
   const raiz = ui.el(`<div>
     ${titular('prestamos', ctx, '#/inicio', '', mes)}
-    ${heroe({ etiqueta: 'Cartera', valor: cartera.valor, cajas: [
+    ${heroe({ etiqueta: 'Cartera', valor: cartera.valor, ilustracion: 'documento', ayudaTexto: cartera.provisional ? 'La cartera sale "por confirmar" porque hay préstamos del Excel sin tasa o sin fecha. Cuando se confirmen, aquí sale el número.' : '', cajas: [
       ['Ganancia del mes', intereses, 'mas'],
       ['Presté', prestamos.reduce((s, p) => s + p.capital, 0), 'menos'],
       ['Cobré capital', estado.pagos.length || abonos.length ? capital : 'Sin datos', 'mas'],
     ] }, ctx)}
-    ${cartera.provisional ? `<p class="fran-nota">Capital anotado: ${dinero.formatear(cartera.r.capitalEnCalle)}</p>` : ''}
+    ${cartera.provisional ? `<div class="fran-renglon fran-renglon--dato">${icono3d('recibo', 'fran-3d--40')}<span class="fran-renglon__texto"><span>Capital anotado: <b>${dinero.formatear(cartera.r.capitalEnCalle)}</b></span></span></div>` : ''}
     ${renglonSoloIntereses(ctx)}
     <div class="fran-pastillas">
       ${c.por_confirmar ? pastilla('Por confirmar', c.por_confirmar, 'gris') : ''}
@@ -810,13 +838,13 @@ function renderPrestamos(contenedor, ctx, redibujar) {
       ${c.solo_intereses ? pastilla('Solo intereses', c.solo_intereses, 'gris') : ''}
     </div>
     <div class="fran-accesos">
-      <a href="#/clientes"><span class="fran-cuadro fran-cuadro--40" aria-hidden="true">👥</span>Clientes</a>
-      <a href="#/agenda"><span class="fran-cuadro fran-cuadro--40" aria-hidden="true">⏰</span>Agenda de cobros</a>
-      <a href="#/libro/prestamos/tabla" class="fran-accesos__ancho"><span class="fran-cuadro fran-cuadro--40" aria-hidden="true">📋</span>Tabla de préstamos, como en el Excel</a>
+      <a href="#/clientes">${icono3d('personas', 'fran-3d--40')}Clientes<i class="fran-ajuste__flecha" aria-hidden="true"></i></a>
+      <a href="#/agenda">${icono3d('calendario', 'fran-3d--40')}Agenda de cobros<i class="fran-ajuste__flecha" aria-hidden="true"></i></a>
+      <a href="#/libro/prestamos/tabla" class="fran-accesos__ancho">${icono3d('tabla', 'fran-3d--40')}Tabla de préstamos, como en el Excel<i class="fran-ajuste__flecha" aria-hidden="true"></i></a>
     </div>
-    <p class="fran-seccion">Movimientos del mes</p>
+    ${seccion('Movimientos del mes', 'grafica')}
     ${avisoSinDetalle(delMes(lista, mes))}
-    <div class="fran-lista">${movimientos.map((x) => fila({ ui, icono: x.icono, titulo: x.titulo, sub: x.sub, derecha: `${x.valor < 0 ? '−' : '+'}${dinero.formatear(Math.abs(x.valor))}`, clase: x.valor < 0 ? 'fran-menos' : 'fran-mas', ruta: x.ruta })).join('') || vacioConSalto(lista, ctx, 'No hay movimientos en este mes.')}</div>
+    <div class="fran-lista fran-lista--tarjetas">${movimientos.map((x) => fila({ ui, icono: x.icono, icono3: x.valor < 0 ? 'billete' : 'recibo', titulo: x.titulo, sub: x.sub, derecha: `${x.valor < 0 ? '−' : '+'}${dinero.formatear(Math.abs(x.valor))}`, clase: x.valor < 0 ? 'fran-menos' : 'fran-mas', ruta: x.ruta })).join('') || vacioConSalto(lista, ctx, 'No hay movimientos en este mes.')}</div>
   </div>`);
   conectarMes(raiz, mes, ctx, redibujar);
   contenedor.append(raiz);
@@ -836,7 +864,7 @@ function renderProductos(contenedor, ctx, redibujar) {
   const inventario = lista.filter((a) => a.tipo === 'gasto' && a.categoria === 'Inventario sin vender');
   const inversiones = lista.filter((a) => a.tipo === 'gasto' && a.categoria === 'Inversiones');
   const vendido = deTipo(lista, 'ingreso').sort((a, b) => b.fecha.localeCompare(a.fecha));
-  const plegado = (icono, titulo, sub, total, cuerpo) => `<details class="fran-tachados fran-prestado-pension"><summary><span class="fran-cuadro fran-cuadro--40" aria-hidden="true">${icono}</span><span class="fran-renglon__texto"><span>${ui.esc(titulo)}</span><small>${ui.esc(sub)}</small></span><b class="numero">${dinero.formatear(total)}</b></summary><div class="fran-lista">${cuerpo}</div></details>`;
+  const plegado = (icono, titulo, sub, total, cuerpo) => `<details class="fran-tachados fran-prestado-pension"><summary>${icono3dDe(icono, 'fran-3d--40')}<span class="fran-renglon__texto"><span>${ui.esc(titulo)}</span><small>${ui.esc(sub)}</small></span><b class="numero">${dinero.formatear(total)}</b></summary><div class="fran-lista">${cuerpo}</div></details>`;
   const filas = (l, signo) => l.map((a) => fila({ ui, ver: a.id, icono: iconoDe(a.categoria), titulo: (a.descripcion || a.categoria).split(' · ')[0], sub: [a.textoFecha || fechas.formatear(a.fecha), a.costo ? `costó ${dinero.formatear(a.costo)} · ganancia ${dinero.formatear(a.valor - a.costo)}` : ''].filter(Boolean).join(' · '), derecha: `${signo}${dinero.formatear(a.valor)}`, clase: signo === '+' ? 'fran-mas' : '' })).join('');
   const raiz = ui.el(`<div>
     ${titular('productos', ctx, '#/inicio', '', mes)}
@@ -872,18 +900,18 @@ function renderPension(contenedor, ctx) {
     <button type="button" id="fran-tasa" class="fran-pildora">Compré a ${dinero.formatear(p.tasa)} ✏️</button>
     <form id="fran-tasa-form" class="fran-tasa oculto"><input name="tasa" inputmode="numeric" value="${ui.esc(p.tasa)}" aria-label="Tasa del día"><button class="boton boton--primario">Guardar</button></form>
     ${p.cuentas.length ? `<details class="fran-tachados fran-prestado-pension">
-      <summary><span class="fran-cuadro fran-cuadro--40" aria-hidden="true">💵</span><span class="fran-renglon__texto"><span>Dinero en dólares</span><small>${ui.esc(String(Math.round(usdTotal * 100) / 100).replace('.', ','))} USD · comprados a ${dinero.formatear(p.tasa)}${hoyDolar.fuente === 'internet' ? ` · hoy valen ${dinero.formatear(pesosDolares + diferenciaDolar)}` : ''}</small></span><b class="numero">${dinero.formatear(pesosDolares)}</b></summary>
+      <summary>${icono3d('billete', 'fran-3d--40')}<span class="fran-renglon__texto"><span>Dinero en dólares</span><small>${ui.esc(String(Math.round(usdTotal * 100) / 100).replace('.', ','))} USD · comprados a ${dinero.formatear(p.tasa)}${hoyDolar.fuente === 'internet' ? ` · hoy valen ${dinero.formatear(pesosDolares + diferenciaDolar)}` : ''}</small></span><b class="numero">${dinero.formatear(pesosDolares)}</b></summary>
       <div class="fran-lista">${p.cuentas.map((c) => filaPension({ icono: '💵', titulo: c.nombre, pesos: Math.round(c.usd * p.tasa), usd: c.usd }, ctx)).join('')}</div>
     </details>` : ''}
     ${otrosPropios.map((o) => {
       // Con descripción (como el carro), el renglón se abre al tocarlo.
-      const cabeza = `<span class="fran-cuadro fran-cuadro--40" aria-hidden="true">${/carro/i.test(o.nombre) ? '🚗' : '👛'}</span><span class="fran-renglon__texto"><span>${ui.esc(o.nombre)}</span>${o.nota || o.detalle ? `<small>${ui.esc(o.nota || 'Toca para ver la descripción')}</small>` : ''}</span><b class="numero">${dinero.formatear(o.cop)}</b>`;
+      const cabeza = `${icono3d(/carro/i.test(o.nombre) ? 'carro' : 'billetera', 'fran-3d--40')}<span class="fran-renglon__texto"><span>${ui.esc(o.nombre)}</span>${o.nota || o.detalle ? `<small>${ui.esc(o.nota || 'Toca para ver la descripción')}</small>` : ''}</span><b class="numero">${dinero.formatear(o.cop)}</b>`;
       return o.detalle
         ? `<details class="fran-tachados fran-prestado-pension"><summary>${cabeza}</summary><p class="fran-pension-detalle">${ui.esc(o.detalle)}</p></details>`
         : `<div class="fran-tachados fran-prestado-pension fran-pension-fija">${cabeza}</div>`;
     }).join('')}
     ${prestados.length ? `<details class="fran-tachados fran-prestado-pension">
-      <summary><span class="fran-cuadro fran-cuadro--40" aria-hidden="true">🤝</span><span class="fran-renglon__texto"><span>Prestado de la pensión</span><small>Toca para ver a quién</small></span><b class="numero">${dinero.formatear(prestados.reduce((s, o) => s + o.cop, 0))}</b></summary>
+      <summary>${icono3d('manos', 'fran-3d--40')}<span class="fran-renglon__texto"><span>Prestado de la pensión</span><small>Toca para ver a quién</small></span><b class="numero">${dinero.formatear(prestados.reduce((s, o) => s + o.cop, 0))}</b></summary>
       <div class="fran-lista">${prestados.map((o) => filaPension({ icono: esDelNegocio(o) ? '🏦' : '🤝', titulo: esDelNegocio(o) ? 'Lo debe el negocio de préstamos' : o.nombre.replace(/^Prestado a /i, ''), sub: esDelNegocio(o) ? 'Lorena lo devolvió y se volvió a prestar. El negocio se lo debe a la pensión.' : o.nota, pesos: o.cop }, ctx)).join('')}</div>
     </details>` : ''}
     ${!p.cuentas.length ? '<p class="fran-vacio">Todavía no están tus cuentas en este aparato.</p>' : ''}
@@ -905,7 +933,7 @@ function renderPension(contenedor, ctx) {
 function filaPension({ icono, titulo: t, sub = '', pesos, usd = null }, ctx) {
   const { ui, dinero } = ctx;
   return `<div class="fran-fila">
-    <span class="fran-ico">${ui.esc(icono)}</span>
+    ${icono3dDe(icono)}
     <span class="fran-fila__texto"><strong>${ui.esc(t)}</strong>${sub ? `<small>${ui.esc(sub)}</small>` : ''}</span>
     <span class="fran-fila__valor fran-fila__valor--doble"><span class="numero">${dinero.formatear(pesos)}</span>${usd !== null ? `<small class="numero">${ui.esc(String(usd).replace('.', ','))} USD</small>` : ''}</span>
   </div>`;
@@ -990,7 +1018,7 @@ function renderGraficos(contenedor, id, ctx) {
     ${avisoSinDetalle(m)}
     ${total ? `<div class="fran-grafico fran-grafico--leyenda">${dona(grupos, total, null, coloresDe(vista.tipo))}<div class="fran-grafico__leyenda">${grupos.map(([n, v], i) => `<p><i style="border-color:${coloresDe(vista.tipo)[i % 8]}"></i><span>${ui.esc(n)}</span><b class="numero">${pct(v)}%</b></p>`).join('')}</div></div>` : vacioConSalto(deTipo(lista, vista.tipo), ctx, `No hay ${vista.tipo === 'ingreso' ? 'ingresos' : 'gastos'} en este mes.`)}
     <div class="fran-lista">${filas.map(([cat, v], i) => `<a href="#/libro/${id}/categoria/${vista.tipo}/${encodeURIComponent(cat)}" class="fran-barra-fila">
-      <span class="fran-ico">${ui.esc(iconoDe(cat))}</span>
+      ${icono3dDe(cat)}
       <span class="fran-barra-fila__c">
         <span class="fran-barra-fila__l"><strong>${ui.esc(cat)}</strong><span class="numero ${vista.tipo === 'ingreso' ? 'fran-mas' : 'fran-menos'}">${dinero.formatear(v)}</span></span>
         <span class="fran-barra-fila__l"><span class="fran-barra" style="width:${Math.max(1.5, (v / filas[0][1]) * 80)}%;background:${coloresDe(vista.tipo)[Math.min(i, 4)]}"></span><small>${pct(v)}%</small></span>
@@ -1049,7 +1077,7 @@ function verAsiento(contenedor, visto, id, volver, ctx) {
   const NOMBRE_TIPO = { gasto: 'Gasto', ingreso: 'Ingreso', abono: 'Abono a capital', transferencia: 'Transferencia', uso: 'Uso', retiro: 'Saqué para mí' };
   const raiz = ui.el(`<div class="fran-detalles">
     <header class="fran-titulo"><button type="button" class="fran-titulo__atras" data-volver aria-label="Volver">‹</button><h1>Detalles</h1></header>
-    <div class="fran-detalles__cabeza"><span class="fran-ico">${ui.esc(iconoDe(a.categoria))}</span><strong>${ui.esc(a.categoria)}</strong></div>
+    <div class="fran-detalles__cabeza">${icono3dDe(a.categoria, 'fran-3d--64')}<strong>${ui.esc(a.categoria)}</strong></div>
     <dl>
       <dt>Tipo</dt><dd>${ui.esc(NOMBRE_TIPO[a.tipo] || a.tipo)}</dd>
       <dt>Importe</dt><dd class="numero">${dinero.formatear(a.valor)}</dd>
@@ -1115,7 +1143,7 @@ function renderDetalle(contenedor, id, tituloDetalle, lista, atras, ctx, conMes 
         <button type="button" data-orden="fecha" class="${vista.orden === 'fecha' ? 'activo' : ''}">Ordenar por fecha</button>
       </div>
       <div class="fran-lista">${ordenada.map((a) => `<div class="fran-barra-fila" role="button" tabindex="0" data-ver="${ui.esc(a.id)}">
-        <span class="fran-ico">${ui.esc(iconoDe(a.categoria))}</span>
+        ${icono3dDe(a.categoria)}
         <span class="fran-barra-fila__c">
           <span class="fran-barra-fila__l"><strong>${ui.esc(a.descripcion || a.categoria)}</strong><span class="numero ${a.tipo === 'gasto' ? 'fran-menos' : 'fran-mas'}">${dinero.formatear(a.valor)}</span></span>
           <span class="fran-barra-fila__l"><span class="fran-barra" style="width:${Math.max(1.5, (a.valor / maximo) * 80)}%"></span><small>${(total ? (a.valor / total) * 100 : 0).toFixed(2).replace('.', ',')}%</small></span>
@@ -1203,25 +1231,31 @@ function renderInformes(contenedor, id, ctx) {
   const restante = presupuesto - gastosMes;
   const raiz = ui.el(`<div>
     ${titular(id, ctx, `#/libro/${id}`, 'Informes')}
-    <div class="fran-hero fran-hero--centro"><small>Saldo ${anio === 'todo' ? 'total' : anio}</small><strong class="numero">${dinero.formatear(ti - tg)}</strong>
-      <div class="fran-hero__par"><span><small>Gastos</small><b class="numero">${dinero.formatear(tg)}</b></span><span><small>Ingresos</small><b class="numero">${dinero.formatear(ti)}</b></span></div>
+    <div class="fran-heroe fran-heroe--informes">
+      ${icono3d('grafica', 'fran-heroe__3d fran-heroe__3d--izq')}
+      <span class="fran-heroe__etiqueta"><small>Saldo ${anio === 'todo' ? 'total' : anio}</small></span>
+      <strong class="fran-heroe__valor">${conSigno(ti - tg, dinero)}</strong>
+      <span class="fran-heroe__cajas"><span>${icono3d('billetera', 'fran-3d--28')}<span class="fran-heroe__caja-texto"><small>Gastos</small><span class="numero">${dinero.formatear(tg)}</span></span></span><span>${icono3d('grafica', 'fran-3d--28')}<span class="fran-heroe__caja-texto"><small>Ingresos</small><span class="numero">${dinero.formatear(ti)}</span></span></span></span>
     </div>
     <div class="fran-anios">
       <button type="button" data-anio="todo" class="${anio === 'todo' ? 'activo' : ''}">Todo</button>
       ${anios.map((a) => `<button type="button" data-anio="${a}" class="${a === anio ? 'activo' : ''}">${a}</button>`).join('')}
     </div>
-    <table class="fran-tabla"><thead><tr><th>${anio === 'todo' ? 'Año' : 'Mes'}</th><th>Gastos</th><th>Ingresos</th><th>Saldo</th></tr></thead><tbody>${filas}</tbody></table>
-    <p class="fran-nota">Toca ${anio === 'todo' ? 'un año' : 'un mes'} para ver su detalle.</p>
+    <div class="fran-tabla-premium">
+      <div class="fran-tabla-premium__cabeza"><span>${icono3d('calendario', 'fran-3d--28')}${anio === 'todo' ? 'Año' : 'Mes'}</span><span>${icono3d('billetera', 'fran-3d--28')}Gastos</span><span>${icono3d('grafica', 'fran-3d--28')}Ingresos</span><span>${icono3d('tabla', 'fran-3d--28')}Saldo</span></div>
+      ${claves.map((k) => { const m2 = totalLista.filter((a) => a.fecha.startsWith(k)); const g = sumar(deTipo(m2, 'gasto')); const i2 = sumar(deTipo(m2, 'ingreso')); if (!g && !i2) return ''; const nombre = anio === 'todo' ? k : fechas.nombreMes(Number(k.slice(5)), true); return `<button type="button" class="fran-tabla-premium__fila" data-fila="${ui.esc(k)}"><span class="fran-tabla-premium__mes">${ui.esc(nombre)} <i>›</i></span><span class="numero">${dinero.formatear(g)}</span><span class="numero">${dinero.formatear(i2)}</span><span class="numero ${i2 - g < 0 ? 'fran-menos' : ''}">${dinero.formatear(Math.abs(i2 - g))}</span><i class="fran-ajuste__flecha" aria-hidden="true"></i></button>`; }).join('')}
+    </div>
+    <div class="fran-renglon fran-renglon--dato">${icono3d('info', 'fran-3d--28')}<span class="fran-renglon__texto"><span>Toca ${anio === 'todo' ? 'un año' : 'un mes'} para ver su detalle.</span></span></div>
     ${id === 'personal' ? `
-      <p class="fran-seccion">Presupuesto mensual</p>
+      ${seccion('Presupuesto mensual', 'grafica')}
       ${selectorMes(mes, ctx)}
       <div class="fran-tarjeta">
         <small>Presupuesto</small><strong class="numero">${dinero.formatear(presupuesto)}</strong>
         <small>Gastos ${dinero.formatear(gastosMes)} · Restante ${dinero.formatear(restante)}</small>
         <form id="fran-presu" class="fran-tasa"><input name="presu" inputmode="numeric" placeholder="Cambiar presupuesto" aria-label="Presupuesto mensual"><button class="boton boton--pequeno boton--secundario">Guardar</button></form>
       </div>
-      <a class="fran-acceso" href="#/libro/personal/calendario">📅 Ver calendario</a>` : ''}
-    ${id === 'prestamos' ? '<a class="fran-acceso" href="#/libro/prestamos/personas">💵 Quién me pagó</a><a class="fran-acceso" href="#/caja">🧾 Caja efectivo y virtual</a>' : ''}
+      ${renglon({ ruta: '#/libro/personal/calendario', icono: '📅', icono3: 'calendario', texto: 'Ver calendario' }, ui)}` : ''}
+    ${id === 'prestamos' ? `${renglon({ ruta: '#/libro/prestamos/personas', icono: '💵', icono3: 'personas', texto: 'Quién me pagó' }, ui)}${renglon({ ruta: '#/caja', icono: '🧾', icono3: 'recibo', texto: 'Caja efectivo y virtual' }, ui)}` : ''}
   </div>`);
   raiz.querySelectorAll('[data-anio]').forEach((b) => b.addEventListener('click', () => { vista.anio = b.dataset.anio; redibujar(); }));
   raiz.querySelectorAll('[data-fila]').forEach((f) => f.addEventListener('click', () => {
@@ -1319,10 +1353,10 @@ function renderAgregar(contenedor, id, clave, ctx) {
       ${esTransfer ? `
         <p class="fran-seccion">Sale de</p>${chips('cuenta', CUENTAS, 'Efectivo', ui)}
         <p class="fran-seccion">Entra a</p>${chips('destino', CUENTAS, 'Nequi propio', ui)}` : `
-        <div class="fran-iconos">${categorias.map((c, i) => `<button type="button" class="${i >= 11 ? 'fran-mas-cat oculto' : ''}" data-cat="${ui.esc(c)}"><span>${ui.esc(iconoDe(c))}</span><small>${ui.esc(c.replace(' públicos', ''))}</small></button>`).join('')}
+        <div class="fran-iconos">${categorias.map((c, i) => `<button type="button" class="${i >= 11 ? 'fran-mas-cat oculto' : ''}" data-cat="${ui.esc(c)}"><span>${icono3dDe(c, 'fran-3d--48')}</span><small>${ui.esc(c.replace(' públicos', ''))}</small></button>`).join('')}
           <button type="button" data-ver-mas><span>＋</span><small>Más</small></button>
-          <button type="button" class="fran-mas-cat oculto" data-nueva><span>✎</span><small>Nueva</small></button>
-          <a class="fran-mas-cat oculto" href="#/ajustes/categorias"><span>⚙️</span><small>Categorías</small></a></div>`}
+          <button type="button" class="fran-mas-cat oculto" data-nueva><span>${icono3dDe('✎', 'fran-3d--48')}</span><small>Nueva</small></button>
+          <a class="fran-mas-cat oculto" href="#/ajustes/categorias"><span>${icono3dDe('⚙️', 'fran-3d--48')}</span><small>Categorías</small></a></div>`}
       <input type="file" class="oculto" name="foto" accept="image/*" capture="environment" aria-hidden="true" tabindex="-1">
       <div class="fran-agregar__pie">
         ${esTransfer ? '' : `<div class="fran-escribir" data-rapido>
@@ -1521,7 +1555,7 @@ function renderRegistrar(contenedor, params, ctx) {
     contenedor.append(ui.el(`<div class="fran-registrar">
       <header class="fran-titulo"><a href="${elegido ? `#/cliente${conCliente}` : '#/libro/prestamos'}" class="fran-titulo__atras" aria-label="Volver">‹</a><h1>¿Qué vas a anotar?</h1></header>
       <div class="fran-cuatro">${TIPOS_PRESTAMO.map(([k, ic, t, d]) => `<a href="#/libro/prestamos/registrar/${k}${conCliente}" class="fran-cuatro__cuadro">
-        <span class="fran-cuadro fran-cuadro--grande" aria-hidden="true">${ic}</span>
+        ${icono3dDe(ic, 'fran-3d--64')}
         <span class="fran-cuatro__nombre">${ui.esc(t)}</span>
         <small>${ui.esc(d)}</small>
       </a>`).join('')}</div>
@@ -1632,7 +1666,7 @@ function verCobro(contenedor, m, cobros, cliente, volver, ctx) {
   const nombreInteres = prestamo && prestamo.modalidad === 'capital_primero' ? 'Ganancia' : 'A intereses';
   const raiz = ui.el(`<div class="fran-detalles">
     <header class="fran-titulo"><button type="button" class="fran-titulo__atras" data-volver aria-label="Volver">‹</button><h1>Detalles</h1></header>
-    <div class="fran-detalles__cabeza"><span class="fran-ico">${m.perdon ? '🎁' : '↩️'}</span><strong>${ui.esc(m.titulo)}</strong></div>
+    <div class="fran-detalles__cabeza">${icono3dDe(m.perdon ? '🎁' : '↩️', 'fran-3d--64')}<strong>${ui.esc(m.titulo)}</strong></div>
     <dl>
       <dt>Cliente</dt><dd>${ui.esc(cliente.nombre)}</dd>
       <dt>Importe</dt><dd class="numero">${dinero.formatear(m.valor)}</dd>
@@ -1705,7 +1739,7 @@ function renglonSoloIntereses(ctx) {
   const { ui, dinero } = ctx;
   const s = soloInteresesDe(ctx);
   if (!s.total) return '';
-  return renglon({ ruta: '#/libro/prestamos/solo-intereses', icono: '💸', texto: 'Solo deben intereses', sub: `${s.filas.length} ${s.filas.length === 1 ? 'persona' : 'personas'} · no se suma a la cartera`, derecha: `<span class="fran-renglon__valor numero">${dinero.formatear(s.total)}</span>` }, ui);
+  return renglon({ ruta: '#/libro/prestamos/solo-intereses', icono: '💸', icono3: 'porcentaje', texto: 'Solo deben intereses', sub: `${s.filas.length} ${s.filas.length === 1 ? 'persona' : 'personas'} · no se suma a la cartera`, derecha: `<span class="fran-renglon__valor numero">${dinero.formatear(s.total)}</span>` }, ui);
 }
 
 function renderSoloIntereses(contenedor, ctx) {
@@ -1714,8 +1748,8 @@ function renderSoloIntereses(contenedor, ctx) {
   const { filas, total } = soloInteresesDe(ctx);
   const dibujar = () => { contenedor.innerHTML = ''; renderSoloIntereses(contenedor, ctx); };
   // Quien tiene préstamo en Fran: al tocar el nombre va a su ficha; "Abonó" registra el pago de intereses.
-  const filaCliente = (f) => `<div class="fran-fila"><a class="fran-fila__enlace" href="${ui.esc(f.ruta)}"><span class="fran-ico">💸</span><span class="fran-fila__texto"><strong>${ui.esc(f.nombre)}</strong><small>Ya devolvió el capital</small></span></a><span class="fran-fila__valor numero">${dinero.formatear(f.valor)}</span><a class="fran-boton-secundario fran-boton--44" href="#/libro/prestamos/registrar/interes/${encodeURIComponent(f.clienteId)}">Abonó</a></div>`;
-  const filaSuelta = (f) => `<div class="fran-fila"><span class="fran-ico">💸</span><span class="fran-fila__texto"><strong>${ui.esc(f.nombre)}</strong><small>${ui.esc([f.suelto.nota, f.suelto.pagado ? `Ya pagó ${dinero.formatear(f.suelto.pagado)}` : ''].filter(Boolean).join(' · '))}</small></span><span class="fran-fila__valor numero">${dinero.formatear(f.valor)}</span><button type="button" class="fran-boton-secundario fran-boton--44" data-pago="${ui.esc(f.suelto.id)}">Abonó</button></div>`;
+  const filaCliente = (f) => `<div class="fran-fila"><a class="fran-fila__enlace" href="${ui.esc(f.ruta)}">${icono3dDe('💸')}<span class="fran-fila__texto"><strong>${ui.esc(f.nombre)}</strong><small>Ya devolvió el capital</small></span></a><span class="fran-fila__valor numero">${dinero.formatear(f.valor)}</span><a class="fran-boton-secundario fran-boton--44" href="#/libro/prestamos/registrar/interes/${encodeURIComponent(f.clienteId)}">Abonó</a></div>`;
+  const filaSuelta = (f) => `<div class="fran-fila">${icono3dDe('💸')}<span class="fran-fila__texto"><strong>${ui.esc(f.nombre)}</strong><small>${ui.esc([f.suelto.nota, f.suelto.pagado ? `Ya pagó ${dinero.formatear(f.suelto.pagado)}` : ''].filter(Boolean).join(' · '))}</small></span><span class="fran-fila__valor numero">${dinero.formatear(f.valor)}</span><button type="button" class="fran-boton-secundario fran-boton--44" data-pago="${ui.esc(f.suelto.id)}">Abonó</button></div>`;
   const raiz = ui.el(`<div>
     ${titular('prestamos', ctx, '#/libro/prestamos', 'Solo deben intereses')}
     ${heroe({ etiqueta: 'Intereses por cobrar', valor: total, ayudaTexto: 'Son personas que ya no deben capital, solo intereses. Esta plata no se suma a tu cartera ni a tu plata propia: cuando la paguen, entra como ganancia.' }, ctx)}
@@ -1881,7 +1915,7 @@ function renderFicha(contenedor, id, ctx) {
   const editar = `#/cliente/${encodeURIComponent(id)}/editar`;
   const raiz = ui.el(`<div>
     ${titular('prestamos', ctx, '#/clientes', 'Cliente')}
-    <div class="fran-cliente">
+    <div class="fran-cliente fran-tarjeta">
       <span class="fran-avatar">${ui.esc(cliente.nombre.charAt(0).toUpperCase())}</span>
       <div><strong>${ui.esc(cliente.nombre)}</strong>${conTexto ? `<small>${ui.esc(`Acuerdo: ${conTexto.acuerdoTexto}`)}</small>` : (textoAcuerdo ? `<small>${ui.esc(textoAcuerdo)}</small>` : '')}</div>
       ${r.soloIntereses ? '<span class="fran-solo">Solo intereses</span>' : ui.chipEstado(r.estado)}
@@ -1890,12 +1924,12 @@ function renderFicha(contenedor, id, ctx) {
     ${corridos.length ? `<div class="fran-corrido"><p class="fran-corrido__titulo">Intereses de estos días</p>${corridos.map((x) => `<div class="fran-corrido__fila"><span><span>${ui.esc(`Préstamo del ${fechas.formatear(x.fecha)} · ${dinero.formatear(x.capitalPendiente)}`)}</span><small>${ui.esc(`${dinero.formatear(x.interesDelMes)} al mes · ${dinero.formatear(x.interesDiario)} por día · ${x.diasCorridos} ${x.diasCorridos === 1 ? 'día' : 'días'} desde el ${fechas.formatear(x.corridoDesde)}`)}</small></span><b class="numero">${dinero.formatear(x.interesCorrido)}</b></div>`).join('')}</div>` : ''}
     <div class="fran-progreso"><span style="width:${pct}%"></span></div>
     <p class="fran-nota">${abonosPlan && !recuperado ? `Abono a capital anotado: ${dinero.formatear(abonosPlan)}.` : `Recuperado ${dinero.formatear(recuperado)} de ${dinero.formatear(r.capitalPrestado)} de capital.`}${capitalPrimero ? (r.capitalPendiente === 0 ? ' Ya recuperó todo el capital: lo que pague es ganancia.' : ' Cuando llegue a 100%, todo lo que pague es ganancia.') : ''}</p>
-    <p class="fran-seccion">Historial</p>
+    ${seccion('Historial', 'lista')}
     <div class="fran-lista">${historial.map((h) => fila({ ui, icono: h.icono, titulo: h.t, sub: h.sinFecha ? `Fecha por confirmar (${h.sinFecha})` : (h.textoFecha || fechas.formatear(h.f)), derecha: h.v, clase: h.c, ruta: h.ruta, ver: h.ver })).join('') || '<p class="fran-vacio">Sin movimientos.</p>'}</div>
     <div class="fran-tres">
-      <a class="azul" href="${tel ? `tel:+${tel}` : editar}">📞 ${tel ? 'Llamar' : 'Poner teléfono'}</a>
-      <a class="verde" href="${tel ? `https://wa.me/${tel}` : editar}"${tel ? ' target="_blank" rel="noopener"' : ''}>💬 WhatsApp</a>
-      <a class="gris" href="#/libro/prestamos/registrar/acuerdo/${encodeURIComponent(id)}">⏰ Recordar</a>
+      <a href="${tel ? `tel:+${tel}` : editar}">${icono3d('telefono', 'fran-3d--40')}${tel ? 'Llamar' : 'Poner teléfono'}</a>
+      <a href="${tel ? `https://wa.me/${tel}` : editar}"${tel ? ' target="_blank" rel="noopener"' : ''}>${icono3d('chat', 'fran-3d--40')}WhatsApp</a>
+      <a href="#/libro/prestamos/registrar/acuerdo/${encodeURIComponent(id)}">${icono3d('reloj', 'fran-3d--40')}Recordar</a>
     </div>
     <a class="fran-enlace-suave" href="${editar}">Editar datos del cliente</a>
   </div>`);
@@ -2004,7 +2038,7 @@ function renderCredito(contenedor, id, ctx) {
     ${heroe({ etiqueta: 'Le debo al banco', valor: -e.deboBanco, ayudaTexto: 'Es un negocio aparte: no entra a tus finanzas personales ni a la cartera del negocio de préstamos. Lo que cobres de intereses de esta plata sirve para pagarle al banco.', cajas: [['En el banco', e.enBanco], ['Prestado de aquí', e.prestado], ['Intereses cobrados', e.ganado, e.ganado ? 'mas' : '']] }, ctx)}
     <p class="fran-nota">Me desembolsaron ${dinero.formatear(c.monto)} el ${ui.esc(fechas.formatear(c.fecha))}${c.cuenta ? ` en ${ui.esc(c.cuenta)}` : ''}.${c.nota ? ` ${ui.esc(c.nota)}` : ''}</p>
     ${c.plan && c.plan.length ? `<details class="fran-tachados fran-prestado-pension" open><summary><span class="fran-cuadro fran-cuadro--40" aria-hidden="true">📝</span><span class="fran-renglon__texto"><span>Lo que pienso hacer</span><small>Todavía no está hecho</small></span></summary><div class="fran-lista">${c.plan.map((x) => `<div class="fran-liquidez__fila"><span>${ui.esc(x.texto)}</span>${x.valor ? conSigno(x.valor, dinero) : ''}</div>`).join('')}</div></details>` : ''}
-    <div class="fran-cuatro fran-cuatro--chico">${Object.entries(TIPOS_CREDITO).map(([k, [ic, t]]) => `<button type="button" class="fran-cuatro__cuadro" data-credito-nuevo="${k}"><span class="fran-cuadro fran-cuadro--40" aria-hidden="true">${ic}</span><span class="fran-cuatro__nombre">${ui.esc(t)}</span></button>`).join('')}</div>
+    <div class="fran-cuatro fran-cuatro--chico">${Object.entries(TIPOS_CREDITO).map(([k, [ic, t]]) => `<button type="button" class="fran-cuatro__cuadro" data-credito-nuevo="${k}">${icono3dDe(ic, 'fran-3d--48')}<span class="fran-cuatro__nombre">${ui.esc(t)}</span></button>`).join('')}</div>
     <form class="fran-campos fran-campos--grande oculto" data-form-credito novalidate>
       <label><small data-titulo>¿Quién o qué?</small><input name="concepto" autocomplete="off" placeholder="Nombre o detalle"></label>
       <label class="fran-campo-valor"><small>Valor</small><input name="valor" inputmode="numeric" autocomplete="off" placeholder="0"></label>
@@ -2012,8 +2046,8 @@ function renderCredito(contenedor, id, ctx) {
       <label><small>Fecha</small><input type="date" name="fecha" value="${ui.esc(hoy)}"></label>
       <button class="fran-boton-principal fran-guardar">Guardar</button>
     </form>
-    <p class="fran-seccion">Movimientos del crédito</p>
-    <div class="fran-lista">${movs.map((m) => { const [ic, t, sg] = TIPOS_CREDITO[m.tipo] || ['•', m.tipo, -1]; return `<div class="fran-fila"><span class="fran-ico">${ic}</span><span class="fran-fila__texto"><strong>${ui.esc(m.concepto || t)}</strong><small>${ui.esc(`${t} · ${fechas.formatear(m.fecha)}`)}</small></span><span class="fran-fila__valor numero ${sg < 0 ? 'fran-menos' : 'fran-mas'}">${dinero.formatear(m.valor)}</span><button type="button" class="fran-boton-secundario fran-boton--44" data-quitar-credito="${ui.esc(m.id)}">Quitar</button></div>`; }).join('') || '<p class="fran-vacio">Todavía no hay movimientos. La plata está completa en el banco.</p>'}</div>
+    ${seccion('Movimientos del crédito', 'grafica')}
+    <div class="fran-lista">${movs.map((m) => { const [ic, t, sg] = TIPOS_CREDITO[m.tipo] || ['•', m.tipo, -1]; return `<div class="fran-fila">${icono3dDe(ic)}<span class="fran-fila__texto"><strong>${ui.esc(m.concepto || t)}</strong><small>${ui.esc(`${t} · ${fechas.formatear(m.fecha)}`)}</small></span><span class="fran-fila__valor numero ${sg < 0 ? 'fran-menos' : 'fran-mas'}">${dinero.formatear(m.valor)}</span><button type="button" class="fran-boton-secundario fran-boton--44" data-quitar-credito="${ui.esc(m.id)}">Quitar</button></div>`; }).join('') || '<p class="fran-vacio">Todavía no hay movimientos. La plata está completa en el banco.</p>'}</div>
   </div>`);
   const form = raiz.querySelector('[data-form-credito]');
   let tipo = 'presto';
@@ -2113,7 +2147,7 @@ function renderLiquidez(contenedor, ctx) {
     ${heroe({ etiqueta: 'Plata que puedo mover hoy', valor: total, ayudaTexto: 'Suma la plata que de verdad está disponible: efectivo, lo que queda en las cuentas, la plata del negocio tecnológico y los dólares de la pensión a la tasa de hoy. No cuenta lo prestado, el carro ni la plata del crédito del banco, y no resta lo que debes en tarjetas.' }, ctx)}
     <p class="fran-nota">Dólar: ${dinero.formatear(tasa.valor)} ${tasa.fuente === 'internet' ? `· tasa de hoy (${ui.esc(fechas.formatear(tasa.fecha))})` : '· tasa anotada en la pensión'}</p>
     ${grupos.map((g) => `<details class="fran-tachados fran-liquidez">
-      <summary class="fran-liquidez__cabeza"><span class="fran-cuadro fran-cuadro--40" aria-hidden="true">${g.icono}</span><span>${ui.esc(g.titulo)}<small>Toca para ver el detalle</small></span><b>${conSigno(g.total, dinero)}</b></summary>
+      <summary class="fran-liquidez__cabeza">${icono3dDe(g.icono, 'fran-3d--40')}<span>${ui.esc(g.titulo)}<small>Toca para ver el detalle</small></span><b>${conSigno(g.total, dinero)}</b></summary>
       <div class="fran-lista">${g.filas.map((f) => `<${f.ruta ? `a href="${ui.esc(f.ruta)}"` : 'div'} class="fran-liquidez__fila"><span>${ui.esc(f.texto)}</span>${conSigno(f.valor, dinero)}</${f.ruta ? 'a' : 'div'}>`).join('')}</div>
       ${g.nota ? `<p class="fran-nota">${ui.esc(g.nota)}</p>` : ''}
     </details>`).join('')}
@@ -2137,7 +2171,7 @@ function renderTarjetas(contenedor, ctx) {
     ${titular('personal', ctx, '#/inicio', 'Tarjetas')}
     ${heroe({ etiqueta: 'Debo en tarjetas', valor: -total, ayudaTexto: 'Cada tarjeta parte de lo que se debía en su último extracto (o lo anotado al empezar Fran) y suma lo que pagaste con ella después. Lo que le abonas a la tarjeta lo resta.' }, ctx)}
     ${tarjetas.map((t, i) => `<section class="fran-tarjeta fran-tarjeta-credito">
-      <span class="fran-tarjeta-credito__cabeza"><span class="fran-cuadro fran-cuadro--40" aria-hidden="true">${ICONO(t.nombre)}</span><span class="fran-renglon__texto"><span>${ui.esc(t.nombre)}</span><small>${t.nota ? `${ui.esc(t.nota)}: ${dinero.formatear(t.base)}` : (t.fecha ? `Extracto al ${ui.esc(fechas.formatear(t.fecha))}: ${dinero.formatear(t.base)}` : `Al empezar Fran: ${dinero.formatear(t.base)}`)}${t.pagoHasta ? ` · Pagar antes del ${ui.esc(fechas.formatear(t.pagoHasta))}` : ''}</small></span><b>${conSigno(-t.deudaHoy, dinero)}</b></span>
+      <span class="fran-tarjeta-credito__cabeza">${icono3dDe(ICONO(t.nombre), 'fran-3d--48')}<span class="fran-renglon__texto"><span>${ui.esc(t.nombre)}</span><small>${t.nota ? `${ui.esc(t.nota)}: ${dinero.formatear(t.base)}` : (t.fecha ? `Extracto al ${ui.esc(fechas.formatear(t.fecha))}: ${dinero.formatear(t.base)}` : `Al empezar Fran: ${dinero.formatear(t.base)}`)}${t.pagoHasta ? ` · Pagar antes del ${ui.esc(fechas.formatear(t.pagoHasta))}` : ''}</small></span><b>${conSigno(-t.deudaHoy, dinero)}</b></span>
       ${t.movimientos.length ? `<div class="fran-lista">${t.movimientos.sort((a, b) => b.fecha.localeCompare(a.fecha)).map((a) => fila({ ui, icono: iconoDe(a.categoria), titulo: a.categoria, sub: `${fechas.formatear(a.fecha)}${a.descripcion ? ` · ${a.descripcion}` : ''}`, derecha: `${a.efecto > 0 ? '−' : '+'}${dinero.formatear(Math.abs(a.efecto))}`, clase: a.efecto > 0 ? 'fran-menos' : 'fran-mas' })).join('')}</div>` : '<p class="fran-nota">Sin compras anotadas después de esa fecha.</p>'}
       <button type="button" class="fran-boton-secundario fran-boton--44" data-extracto="${i}">Actualizar con el extracto</button>
       <form class="fran-campos fran-campos--grande oculto" data-form-extracto="${i}" novalidate>
@@ -2231,7 +2265,7 @@ function renderEfectivo(contenedor, ctx) {
       <button class="fran-boton-principal fran-guardar">Guardar</button>
     </form>
     ${grupos.map(([nombre, lista]) => { const suma = lista.reduce((t, f) => t + f.valor, 0); return `<details class="fran-tachados fran-prestado-pension">
-      <summary><span class="fran-cuadro fran-cuadro--40" aria-hidden="true">${ui.esc(lista[0].icono)}</span><span class="fran-renglon__texto"><span>${ui.esc(nombre)}</span><small>${lista.length} ${lista.length === 1 ? 'movimiento' : 'movimientos'} · ${ui.esc(rangoFechas(lista))}</small></span><b>${conSigno(suma, dinero, suma < 0 ? 'menos' : 'mas')}</b></summary>
+      <summary>${icono3dDe(lista[0].icono, 'fran-3d--40')}<span class="fran-renglon__texto"><span>${ui.esc(nombre)}</span><small>${lista.length} ${lista.length === 1 ? 'movimiento' : 'movimientos'} · ${ui.esc(rangoFechas(lista))}</small></span><b>${conSigno(suma, dinero, suma < 0 ? 'menos' : 'mas')}</b></summary>
       <div class="fran-lista">${lista.map((f) => `<div class="fran-fila"><span class="fran-fila__texto"><strong>${ui.esc(f.titulo)}</strong><small>${ui.esc([fechas.formatear(f.fecha), f.sub].filter(Boolean).join(' · '))}</small></span><span class="fran-fila__valor numero ${f.valor < 0 ? 'fran-menos' : 'fran-mas'}">${dinero.formatear(Math.abs(f.valor))}</span>${f.manual ? `<button type="button" class="fran-boton-secundario fran-boton--44" data-quitar="${ui.esc(f.id)}">Quitar</button>` : ''}</div>`).join('')}</div>
     </details>`; }).join('') || '<p class="fran-vacio">Nada en efectivo este mes.</p>'}
   </div>`);
@@ -2399,7 +2433,7 @@ function renderAgenda(contenedor, ctx) {
       ? (x.repite === 'diario' ? (x.desde ? `Desde ${fechas.nombreMes(Number(x.desde.slice(5, 7)), true)} ${Number(x.desde.slice(8))}`.replace(/^Desde (\S+) (\d+)$/, 'Desde $2 $1') : 'Todos los días') : `${x.repite[0].toUpperCase()}${x.repite.slice(1)}`)
       : !x.fecha ? '' : fechaLinda(x.fecha, ctx).replace(/^(.+) · (\S+)$/, '$2 $1');
     return `<div class="fran-fila">
-      <span class="fran-ico${x.repite ? ' fran-ico--verde' : (legal ? ' fran-ico--rojo' : '')}">${icono}</span>
+      ${icono3dDe(icono)}
       <span class="fran-fila__texto"><strong>${ui.esc(x.nombre)}</strong><small>${ui.esc([cuando, x.nota].filter(Boolean).join(' · '))}</small></span>
       <span class="fran-fila__valor numero">${x.monto ? dinero.formatear(x.monto) : ui.esc(x.repite || '—')}</span>
       <button type="button" class="fran-check" data-hecho="${ui.esc(x.id)}" aria-label="Marcar ${ui.esc(x.nombre)} como cobrado">✓</button>
