@@ -621,8 +621,11 @@ function seccionCandado(ctx) {
   return seccion;
 }
 
+const ICONO_3D_YO = { 'Categorías': 'carpeta', 'Recordatorios': 'reloj', 'Transacciones recurrentes': 'repetir', 'Respaldo y exportar Excel': 'nube', 'Face ID': 'candado', 'Nube': 'mundo', 'Instalar en el teléfono': 'celular', 'Acerca de la app': 'info' };
+const icono3dYo = (clave, emoji) => (ICONO_3D_YO[clave] ? `<img class="fran-3d fran-3d--40" src="iconos/3d/${ICONO_3D_YO[clave]}.png" alt="" aria-hidden="true" decoding="async">` : `<span>${emoji}</span>`);
+
 function plegable(icono, texto, seccion, ui) {
-  const caja = ui.el(`<details class="fran-ajuste"${abiertos.has(texto) ? ' open' : ''}><summary><span>${icono}</span>${ui.esc(texto)}</summary></details>`);
+  const caja = ui.el(`<details class="fran-ajuste"${abiertos.has(texto) ? ' open' : ''}><summary>${icono3dYo(texto, icono)}${ui.esc(texto)}<i class="fran-ajuste__flecha" aria-hidden="true"></i></summary></details>`);
   caja.append(seccion);
   caja.dataset.seccion = texto;
   caja.addEventListener('toggle', () => { if (caja.open) abiertos.add(texto); else abiertos.delete(texto); });
@@ -802,12 +805,12 @@ export async function render(contenedor, params, ctx) {
   ultimoSalto = irA || '';
   if (saltar) { abiertos.clear(); abiertos.add(irA); }
   contenedor.append(ui.el(`<header class="fran-titulo"><a href="#/inicio" class="fran-titulo__atras" aria-label="Volver">‹</a><h1>Yo</h1></header>`));
-  const apariencia = ui.el('<button type="button" class="fran-enlace fran-enlace--boton"><span>🎨</span>Apariencia: temas y tamaño de la letra</button>');
+  const apariencia = ui.el('<button type="button" class="fran-enlace fran-enlace--boton fran-enlace--destacado"><img class="fran-3d fran-3d--48" src="iconos/3d/paleta.png" alt="" aria-hidden="true"><span class="fran-renglon__texto"><span>Apariencia</span><small>Temas y tamaño de la letra</small></span><i class="fran-ajuste__flecha" aria-hidden="true"></i></button>');
   apariencia.addEventListener('click', () => abrirApariencia(''));
   contenedor.append(apariencia);
-  contenedor.append(ui.el('<p class="fran-seccion">Ajustes</p>'));
+  contenedor.append(ui.el('<p class="fran-seccion fran-seccion--yo"><img class="fran-3d fran-3d--28" src="iconos/3d/engranaje.png" alt="" aria-hidden="true">Ajustes<i></i></p>'));
   contenedor.append(plegable('⚙️', 'Categorías', seccionCategorias(ctx), ui));
-  contenedor.append(ui.el('<a class="fran-enlace" href="#/libro/pension"><span>💱</span>Moneda COP · tasa USD</a>'));
+  contenedor.append(ui.el('<a class="fran-enlace" href="#/libro/pension"><img class="fran-3d fran-3d--40" src="iconos/3d/monedas.png" alt="" aria-hidden="true">Moneda COP · tasa USD<i class="fran-ajuste__flecha" aria-hidden="true"></i></a>'));
   contenedor.append(plegable('⏰', 'Recordatorios', seccionRecordatorios(ctx), ui));
   contenedor.append(plegable('🔁', 'Transacciones recurrentes', seccionRecurrentes(ctx), ui));
   const respaldo = plegable('☁️', 'Respaldo y exportar Excel', seccionCopia(ctx), ui);
@@ -815,11 +818,11 @@ export async function render(contenedor, params, ctx) {
   respaldo.append(seccionBorrar(ctx));
   contenedor.append(respaldo);
   contenedor.append(plegable('🔒', 'Face ID', seccionCandado(ctx), ui));
-  contenedor.append(ui.el('<p class="fran-seccion">Esta app</p>'));
+  contenedor.append(ui.el('<p class="fran-seccion fran-seccion--yo"><img class="fran-3d fran-3d--28" src="iconos/3d/celular.png" alt="" aria-hidden="true">Esta app<i></i></p>'));
   contenedor.append(plegable('🌐', 'Nube', seccionNube(ctx), ui));
   contenedor.append(plegable('📲', 'Instalar en el teléfono', seccionInstalar(ctx), ui));
   contenedor.append(plegable('ℹ️', 'Acerca de la app', seccionAcerca(ctx), ui));
-  contenedor.append(ui.el(`<p class="fran-version">Versión ${ui.esc(ctx.version || '')}</p>`));
+  contenedor.append(ui.el(`<p class="fran-version"><span class="fran-version__pildora">Versión ${ui.esc(ctx.version || '')}</span></p>`));
   if (saltar) {
     const destino = [...contenedor.querySelectorAll('.fran-ajuste')].find((x) => x.dataset.seccion === irA);
     if (destino) setTimeout(() => destino.scrollIntoView(), 80);

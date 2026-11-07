@@ -11,7 +11,7 @@
 
 import * as ui from './ui.js';
 
-const VERSION_APP = '3.29.2';
+const VERSION_APP = '3.30.0';
 const contenedor = document.getElementById('pantalla');
 
 // ---------- Rutas (sección 7 de la especificación) ----------
@@ -141,6 +141,7 @@ function marcarPestana(nombre, resuelta = null) {
   // Diseño Lila: los libros ya no se pintan de su color; el acento sale del tema (css/lila.css).
   document.documentElement.dataset.libro = libroActual;
   document.body.classList.toggle('en-inicio', !!(resuelta && resuelta.ruta === '/inicio'));
+  document.body.classList.toggle('en-yo', !!(resuelta && resuelta.ruta === '/ajustes'));
   ponerSolLuna();
   pintarSolLuna();
   // Si ese libro tiene su propio tema, se pone; en Inicio y lo demás, el de toda la app.

@@ -520,17 +520,33 @@ function agendaDeHoy(ctx) {
 export function historiaPlata(ctx) {
   const hoy = ctx.hoy();
   const iniciales = ctx.datos.estado.movimientos.filter((m) => m.tipo === 'saldo_inicial').map((m) => m.fecha).sort();
-  let desde = iniciales[0] || `${hoy.slice(0, 8)}01`;
-  const limite = ctx.fechas.sumarDias(hoy, -30);
-  if (desde < limite) desde = limite;
+  // Siempre los últimos 14 días, para que la gráfica tenga forma aunque el mes vaya empezando.
+  const limite = ctx.fechas.sumarDias(hoy, -13);
+  let desde = iniciales[0] && iniciales[0] < limite ? limite : limite;
   const serie = [];
   for (let f = desde; f <= hoy; f = ctx.fechas.sumarDias(f, 1)) serie.push({ fecha: f, valor: miPlata(ctx, f).total });
   return serie;
 }
 
-/** Gráfica pequeña de línea con área: sin ejes ni porcentajes, solo la forma real de los días. */
+/** Gráfica con los días reales: barras en oscuro (como el brief) y línea con puntos en claro. */
 function graficaPlata(serie) {
   if (serie.length < 2) return '';
+  const oscuro = typeof document !== 'undefined' && document.documentElement.dataset.modo !== 'claro';
+  if (oscuro) {
+    const vals = serie.map((p) => p.valor);
+    const min = Math.min(...vals);
+    const max = Math.max(...vals);
+    const n = Math.min(serie.length, 14);
+    const ultimos = serie.slice(-n);
+    const ancho = 300; const alto = 72; const hueco = 6;
+    const w = (ancho - hueco * (n - 1)) / n;
+    const h = (v) => (max === min ? alto * 0.55 : 14 + ((v - min) / (max - min)) * (alto - 14));
+    return `<svg class="fran-panel__grafica" viewBox="0 0 ${ancho} ${alto}" preserveAspectRatio="none" role="img" aria-label="Mi plata día por día">
+      <defs><linearGradient id="fran-barra" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#7DD3FC"/><stop offset="1" stop-color="#3B82F6" stop-opacity=".75"/></linearGradient></defs>
+      ${ultimos.map((p, i) => { const hh = h(p.valor); return `<rect x="${(i * (w + hueco)).toFixed(1)}" y="${(alto - hh).toFixed(1)}" width="${w.toFixed(1)}" height="${hh.toFixed(1)}" rx="4" fill="url(#fran-barra)" class="fran-barra-dia" style="--i:${i}"${i === n - 1 ? ' filter="url(#fran-glow)"' : ''}/>`; }).join('')}
+      <filter id="fran-glow"><feGaussianBlur stdDeviation="2" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+    </svg>`;
+  }
   const vals = serie.map((p) => p.valor);
   const min = Math.min(...vals);
   const max = Math.max(...vals);
@@ -544,8 +560,8 @@ function graficaPlata(serie) {
   return `<svg class="fran-panel__grafica" viewBox="0 0 ${ancho} ${alto}" preserveAspectRatio="none" role="img" aria-label="Mi plata día por día">
     <defs><linearGradient id="fran-area" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fff" stop-opacity=".35"/><stop offset="1" stop-color="#fff" stop-opacity="0"/></linearGradient></defs>
     <path d="${area}" fill="url(#fran-area)"/>
-    <polyline points="${puntos.join(' ')}" fill="none" stroke="#fff" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round" vector-effect="non-scaling-stroke"/>
-    <circle cx="${x(ultimo).toFixed(1)}" cy="${y(serie[ultimo].valor).toFixed(1)}" r="4" fill="#fff" class="fran-panel__punto"/>
+    <polyline points="${puntos.join(' ')}" fill="none" stroke="#9BE7FF" stroke-width="2.6" stroke-linejoin="round" stroke-linecap="round" vector-effect="non-scaling-stroke"/>
+    ${serie.map((p, i) => (serie.length <= 12 || i % Math.ceil(serie.length / 8) === 0 || i === ultimo ? `<circle cx="${x(i).toFixed(1)}" cy="${y(p.valor).toFixed(1)}" r="3.2" fill="#fff" class="fran-panel__punto"/>` : '')).join('')}
   </svg>`;
 }
 
@@ -593,7 +609,7 @@ function renderPrincipal(contenedor, ctx) {
     ${icono3d(id, chica ? 'fran-3d--48' : 'fran-3d--64')}
     <span class="fran-modulo__nombre">${ui.esc(LIBROS[id].enInicio)}</span>
     <span class="fran-modulo__valor">${typeof valorDe[id] === 'number' ? conSigno(valorDe[id], dinero) : ui.esc(valorDe[id])}</span>
-    ${chica ? '' : '<span class="fran-modulo__ir" aria-hidden="true">›</span>'}
+    ${chica ? '' : '<span class="fran-modulo__ir" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M5 12h13M12 6l6 6-6 6" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg></span>'}
   </a>`;
   const ganadoHoy = sumar(entradas.filter((a) => a.fecha === ctx.hoy()));
   const hayAviso = hoyAgenda.length || avisoAnotar;
@@ -611,7 +627,7 @@ function renderPrincipal(contenedor, ctx) {
     </header>
     <section class="fran-panel fran-entra" style="--i:0">
       <span class="fran-panel__etiqueta"><small>${plata.total < 0 ? 'Mi plata hoy · me hace falta' : 'Mi plata hoy · debo tener'}</small>${ayuda('Es efectivo más virtual, menos lo que debo en tarjetas. Si sale con ⊖, es lo que me hace falta. La línea muestra cómo ha ido día por día.', ui)}</span>
-      <strong class="fran-panel__valor">${conSigno(plata.total, dinero)}</strong>
+      <strong class="fran-panel__valor">${conSigno(plata.total, dinero)}${serie.length >= 2 ? `<span class="fran-panel__tendencia ${serie[serie.length - 1].valor >= serie[serie.length - 2].valor ? 'sube' : 'baja'}" aria-label="${serie[serie.length - 1].valor >= serie[serie.length - 2].valor ? 'Subió desde ayer' : 'Bajó desde ayer'}"><svg viewBox="0 0 24 24"><path d="M4 16l6-6 4 4 6-7" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/><path d="M15 7h5v5" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg></span>` : ''}</strong>
       ${graficaPlata(serie)}
       ${serie.length >= 2 ? `<span class="fran-panel__pie"><small>${ui.esc(fechas.formatear(serie[0].fecha).replace(/ \d{4}$/, ''))}</small><small>Hoy</small></span>` : ''}
       <a href="#/liquidez" class="fran-panel__boton">Ver detalles <span aria-hidden="true">→</span></a>

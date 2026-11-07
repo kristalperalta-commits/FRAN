@@ -5,7 +5,7 @@
   Al cambiar VERSION se crea un caché nuevo y se borran los viejos al activar.
 */
 
-const VERSION = '3.29.2';
+const VERSION = '3.30.0';
 const NOMBRE_CACHE = `mis-prestamos-v${VERSION}`;
 
 // Lista fija de todo lo que compone la app (incluye archivos de pantallas aunque
@@ -32,6 +32,16 @@ const ARCHIVOS = [
   './iconos/3d/grafica.png',
   './iconos/3d/clasico.png',
   './iconos/3d/bolsa.png',
+  './iconos/3d/paleta.png',
+  './iconos/3d/engranaje.png',
+  './iconos/3d/carpeta.png',
+  './iconos/3d/monedas.png',
+  './iconos/3d/reloj.png',
+  './iconos/3d/repetir.png',
+  './iconos/3d/nube.png',
+  './iconos/3d/candado.png',
+  './iconos/3d/mundo.png',
+  './iconos/3d/info.png',
   './css/estilos.css',
   './css/pantallas/inicio.css',
   './css/pantallas/clientes.css',

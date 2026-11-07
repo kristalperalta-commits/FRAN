@@ -650,3 +650,98 @@ html[data-modo="oscuro"] .fran-tablero .fran-campana { background: color-mix(in 
 
 .fran-modulo:not(.fran-modulo--chico) .fran-modulo__valor { padding-right: 34px; }
 .fran-metrica__texto small + b + small { font-size: 11px; }
+
+/* ================= Premium, segunda pasada (7 nov 2026) ================= */
+.fran-3d--28 { width: 28px; height: 28px; }
+.fran-3d { filter: drop-shadow(0 4px 6px rgba(10, 20, 60, .22)) saturate(1.08); }
+
+/* --- Inicio: nombre protagonista; en claro con la rayita azul --- */
+html body .fran-tablero .fran-hola h1 { font-size: 34px; font-weight: 500 !important; }
+html[data-modo="claro"] .fran-tablero .fran-hola h1::after { content: ''; display: block; width: 46px; height: 4px; margin-top: 4px; border-radius: 2px; background: linear-gradient(90deg, #2563EB, #60A5FA); }
+.fran-panel { padding: 22px 22px 20px; border-radius: 30px; }
+.fran-panel__valor { display: flex; align-items: center; gap: 12px; font-size: 42px; }
+.fran-panel__tendencia { display: inline-grid; place-items: center; width: 34px; height: 34px; border-radius: 10px; }
+.fran-panel__tendencia svg { width: 26px; height: 26px; }
+.fran-panel__tendencia.sube { color: #4ADE80; filter: drop-shadow(0 0 6px rgba(74, 222, 128, .8)); }
+.fran-panel__tendencia.baja { color: #FCA5A5; transform: scaleY(-1); filter: drop-shadow(0 0 6px rgba(252, 165, 165, .7)); }
+.fran-panel__grafica { height: 84px; margin-top: 12px; }
+.fran-barra-dia { transform-origin: 50% 100%; animation: fran-barra-sube .6s cubic-bezier(.2,.7,.2,1) both; animation-delay: calc(var(--i, 0) * 30ms); }
+@keyframes fran-barra-sube { from { transform: scaleY(0); } to { transform: scaleY(1); } }
+.fran-panel__punto { filter: drop-shadow(0 0 5px rgba(255,255,255,.95)); }
+.fran-panel__boton { background: rgba(255,255,255,.95); color: #1E3A8A; font-size: 15px; box-shadow: 0 4px 14px rgba(0,0,0,.18); }
+
+/* --- Métricas con icono en cuadro de color y más aire --- */
+.fran-metrica { min-height: 84px; padding: 14px; border-radius: 22px; gap: 12px; }
+.fran-metrica .fran-3d { width: 44px; height: 44px; padding: 6px; border-radius: 14px; background: var(--tile); }
+.fran-metrica__texto small { font-size: 13px; }
+.fran-metrica__texto b { font-size: 17px; }
+html[data-modo="claro"] .fran-metrica--efectivo .fran-3d { background: #D7F5E4; }
+html[data-modo="claro"] .fran-metrica--virtual .fran-3d { background: #E4DEFF; }
+html[data-modo="claro"] .fran-metrica--tarjetas .fran-3d { background: #FFE2CC; }
+html[data-modo="claro"] .fran-metrica--ganancia .fran-3d { background: #CFF1EC; }
+html[data-modo="claro"] .fran-metrica--efectivo { background: linear-gradient(150deg, #EAF9F0, #FFFFFF 70%); }
+html[data-modo="claro"] .fran-metrica--virtual { background: linear-gradient(150deg, #EEEAFF, #FFFFFF 70%); }
+html[data-modo="claro"] .fran-metrica--tarjetas { background: linear-gradient(150deg, #FFF1E6, #FFFFFF 70%); }
+html[data-modo="claro"] .fran-metrica--ganancia { background: linear-gradient(150deg, #E6F7F4, #FFFFFF 70%); }
+
+/* --- Módulos: iconos grandes, relieve y flecha redonda --- */
+.fran-modulo { min-height: 168px; padding: 18px; border-radius: 26px; gap: 8px; }
+.fran-modulo .fran-3d--64 { width: 76px; height: 76px; }
+.fran-modulo__nombre { font-size: 14px; }
+.fran-modulo__valor { font-size: 20px; }
+.fran-modulo__ir { width: 34px; height: 34px; right: 14px; bottom: 14px; background: linear-gradient(135deg, #3B82F6, #6366F1); box-shadow: 0 4px 12px rgba(59, 130, 246, .45); }
+.fran-modulo__ir svg { width: 18px; height: 18px; }
+.fran-modulo--chico { min-height: 118px; }
+.fran-modulo--chico .fran-3d--48 { width: 52px; height: 52px; }
+
+/* --- Oscuro: azul noche profundo, relieve y bordes de luz --- */
+html[data-modo="oscuro"][data-tema="azul"] { --bg: #0A1230; --surface: #121D45; --tile: #1B2A5E; }
+html[data-modo="oscuro"] body.en-inicio, html[data-modo="oscuro"] body.en-yo {
+  background: radial-gradient(1000px 560px at 85% -10%, color-mix(in srgb, var(--accent) 34%, transparent), transparent 62%),
+              radial-gradient(800px 480px at -15% 45%, color-mix(in srgb, var(--accent) 16%, transparent), transparent 60%),
+              linear-gradient(180deg, var(--bg), color-mix(in srgb, var(--bg) 70%, #000));
+  background-attachment: fixed;
+}
+html[data-modo="oscuro"] .fran-panel { background: linear-gradient(150deg, #1E3A8A 0%, #2563EB 55%, #3B82F6 100%); box-shadow: inset 0 0 0 1.5px rgba(147, 197, 253, .45), 0 0 0 1px rgba(59, 130, 246, .25), 0 20px 44px rgba(37, 99, 235, .45); }
+html[data-modo="oscuro"][data-tema="lila"] .fran-panel { background: var(--hero); }
+html[data-modo="oscuro"] .fran-metrica, html[data-modo="oscuro"] .fran-modulo, html[data-modo="oscuro"] .fran-fila-tablero, html[data-modo="oscuro"] .fran-enlace, html[data-modo="oscuro"] .fran-ajuste {
+  background: linear-gradient(160deg, color-mix(in srgb, var(--accent) 22%, var(--surface)) 0%, var(--surface) 55%, color-mix(in srgb, var(--bg) 55%, var(--surface)) 100%);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.14), inset 0 0 0 1px color-mix(in srgb, var(--accent) 42%, transparent), 0 12px 28px rgba(0,0,0,.35);
+}
+html[data-modo="oscuro"] .fran-metrica .fran-3d { background: color-mix(in srgb, var(--accent) 22%, var(--surface)); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent) 40%, transparent); }
+html[data-modo="oscuro"] .fran-modulo:first-child { box-shadow: inset 0 1px 0 rgba(255,255,255,.18), inset 0 0 0 1.5px color-mix(in srgb, var(--accent) 80%, #fff), 0 0 26px color-mix(in srgb, var(--accent) 45%, transparent); }
+html[data-modo="oscuro"] .fran-modulo__ir { box-shadow: 0 0 14px color-mix(in srgb, var(--accent) 70%, transparent); }
+html[data-modo="oscuro"] .fran-3d { filter: drop-shadow(0 8px 14px rgba(0,0,0,.5)) saturate(1.1); }
+html[data-modo="oscuro"] .fran-campana, html[data-modo="oscuro"] .sol-luna, html[data-modo="oscuro"] .fran-titulo__atras { background: color-mix(in srgb, var(--accent) 16%, var(--surface)); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent) 45%, transparent), 0 0 16px color-mix(in srgb, var(--accent) 30%, transparent); }
+html[data-modo="oscuro"] .barra-inferior { background: linear-gradient(180deg, color-mix(in srgb, var(--accent) 12%, var(--surface)), var(--surface)); box-shadow: inset 0 1px 0 color-mix(in srgb, var(--accent) 35%, transparent), 0 -10px 30px rgba(0,0,0,.4); }
+html[data-modo="oscuro"] .pestana--mas span { box-shadow: 0 0 0 1px rgba(255,255,255,.2) inset, 0 0 24px color-mix(in srgb, var(--accent) 75%, transparent), 0 8px 20px rgba(0,0,0,.4); }
+html[data-modo="oscuro"] .pestana--activa { text-shadow: 0 0 10px color-mix(in srgb, var(--accent) 80%, transparent); }
+
+/* --- Claro: blanco frío, sombras difusas, acentos azul/violeta --- */
+html[data-modo="claro"][data-tema="azul"] { --bg: #F3F6FD; --surface: #FFFFFF; --tile: #E6EEFC; --shadow: 0 10px 28px rgba(40, 70, 160, .10); }
+html[data-modo="claro"] body.en-inicio, html[data-modo="claro"] body.en-yo { background: radial-gradient(900px 500px at 90% -8%, color-mix(in srgb, var(--accent) 22%, transparent), transparent 60%), radial-gradient(700px 420px at -10% 50%, color-mix(in srgb, var(--accent) 12%, transparent), transparent 60%), var(--bg); background-attachment: fixed; }
+html[data-modo="claro"] .fran-panel { background: linear-gradient(150deg, #1D4ED8 0%, #2563EB 50%, #38BDF8 100%); box-shadow: 0 18px 40px rgba(37, 99, 235, .35); }
+html[data-modo="claro"][data-tema="lila"] .fran-panel { background: var(--hero); }
+html[data-modo="claro"] .fran-modulo, html[data-modo="claro"] .fran-metrica, html[data-modo="claro"] .fran-fila-tablero, html[data-modo="claro"] .fran-enlace, html[data-modo="claro"] .fran-ajuste { box-shadow: 0 10px 28px rgba(40, 70, 160, .10), inset 0 0 0 1px rgba(255,255,255,.9); }
+html[data-modo="claro"] .pestana--activa::after { content: ''; display: block; width: 22px; height: 3px; margin-top: 3px; border-radius: 2px; background: var(--accent); }
+
+/* --- Yo: renglones en relieve con icono 3D, secciones con línea --- */
+body.en-yo .fran-ajuste summary, body.en-yo .fran-enlace { min-height: 66px; padding: 10px 16px; gap: 14px; font-size: 16px; border-radius: 20px; }
+body.en-yo .fran-ajuste, body.en-yo .fran-enlace { margin-bottom: 10px; border-radius: 20px; }
+body.en-yo .fran-ajuste summary::after { display: none; }
+.fran-ajuste__flecha { margin-left: auto; width: 10px; height: 10px; border-right: 2.5px solid var(--text); border-bottom: 2.5px solid var(--text); transform: rotate(-45deg); opacity: .9; }
+body.en-yo .fran-ajuste[open] summary .fran-ajuste__flecha { transform: rotate(45deg); }
+.fran-enlace--destacado { min-height: 84px !important; background: var(--hero) !important; color: #fff !important; box-shadow: 0 14px 30px color-mix(in srgb, var(--accent) 35%, transparent) !important; }
+.fran-enlace--destacado .fran-renglon__texto span { font-size: 18px; }
+.fran-enlace--destacado .fran-renglon__texto small { color: rgba(255,255,255,.85); font-size: 13px; }
+.fran-enlace--destacado .fran-ajuste__flecha { border-color: #fff; }
+html[data-modo="claro"] .fran-enlace--destacado { background: linear-gradient(135deg, #DBEAFE, #EEF2FF) !important; color: var(--text) !important; box-shadow: 0 10px 28px rgba(40, 70, 160, .12) !important; }
+html[data-modo="claro"] .fran-enlace--destacado .fran-renglon__texto small { color: var(--text-2); }
+html[data-modo="claro"] .fran-enlace--destacado .fran-ajuste__flecha { border-color: var(--text); }
+.fran-seccion--yo { display: flex; align-items: center; gap: 10px; margin: 18px 2px 10px; color: var(--text); font-size: 17px; border: 0; }
+.fran-seccion--yo i { flex: 1; height: 1.5px; margin-left: 4px; background: linear-gradient(90deg, color-mix(in srgb, var(--accent) 60%, transparent), transparent); }
+.fran-version__pildora { display: inline-block; padding: 6px 14px; border-radius: 14px; background: var(--tile); color: var(--text-2); font-size: 12px; }
+
+html[data-modo="claro"] .fran-enlace--destacado { background: linear-gradient(135deg, #2563EB, #60A5FA) !important; color: #fff !important; box-shadow: 0 14px 30px rgba(37, 99, 235, .3) !important; }
+html[data-modo="claro"] .fran-enlace--destacado .fran-renglon__texto small { color: rgba(255,255,255,.88); }
+html[data-modo="claro"] .fran-enlace--destacado .fran-ajuste__flecha { border-color: #fff; }
