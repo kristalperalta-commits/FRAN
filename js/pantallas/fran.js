@@ -811,7 +811,7 @@ function renderProductos(contenedor, ctx, redibujar) {
   const lista = delLibro(asientos(ctx), 'productos');
   const mes = mesVisible(ctx, lista);
   const m = delMes(lista, mes);
-  const meti = sumar(deTipo(m, 'gasto').filter((a) => !a.enPago));
+  const meti = sumar(deTipo(m, 'gasto').filter((a) => !a.enPago && a.categoria !== 'Inversiones'));
   const vendi = sumar(deTipo(m, 'ingreso'));
   // Lo que está en inventario o en inversiones no es pérdida: solo restan los gastos del negocio.
   const gastosProductos = sumar(deTipo(m, 'gasto').filter((a) => a.categoria === 'Gasto de productos'));
@@ -820,14 +820,15 @@ function renderProductos(contenedor, ctx, redibujar) {
   const inventario = lista.filter((a) => a.tipo === 'gasto' && a.categoria === 'Inventario sin vender');
   const inversiones = lista.filter((a) => a.tipo === 'gasto' && a.categoria === 'Inversiones');
   const vendido = deTipo(lista, 'ingreso').sort((a, b) => b.fecha.localeCompare(a.fecha));
+  const plegado = (icono, titulo, sub, total, cuerpo) => `<details class="fran-tachados fran-prestado-pension"><summary><span class="fran-cuadro fran-cuadro--40" aria-hidden="true">${icono}</span><span class="fran-renglon__texto"><span>${ui.esc(titulo)}</span><small>${ui.esc(sub)}</small></span><b class="numero">${dinero.formatear(total)}</b></summary><div class="fran-lista">${cuerpo}</div></details>`;
   const filas = (l, signo) => l.map((a) => fila({ ui, ver: a.id, icono: iconoDe(a.categoria), titulo: (a.descripcion || a.categoria).split(' · ')[0], sub: [a.textoFecha || fechas.formatear(a.fecha), a.costo ? `costó ${dinero.formatear(a.costo)} · ganancia ${dinero.formatear(a.valor - a.costo)}` : ''].filter(Boolean).join(' · '), derecha: `${signo}${dinero.formatear(a.valor)}`, clase: signo === '+' ? 'fran-mas' : '' })).join('');
   const raiz = ui.el(`<div>
     ${titular('productos', ctx, '#/inicio', '', mes)}
-    ${heroe({ etiqueta: 'Invertido sin vender', valor: invertidoProductos(lista), cajas: [['Metí yo', meti, 'menos'], ['Vendí', vendi, 'mas'], ['Ganancia', vendi - costoVendido - gastosProductos]] }, ctx)}
-    ${costoVendido ? `<p class="fran-nota">La ganancia ya descuenta lo que costaron los productos vendidos este mes (${dinero.formatear(costoVendido)}).</p>` : ''}
-    <p class="fran-seccion">Inventario</p><div class="fran-lista">${filas(inventario, '') || '<p class="fran-vacio">Sin inventario.</p>'}</div>
-    ${inversiones.length ? `<p class="fran-seccion">Inversiones</p><div class="fran-lista">${filas(inversiones, '')}</div>` : ''}
-    <p class="fran-seccion">Vendido</p><div class="fran-lista">${filas(vendido, '+') || '<p class="fran-vacio">Todavía sin ventas.</p>'}</div>
+    ${heroe({ etiqueta: 'Productos sin vender', valor: invertidoProductos(lista), ayudaTexto: 'Lo que costaron los productos que todavía no se han vendido. Las inversiones (PC, busos, Uber, carro) van aparte: no son productos para vender.', cajas: [['Metí yo', meti, 'menos'], ['Vendí', vendi, 'mas'], ['Ganancia', vendi - costoVendido - gastosProductos]] }, ctx)}
+    ${costoVendido ? `<p class="fran-nota">La ganancia del mes es lo vendido menos lo que costó: ${dinero.formatear(vendi)} − ${dinero.formatear(costoVendido)}.</p>` : ''}
+    ${plegado('📦', 'Inventario', `${inventario.length} ${inventario.length === 1 ? 'producto' : 'productos'} sin vender`, sumar(inventario.filter((a) => !a.enPago)), filas(inventario, '') || '<p class="fran-vacio">Sin inventario.</p>')}
+    ${inversiones.length ? plegado('📈', 'Inversiones', `${inversiones.length} · no son para vender`, sumar(inversiones), filas(inversiones, '')) : ''}
+    ${plegado('💰', 'Vendido', vendido.length ? `${vendido.length} ${vendido.length === 1 ? 'venta' : 'ventas'}` : 'Todavía sin ventas', sumar(vendido), filas(vendido, '+') || '<p class="fran-vacio">Todavía sin ventas.</p>')}
   </div>`);
   conectarMes(raiz, mes, ctx, redibujar);
   conectarVer(raiz, lista, contenedor, 'productos', redibujar, ctx);
@@ -2069,7 +2070,7 @@ export function fondosLiquidez(ctx, tasa) {
   }
   const ventas = (fran.asientos || []).filter((a) => a.libro === 'productos' && a.disponible);
   if (ventas.length) {
-    grupos.push({ icono: '💻', titulo: 'Negocio tecnológico (con tu pareja)', filas: ventas.flatMap((a) => [
+    grupos.push({ icono: '💻', titulo: 'Plata de ventas del negocio tecnológico (con tu pareja)', filas: ventas.flatMap((a) => [
       ...(a.disponible.efectivo ? [{ texto: `${a.descripcion.split(' · ')[0]} · en efectivo`, valor: a.disponible.efectivo }] : []),
       ...(a.disponible.virtual ? [{ texto: `${a.descripcion.split(' · ')[0]} · en virtual`, valor: a.disponible.virtual }] : []),
     ]) });
