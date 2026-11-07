@@ -528,7 +528,7 @@ function renderPrincipal(contenedor, ctx) {
       <a href="#/agenda" class="fran-campana" aria-label="Avisos y cobros de hoy"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 22a2.5 2.5 0 0 0 2.45-2h-4.9A2.5 2.5 0 0 0 12 22zm7-6V11a7 7 0 0 0-5.5-6.84V3.5a1.5 1.5 0 0 0-3 0v.66A7 7 0 0 0 5 11v5l-2 2v1h18v-1z"/></svg>${hoyAgenda.length ? `<b class="fran-campana__numero">${hoyAgenda.length}</b>` : (hayAviso ? '<i></i>' : '')}</a></span>
     </header>
     ${heroe({ etiqueta: plata.total < 0 ? 'Mi plata hoy · me hace falta' : 'Mi plata hoy · debo tener', valor: plata.total, ayudaTexto: 'Es efectivo más virtual, menos lo que debo en tarjetas. Si sale con ⊖, es lo que me hace falta.', cajas: [
-      ['Efectivo', plata.efectivo, '', '#/caja'],
+      ['Efectivo', plata.efectivo, '', '#/efectivo'],
       ['Virtual', fran.virtualPorDefinir ? 'por confirmar' : plata.virtual, '', '#/virtual'],
       ['Tarjetas', plata.tarjetas, plata.tarjetas ? 'menos' : '', '#/virtual'],
       [`Ganancia hoy · ${fechas.nombreMes(Number(mesHoy.slice(5, 7)), true)} ${dinero.formatear(gananciaMes)}`, ganadoHoy, ganadoHoy ? 'mas' : '', '#/ganancias'],
@@ -1822,6 +1822,95 @@ function renderPropiedades(contenedor, ctx) {
 const CUENTA_NO_VIRTUAL = /^(efectivo|tarjeta)/i;
 
 /** Todo lo que entró o salió de mi cuenta virtual después del saldo de partida. */
+// ---------- Plata en efectivo: solo lo del efectivo, desde el cierre del mes pasado ----------
+
+/** Todo lo que movió el efectivo: préstamos, pagos, gastos e ingresos en efectivo y lo anotado a mano. */
+function filasEfectivo(ctx) {
+  const estado = ctx.datos.estado;
+  const filas = [];
+  const clienteDe = (prestamoId) => {
+    const p = estado.prestamos.find((x) => x.id === prestamoId);
+    const c = p && estado.clientes.find((x) => x.id === p.clienteId);
+    return c ? c.nombre : '';
+  };
+  const QUE = { prestamo: 'Préstamo', pago: 'Pago', aporte: 'Entró', retiro: 'Salió', traslado: 'Traslado', ganancia_a_personal: 'Ganancia a personal' };
+  for (const m of estado.movimientos) {
+    if (m.caja !== 'efectivo' || m.tipo === 'saldo_inicial') continue;
+    const quien = m.prestamoId ? clienteDe(m.prestamoId) : '';
+    const icono = m.tipo === 'prestamo' ? '💵' : (m.tipo === 'pago' ? '↩️' : (m.signo > 0 ? '⬇️' : '⬆️'));
+    filas.push({ id: m.id, manual: ['aporte', 'retiro'].includes(m.tipo), fecha: m.fecha, icono, titulo: quien || m.nota || QUE[m.tipo] || m.tipo, sub: quien ? QUE[m.tipo] : (m.nota && QUE[m.tipo] ? QUE[m.tipo] : ''), valor: m.monto * m.signo });
+  }
+  for (const a of estado.fran.asientos) {
+    if (a.libro === 'terceros') continue;
+    const esEf = (c) => /^efectivo$/i.test(c || '');
+    const base = { fecha: a.fecha, icono: iconoDe(a.categoria), titulo: a.categoria, sub: a.descripcion || '' };
+    if (a.tipo === 'transferencia') {
+      if (esEf(a.cuenta)) filas.push({ ...base, valor: -a.valor });
+      if (esEf(a.destino)) filas.push({ ...base, valor: a.valor });
+    } else if (esEf(a.cuenta)) {
+      filas.push({ ...base, valor: a.tipo === 'ingreso' ? a.valor : -a.valor });
+    }
+  }
+  return filas;
+}
+
+function renderEfectivo(contenedor, ctx) {
+  const { ui, dinero, fechas, datos, motor } = ctx;
+  const hoy = ctx.hoy();
+  const iniciales = datos.estado.movimientos.filter((m) => m.caja === 'efectivo' && m.tipo === 'saldo_inicial');
+  const partida = motor.saldoCaja(iniciales, 'efectivo');
+  const desde = iniciales.length ? iniciales.map((m) => m.fecha.slice(0, 7)).sort()[0] : hoy.slice(0, 7);
+  const filas = filasEfectivo(ctx);
+  const total = partida + filas.reduce((s, f) => s + f.valor, 0);
+  const meses = [];
+  for (let m = desde; m <= hoy.slice(0, 7); m = fechas.sumarMeses(`${m}-01`, 1).slice(0, 7)) meses.push(m);
+  if (!vista.mesEfectivo || !meses.includes(vista.mesEfectivo)) vista.mesEfectivo = meses[meses.length - 1];
+  const mes = vista.mesEfectivo;
+  const anterior = partida + filas.filter((f) => f.fecha.slice(0, 7) < mes).reduce((s, f) => s + f.valor, 0);
+  const delMesE = filas.filter((f) => f.fecha.slice(0, 7) === mes).sort((a, b) => b.fecha.localeCompare(a.fecha));
+  const entro = delMesE.filter((f) => f.valor > 0).reduce((s, f) => s + f.valor, 0);
+  const salio = delMesE.filter((f) => f.valor < 0).reduce((s, f) => s - f.valor, 0);
+  const mesAntes = fechas.nombreMes(Number(fechas.sumarMeses(`${mes}-01`, -1).slice(5, 7))).toLowerCase();
+  const dibujar = () => { contenedor.innerHTML = ''; renderEfectivo(contenedor, ctx); };
+  const dias = [...new Set(delMesE.map((f) => f.fecha))];
+  const raiz = ui.el(`<div class="fran-virtual">
+    ${titular('personal', ctx, '#/inicio', 'Plata en efectivo', mes)}
+    ${heroe({ etiqueta: 'Efectivo hoy', valor: total, ayudaTexto: `Arranca con el cierre del mes pasado y suma o resta solo lo que entró o salió en efectivo.`, cajas: [[`Cierre de ${mesAntes}`, anterior], ['Entró', entro, entro ? 'mas' : ''], ['Salió', salio, salio ? 'menos' : '']] }, ctx)}
+    <div class="fran-dos fran-virtual__botones"><button type="button" class="fran-boton-principal" data-nuevo="aporte"><span class="fran-signo fran-signo--mas" aria-hidden="true"></span>Entró</button><button type="button" class="fran-boton-secundario" data-nuevo="retiro"><span class="fran-signo fran-signo--menos" aria-hidden="true"></span>Salió</button></div>
+    <form class="fran-campos fran-campos--grande oculto" data-form-mov novalidate>
+      <label><small data-titulo>Entró</small><input name="concepto" autocomplete="off" placeholder="¿Quién o qué?"></label>
+      <label class="fran-campo-valor"><small>Valor</small><input name="valor" inputmode="numeric" autocomplete="off" placeholder="0"></label>
+      <label><small>Fecha</small><input type="date" name="fecha" value="${ui.esc(mes === hoy.slice(0, 7) ? hoy : `${mes}-01`)}"></label>
+      <button class="fran-boton-principal fran-guardar">Guardar</button>
+    </form>
+    ${dias.map((dia) => `<div class="fran-dia"><span>${ui.esc(fechaLinda(dia, ctx))}</span></div><div class="fran-lista">${delMesE.filter((f) => f.fecha === dia).map((f) => `<div class="fran-fila"><span class="fran-ico">${ui.esc(f.icono)}</span><span class="fran-fila__texto"><strong>${ui.esc(f.titulo)}</strong>${f.sub ? `<small>${ui.esc(f.sub)}</small>` : ''}</span><span class="fran-fila__valor numero ${f.valor < 0 ? 'fran-menos' : 'fran-mas'}">${dinero.formatear(Math.abs(f.valor))}</span>${f.manual ? `<button type="button" class="fran-boton-secundario fran-boton--44" data-quitar="${ui.esc(f.id)}">Quitar</button>` : ''}</div>`).join('')}</div>`).join('') || '<p class="fran-vacio">Nada en efectivo este mes.</p>'}
+  </div>`);
+  raiz.querySelector('[data-elegir-mes]').addEventListener('click', () => abrirMeses(mes, ctx, (m) => { vista.mesEfectivo = m; dibujar(); }, meses));
+  const form = raiz.querySelector('[data-form-mov]');
+  let tipo = 'aporte';
+  raiz.querySelectorAll('[data-nuevo]').forEach((b) => b.addEventListener('click', () => {
+    tipo = b.dataset.nuevo;
+    form.querySelector('[data-titulo]').textContent = tipo === 'aporte' ? 'Entró' : 'Salió';
+    form.classList.remove('oculto');
+    form.elements.concepto.focus();
+  }));
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const f = e.target.elements;
+    const valor = Number(f.valor.value.replace(/\D/g, ''));
+    if (!valor) { ui.toast('Escribe el valor.'); return; }
+    try {
+      await datos.movimientoCaja({ fecha: f.fecha.value || hoy, tipo, caja: 'efectivo', monto: valor, nota: f.concepto.value.trim(), ...(tipo === 'aporte' ? { origen: 'otro' } : {}) });
+      ui.toast('Guardado.');
+      dibujar();
+    } catch (error) { ui.toast(error.message); }
+  });
+  raiz.querySelectorAll('[data-quitar]').forEach((b) => b.addEventListener('click', async () => {
+    if (await ui.confirmar('¿Quitar este movimiento del efectivo?', { aceptar: 'Sí, quitar', peligro: true })) { await datos.eliminarMovimiento(b.dataset.quitar); dibujar(); }
+  }));
+  contenedor.append(raiz);
+}
+
 function filasVirtuales(ctx) {
   const estado = ctx.datos.estado;
   const filas = [];
@@ -1832,7 +1921,8 @@ function filasVirtuales(ctx) {
   };
   for (const m of estado.movimientos) {
     if (m.caja !== 'virtual' || m.tipo === 'saldo_inicial') continue;
-    filas.push({ fecha: m.fecha, concepto: m.nota || nombreDe(m.prestamoId) || m.tipo.replace(/_/g, ' '), valor: m.monto * m.signo });
+    const quien = m.prestamoId ? nombreDe(m.prestamoId) : '';
+    filas.push({ fecha: m.fecha, concepto: quien ? `${quien} · ${m.tipo === 'prestamo' ? 'Préstamo' : 'Pago'}` : (m.nota || m.tipo.replace(/_/g, ' ')), valor: m.monto * m.signo });
   }
   for (const a of estado.fran.asientos) {
     if (a.libro === 'terceros') continue;
@@ -1879,7 +1969,7 @@ function renderVirtual(contenedor, ctx) {
     <form class="fran-en-linea oculto" data-form-cuentas novalidate><input class="fran-entrada" name="valor" inputmode="numeric" autocomplete="off" placeholder="¿Cuánto hay hoy?" aria-label="Cuánto hay en las cuentas"><button class="boton boton--primario">Guardar</button></form>
     ${selectorMes(mes, ctx)}
     ${guardado && !guardado.filas ? `<div class="fran-tarjeta"><small>Saldo al final del mes</small><strong>${conSigno(queda, dinero)}</strong></div>` : `<div class="fran-virtual__cuadro">
-      <p><span>Venía de antes</span>${conSigno(anterior, dinero)}</p>
+      <p><span>Cierre de ${ui.esc(fechas.nombreMes(Number(fechas.sumarMeses(`${mes}-01`, -1).slice(5, 7))).toLowerCase())}</span>${conSigno(anterior, dinero)}</p>
       <p><span>Entró</span><span class="numero fran-mas">${dinero.formatear(entro)}</span></p>
       <p><span>Salió</span><span class="numero fran-menos">${dinero.formatear(salio)}</span></p>
       <p class="fran-virtual__queda"><span>Queda</span><span class="numero ${queda < 0 ? 'fran-menos' : ''}">${dinero.formatear(Math.abs(queda))}</span></p>
@@ -2053,6 +2143,7 @@ export async function render(contenedor, params, ctx) {
     case 'ganancias': return renderGanancias(contenedor, ctx);
     case 'propiedades': return renderPropiedades(contenedor, ctx);
     case 'tablaPrestamos': return renderTablaPrestamos(contenedor, ctx);
+    case 'efectivo': return renderEfectivo(contenedor, ctx);
     case 'soloIntereses': return renderSoloIntereses(contenedor, ctx);
     case 'propiedad': {
       const { delAnio } = arriendosDelAnio(ctx);
