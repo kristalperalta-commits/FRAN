@@ -555,3 +555,21 @@ html[data-relieve="plano"] img.fran-3d[src*="-azul"], html[data-relieve="plano"]
 .fran-heroe--informes .fran-heroe__valor .numero { font-size: inherit !important; }
 .fran-heroe--informes .fran-heroe__valor { padding-left: 0 !important; margin-top: 6px !important; flex: none !important; }
 .fran-heroe--informes .fran-heroe__etiqueta { padding-right: 112px !important; }
+
+/* ================= Flechas de los libros y botones Entró/Salió ================= */
+/* La flecha va arriba a la derecha, del color del tema y sin sombra; el número tiene todo el ancho. */
+html body .fran-modulo__ir { top: 14px; right: 14px; bottom: auto; width: 32px; height: 32px; background: var(--accent) !important; box-shadow: none !important; }
+html body .fran-modulo:not(.fran-modulo--chico) .fran-modulo__valor { padding-right: 0; }
+/* Entró/Salió: el elegido se pinta de verde o rojo con la letra blanca (antes quedaba blanco sobre blanco). */
+:root { --plus-fondo: var(--plus); --minus-fondo: var(--minus); }
+html body .fran-virtual__botones .fran-boton-entra.elegido { background: var(--plus-fondo) !important; }
+html body .fran-virtual__botones .fran-boton-sale.elegido { background: var(--minus-fondo) !important; }
+
+/* ================= Sombreado en 0 %: todo plano, sin excepciones ================= */
+html[data-relieve="plano"][data-tema][data-modo] body *, html[data-relieve="plano"][data-tema][data-modo] body *::before, html[data-relieve="plano"][data-tema][data-modo] body *::after { box-shadow: none !important; text-shadow: none !important; }
+html[data-relieve="plano"][data-tema][data-modo] body *:not(img) { filter: none !important; }
+html[data-relieve="plano"] img.fran-3d, html[data-relieve="plano"] img.fran-heroe__3d { filter: none !important; }
+html[data-relieve="plano"][data-tema][data-modo] body img.fran-3d[src*="-azul"], html[data-relieve="plano"][data-tema][data-modo] body img.fran-heroe__3d[src*="-azul"] { filter: hue-rotate(var(--giro-3d, 0deg)) !important; }
+/* Categorías: la palabra larga se parte en dos renglones dentro de su casilla, sin montarse en la de al lado. */
+html body .fran-iconos button small, html body .fran-iconos a small { display: block; max-width: 100%; min-width: 0; overflow-wrap: anywhere; hyphens: auto; -webkit-hyphens: auto; line-height: 1.15; }
+html body .fran-iconos button, html body .fran-iconos a { min-width: 0; }
