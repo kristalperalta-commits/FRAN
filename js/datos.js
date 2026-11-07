@@ -833,9 +833,19 @@ function armarPrestamo(datosPrestamo, existente) {
 
   const acuerdoTexto = limpiarTexto(datosPrestamo.acuerdoTexto ?? existente?.acuerdoTexto);
   const detalle = datosPrestamo.detalle ?? existente?.detalle;
+  // El nombre que traía en el Excel se conserva. "Por confirmar" se quita: al corregirlo, ella lo confirma.
+  const nombreExcel = limpiarTexto(datosPrestamo.nombreExcel ?? existente?.nombreExcel);
+  // "Pagó los intereses hasta tal día": desde ahí corren los meses de interés.
+  const interesesPagadosHasta = datosPrestamo.interesesPagadosHasta !== undefined ? datosPrestamo.interesesPagadosHasta : (existente?.interesesPagadosHasta ?? null);
+  if (interesesPagadosHasta) {
+    exigirFecha(interesesPagadosHasta, 'hasta la que pagó intereses');
+    exigir(interesesPagadosHasta >= fecha, 'La fecha hasta la que pagó intereses no puede ser anterior al préstamo.');
+  }
   return {
     ...(acuerdoTexto ? { acuerdoTexto } : {}),
     ...(Array.isArray(detalle) ? { detalle } : {}),
+    ...(nombreExcel ? { nombreExcel } : {}),
+    ...(interesesPagadosHasta ? { interesesPagadosHasta } : {}),
     id: limpiarTexto(datosPrestamo.id) || existente?.id || generarId(),
     clienteId,
     fecha,

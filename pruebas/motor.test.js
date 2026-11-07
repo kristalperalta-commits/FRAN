@@ -1394,3 +1394,21 @@ describe('interés de los días corridos (pedido por ella el 6 nov 2026)', () =>
     assert.equal(r.debeHoy, 3000000);
   });
 });
+
+describe('intereses pagados hasta una fecha', () => {
+  test('préstamo del 3 sep al 10 %, pagado hasta el 3 nov: al 6 nov lleva 4 días a 6.667', () => {
+    const p = { id: 'p-sep', clienteId: 'c', fecha: '2026-09-03', capital: 2000000, tasa: 10, modalidad: 'interes_mensual', interesesPagadosHasta: '2026-11-03' };
+    const r = modMotor.calcularPrestamo(p, [], '2026-11-06');
+    assert.equal(r.interesPendiente, 0);
+    assert.equal(r.mesesAtrasados, 0);
+    assert.equal(r.interesDelMes, 200000);
+    assert.equal(r.diasCorridos, 4);
+    assert.equal(r.interesCorrido, 26667);
+    assert.equal(r.debeHoy, 2026667);
+  });
+
+  test('sin esa fecha cuenta desde el día del préstamo', () => {
+    const p = { id: 'p-sep2', clienteId: 'c', fecha: '2026-09-03', capital: 2000000, tasa: 10, modalidad: 'interes_mensual' };
+    assert.equal(modMotor.calcularPrestamo(p, [], '2026-11-06').interesPendiente, 400000);
+  });
+});

@@ -25,6 +25,17 @@ const MAXIMO_PERIODOS = 1200;
 // Interés por día: el del mes dividido en 30. Se cuentan el día del préstamo y hoy (del 3 al 6 son 4 días).
 const DIAS_MES = 30;
 
+/**
+ * Desde cuándo corren los intereses de un préstamo. Normalmente su fecha; si ella dice que
+ * los intereses están pagados hasta cierto día (interesesPagadosHasta), los meses se cuentan
+ * desde ahí. La fecha del préstamo no cambia.
+ */
+export function inicioIntereses(prestamo) {
+  const hasta = prestamo && prestamo.interesesPagadosHasta;
+  if (hasta && fechas.esFechaValida(hasta) && fechas.esFechaValida(prestamo.fecha) && fechas.comparar(hasta, prestamo.fecha) > 0) return hasta;
+  return prestamo ? prestamo.fecha : null;
+}
+
 /* ----------------------------------------------------------------------- */
 /* Ayudas internas                                                          */
 /* ----------------------------------------------------------------------- */
@@ -217,7 +228,7 @@ function crearFabricaPeriodos(prestamo, resultado, abonos, hoy) {
   return {
     /** Fecha de inicio del periodo que se crearía a continuación. */
     inicioDelSiguiente() {
-      return fechas.sumarMeses(prestamo.fecha, numero);
+      return fechas.sumarMeses(inicioIntereses(prestamo), numero);
     },
 
     /**
@@ -228,8 +239,8 @@ function crearFabricaPeriodos(prestamo, resultado, abonos, hoy) {
     siguiente(soloSiCausa = false) {
       if (numero >= MAXIMO_PERIODOS) return null;
       const n = numero + 1;
-      const desde = fechas.sumarMeses(prestamo.fecha, n - 1);
-      const hasta = fechas.sumarMeses(prestamo.fecha, n);
+      const desde = fechas.sumarMeses(inicioIntereses(prestamo), n - 1);
+      const hasta = fechas.sumarMeses(inicioIntereses(prestamo), n);
       if (limitado && fechas.comparar(hasta, limite) > 0) return null;
       if (tope != null && acumulado >= tope) return null;
 
@@ -348,7 +359,7 @@ function proximoCobroDe(prestamo, resultado, periodos, hoy) {
     const tope = topeDe(prestamo);
     const causadoTotal = periodos.reduce((suma, p) => suma + p.causado, 0);
     const siguiente = periodos.length + 1;
-    const fechaSiguiente = fechas.sumarMeses(prestamo.fecha, siguiente);
+    const fechaSiguiente = fechas.sumarMeses(inicioIntereses(prestamo), siguiente);
     const limiteCausacion = limiteCausacionDe(prestamo);
     const seCausa = limiteCausacion == null || fechas.comparar(fechaSiguiente, limiteCausacion) <= 0;
     if (seCausa && (tope == null || causadoTotal < tope)) {
@@ -836,7 +847,7 @@ export function agendaCobros(estado, hoy, dias = 7) {
       const tope = topeDe(prestamo);
       let causadoTotal = r.periodos.reduce((suma, p) => suma + p.causado, 0);
       for (let numero = r.periodos.length + 1; numero <= MAXIMO_PERIODOS; numero++) {
-        const fecha = fechas.sumarMeses(prestamo.fecha, numero);
+        const fecha = fechas.sumarMeses(inicioIntereses(prestamo), numero);
         if (fechas.comparar(fecha, limite) > 0) break;
         if (tope != null && causadoTotal >= tope) break;
         let monto = redondear((r.capitalPendiente * r.tasa) / 100);
