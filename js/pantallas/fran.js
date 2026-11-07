@@ -69,7 +69,7 @@ const ICONOS = [
 
 const vista = { mes: null, tipo: null, orden: 'cantidad', anio: null };
 
-/** Al volver al inicio se olvida el mes visto: cada libro abre en su último mes con datos. */
+/** Al volver al inicio se olvida el mes visto: cada libro abre en el mes actual. */
 function reiniciarVista() {
   vista.mes = null;
   vista.tipo = null;
@@ -165,8 +165,10 @@ function ultimoMes(ctx, lista) {
   return mejor || actual;
 }
 
+// Inicio y cada libro muestran el mes actual, aunque todavía esté en 0 (pedido el 6 nov 2026).
+// Si el mes está vacío, la pantalla ofrece ir al último mes con datos.
 function mesVisible(ctx, lista) {
-  return vista.mes || ultimoMes(ctx, lista);
+  return vista.mes || ctx.hoy().slice(0, 7);
 }
 
 function moverMes(mes, n, ctx) {
@@ -296,7 +298,7 @@ function renglon({ ruta, icono, texto, sub = '', derecha = '', contador = 0 }, u
 /** Saldo del último mes con datos de un libro: el mismo número en Inicio y en la cabecera del libro. */
 function saldoLibro(ctx, todos, id, mes = null) {
   const lista = delLibro(todos, id);
-  const elMes = mes || ultimoMes(ctx, lista);
+  const elMes = mes || ctx.hoy().slice(0, 7);
   const m = delMes(lista, elMes);
   const g = sumar(deTipo(m, 'gasto'));
   const i = sumar(deTipo(m, 'ingreso'));
