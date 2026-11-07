@@ -2015,12 +2015,13 @@ function filasEfectivo(ctx) {
     if (m.caja !== 'efectivo' || m.tipo === 'saldo_inicial') continue;
     const quien = m.prestamoId ? clienteDe(m.prestamoId) : '';
     const icono = m.tipo === 'prestamo' ? '💵' : (m.tipo === 'pago' ? '↩️' : (m.signo > 0 ? '⬇️' : '⬆️'));
-    filas.push({ id: m.id, manual: ['aporte', 'retiro'].includes(m.tipo), fecha: m.fecha, icono, titulo: quien || m.nota || QUE[m.tipo] || m.tipo, sub: quien ? QUE[m.tipo] : (m.nota && QUE[m.tipo] ? QUE[m.tipo] : ''), valor: m.monto * m.signo });
+    const grupo = m.tipo === 'prestamo' ? 'Préstamos' : (m.tipo === 'pago' ? 'Pagos recibidos' : (m.signo > 0 ? 'Entró (anotado a mano)' : 'Salió (anotado a mano)'));
+    filas.push({ id: m.id, grupo, manual: ['aporte', 'retiro'].includes(m.tipo), fecha: m.fecha, icono, titulo: quien || m.nota || QUE[m.tipo] || m.tipo, sub: quien ? QUE[m.tipo] : (m.nota && QUE[m.tipo] ? QUE[m.tipo] : ''), valor: m.monto * m.signo });
   }
   for (const a of estado.fran.asientos) {
     if (a.libro === 'terceros') continue;
     const esEf = (c) => /^efectivo$/i.test(c || '');
-    const base = { fecha: a.fecha, icono: iconoDe(a.categoria), titulo: a.categoria, sub: a.descripcion || '' };
+    const base = { fecha: a.fecha, grupo: a.categoria, icono: iconoDe(a.categoria), titulo: a.descripcion || a.categoria, sub: '' };
     if (a.tipo === 'transferencia') {
       if (esEf(a.cuenta)) filas.push({ ...base, valor: -a.valor });
       if (esEf(a.destino)) filas.push({ ...base, valor: a.valor });
@@ -2049,7 +2050,11 @@ function renderEfectivo(contenedor, ctx) {
   const salio = delMesE.filter((f) => f.valor < 0).reduce((s, f) => s - f.valor, 0);
   const mesAntes = fechas.nombreMes(Number(fechas.sumarMeses(`${mes}-01`, -1).slice(5, 7))).toLowerCase();
   const dibujar = () => { contenedor.innerHTML = ''; renderEfectivo(contenedor, ctx); };
-  const dias = [...new Set(delMesE.map((f) => f.fecha))];
+  // Por grupo (Alimentos, Préstamos, Mano de obra...), primero lo que más movió.
+  const porGrupo = new Map();
+  for (const f of delMesE) { if (!porGrupo.has(f.grupo)) porGrupo.set(f.grupo, []); porGrupo.get(f.grupo).push(f); }
+  const grupos = [...porGrupo].sort((a, b) => Math.abs(b[1].reduce((t, f) => t + f.valor, 0)) - Math.abs(a[1].reduce((t, f) => t + f.valor, 0)));
+  const rangoFechas = (lista) => { const fs = lista.map((f) => f.fecha).sort(); const a = fechas.formatear(fs[0]).replace(/ \d{4}$/, ''); const b = fechas.formatear(fs[fs.length - 1]).replace(/ \d{4}$/, ''); return a === b ? a : `${a} al ${b}`; };
   const raiz = ui.el(`<div class="fran-virtual">
     ${titular('personal', ctx, '#/inicio', 'Plata en efectivo', mes)}
     ${heroe({ etiqueta: 'Efectivo hoy', valor: total, ayudaTexto: `Arranca con el cierre del mes pasado y suma o resta solo lo que entró o salió en efectivo.`, cajas: [[`Cierre de ${mesAntes}`, anterior], ['Entró', entro, entro ? 'mas' : ''], ['Salió', salio, salio ? 'menos' : '']] }, ctx)}
@@ -2060,7 +2065,10 @@ function renderEfectivo(contenedor, ctx) {
       <label><small>Fecha</small><input type="date" name="fecha" value="${ui.esc(mes === hoy.slice(0, 7) ? hoy : `${mes}-01`)}"></label>
       <button class="fran-boton-principal fran-guardar">Guardar</button>
     </form>
-    ${dias.map((dia) => `<div class="fran-dia"><span>${ui.esc(fechaLinda(dia, ctx))}</span></div><div class="fran-lista">${delMesE.filter((f) => f.fecha === dia).map((f) => `<div class="fran-fila"><span class="fran-ico">${ui.esc(f.icono)}</span><span class="fran-fila__texto"><strong>${ui.esc(f.titulo)}</strong>${f.sub ? `<small>${ui.esc(f.sub)}</small>` : ''}</span><span class="fran-fila__valor numero ${f.valor < 0 ? 'fran-menos' : 'fran-mas'}">${dinero.formatear(Math.abs(f.valor))}</span>${f.manual ? `<button type="button" class="fran-boton-secundario fran-boton--44" data-quitar="${ui.esc(f.id)}">Quitar</button>` : ''}</div>`).join('')}</div>`).join('') || '<p class="fran-vacio">Nada en efectivo este mes.</p>'}
+    ${grupos.map(([nombre, lista]) => { const suma = lista.reduce((t, f) => t + f.valor, 0); return `<details class="fran-tachados fran-prestado-pension">
+      <summary><span class="fran-cuadro fran-cuadro--40" aria-hidden="true">${ui.esc(lista[0].icono)}</span><span class="fran-renglon__texto"><span>${ui.esc(nombre)}</span><small>${lista.length} ${lista.length === 1 ? 'movimiento' : 'movimientos'} · ${ui.esc(rangoFechas(lista))}</small></span><b>${conSigno(suma, dinero, suma < 0 ? 'menos' : 'mas')}</b></summary>
+      <div class="fran-lista">${lista.map((f) => `<div class="fran-fila"><span class="fran-fila__texto"><strong>${ui.esc(f.titulo)}</strong><small>${ui.esc([fechas.formatear(f.fecha), f.sub].filter(Boolean).join(' · '))}</small></span><span class="fran-fila__valor numero ${f.valor < 0 ? 'fran-menos' : 'fran-mas'}">${dinero.formatear(Math.abs(f.valor))}</span>${f.manual ? `<button type="button" class="fran-boton-secundario fran-boton--44" data-quitar="${ui.esc(f.id)}">Quitar</button>` : ''}</div>`).join('')}</div>
+    </details>`; }).join('') || '<p class="fran-vacio">Nada en efectivo este mes.</p>'}
   </div>`);
   raiz.querySelector('[data-elegir-mes]').addEventListener('click', () => abrirMeses(mes, ctx, (m) => { vista.mesEfectivo = m; dibujar(); }, meses));
   const form = raiz.querySelector('[data-form-mov]');
