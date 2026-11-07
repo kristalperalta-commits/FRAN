@@ -1,6 +1,6 @@
 /*
   apariencia.js: la hoja de la tuerquita ⚙️. Tema de toda la app o de cada libro,
-  y tamaño de la letra con una barra que se desliza por porcentaje.
+  y tamaño de la letra y sombreado con barras que se deslizan por porcentaje.
   Todo se guarda en este aparato (js/tema.js).
 */
 
@@ -20,7 +20,8 @@ const esc = (t) => String(t).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&
 export function abrirApariencia(libroInicial = '') {
   const Tema = window.Tema;
   const Letra = window.Letra;
-  if (!Tema || !Letra) return;
+  const Relieve = window.Relieve;
+  if (!Tema || !Letra || !Relieve) return;
   const antes = Tema.libroVisible ? Tema.libroVisible() : null;
   let parte = PARTES.some(([id]) => id === libroInicial) ? libroInicial : '';
 
@@ -33,7 +34,9 @@ export function abrirApariencia(libroInicial = '') {
     <div class="fran-apariencia__partes">${PARTES.map(([id, ic, nombre]) => `<button type="button" data-parte="${id}"><span>${ic}</span>${esc(nombre)}</button>`).join('')}</div>
     <div class="fran-apariencia__temas"></div>
     <p class="fran-apariencia__etiqueta">Tamaño de la letra <b data-pct></b></p>
-    <div class="fran-apariencia__letra"><span aria-hidden="true">A</span><input type="range" min="${Letra.min}" max="${Letra.max}" step="${Letra.paso}" value="${Letra.actual()}" aria-label="Tamaño de la letra en porcentaje"><span aria-hidden="true" class="grande">A</span></div>
+    <div class="fran-apariencia__letra"><span aria-hidden="true">A</span><input type="range" name="letra" min="${Letra.min}" max="${Letra.max}" step="${Letra.paso}" value="${Letra.actual()}" aria-label="Tamaño de la letra en porcentaje"><span aria-hidden="true" class="grande">A</span></div>
+    <p class="fran-apariencia__etiqueta">Sombreado y relieve <b data-pct-relieve></b></p>
+    <div class="fran-apariencia__letra"><span aria-hidden="true">◌</span><input type="range" name="relieve" min="${Relieve.min}" max="${Relieve.max}" step="${Relieve.paso}" value="${Relieve.actual()}" aria-label="Sombreado y relieve en porcentaje"><span aria-hidden="true" class="grande">◉</span></div>
     <button type="button" class="fran-boton-principal" data-listo>Listo</button>
   </div>`;
 
@@ -46,7 +49,7 @@ export function abrirApariencia(libroInicial = '') {
     Tema.aplicarPara(parte || null);
   };
   const pintarModo = () => fondo.querySelectorAll('[data-modo-elegir]').forEach((b) => b.classList.toggle('activo', b.dataset.modoElegir === Tema.modo()));
-  const pintarLetra = () => { fondo.querySelector('[data-pct]').textContent = `${Letra.actual()} %`; };
+  const pintarLetra = () => { fondo.querySelector('[data-pct]').textContent = `${Letra.actual()} %`; fondo.querySelector('[data-pct-relieve]').textContent = `${Relieve.actual()} %`; };
 
   const cerrar = () => { fondo.remove(); Tema.aplicarPara(antes); };
   fondo.addEventListener('click', (e) => {
@@ -63,7 +66,8 @@ export function abrirApariencia(libroInicial = '') {
       pintarTemas();
     }
   });
-  fondo.querySelector('input[type="range"]').addEventListener('input', (e) => { Letra.elegir(Number(e.target.value)); pintarLetra(); });
+  fondo.querySelector('input[name="letra"]').addEventListener('input', (e) => { Letra.elegir(Number(e.target.value)); pintarLetra(); });
+  fondo.querySelector('input[name="relieve"]').addEventListener('input', (e) => { Relieve.elegir(Number(e.target.value)); pintarLetra(); });
   pintarTemas();
   pintarModo();
   pintarLetra();

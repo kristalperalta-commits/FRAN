@@ -9,9 +9,12 @@
 
 :root {
   /* Luz del tema: sale del acento de cada color (Lila, Rosa, Azul, Naranja, Verde). */
-  --luz: color-mix(in srgb, var(--accent) 70%, #fff);
-  --luz-suave: color-mix(in srgb, var(--accent) 45%, transparent);
-  --luz-fuerte: color-mix(in srgb, var(--accent) 80%, transparent);
+  /* --relieve lo mueve la barra "Sombreado" de la tuerquita (1 = como viene; 0 = sin luces). */
+  --relieve: 1;
+  --luz-alfa: calc(min(var(--relieve), 1) * 100%);
+  --luz: color-mix(in srgb, color-mix(in srgb, var(--accent) 70%, #fff) var(--luz-alfa), transparent);
+  --luz-suave: color-mix(in srgb, color-mix(in srgb, var(--accent) 45%, transparent) var(--luz-alfa), transparent);
+  --luz-fuerte: color-mix(in srgb, color-mix(in srgb, var(--accent) 80%, transparent) var(--luz-alfa), transparent);
   --p-azul: #2563EB;
   --p-azul-claro: #60A5FA;
   --p-cielo: #7DD3FC;
@@ -443,3 +446,37 @@ html[data-modo="claro"] .fran-enlace--destacado .fran-ajuste__flecha { border-co
   .fran-tablero .fran-libros .fran-modulo__valor > span:not(.numero) { font-size: clamp(14px, 1.7vw, 19px); }
   body.en-yo #pantalla > .fran-enlace--destacado { width: 100%; margin-right: 0; }
 }
+
+/* ================= Barra de sombreado (tuerquita) ================= */
+/* Más de 100 %: un halo de luz más ancho alrededor de cada pieza. 30 % o menos: todo plano. */
+html[data-relieve="fuerte"] .fran-modulo, html[data-relieve="fuerte"] .fran-metrica, html[data-relieve="fuerte"] .fran-renglon,
+html[data-relieve="fuerte"] .fran-tarjeta, html[data-relieve="fuerte"] .fran-heroe, html[data-relieve="fuerte"] .fran-panel,
+html[data-relieve="fuerte"] .fran-tachados, html[data-relieve="fuerte"] .fran-accesos a, html[data-relieve="fuerte"] .fran-tarjeta-credito,
+html[data-relieve="fuerte"] .fran-boton-principal, html[data-relieve="fuerte"] .barra-inferior {
+  filter: drop-shadow(0 0 calc(16px * (var(--relieve) - 1)) var(--luz-suave));
+}
+html[data-relieve="plano"] .fran-modulo, html[data-relieve="plano"] .fran-metrica, html[data-relieve="plano"] .fran-renglon,
+html[data-relieve="plano"] .fran-tarjeta, html[data-relieve="plano"] .fran-heroe, html[data-relieve="plano"] .fran-panel,
+html[data-relieve="plano"] .fran-tachados, html[data-relieve="plano"] .fran-accesos a, html[data-relieve="plano"] .fran-tarjeta-credito,
+html[data-relieve="plano"] .fran-boton-principal, html[data-relieve="plano"] .fran-boton-secundario, html[data-relieve="plano"] .barra-inferior,
+html[data-relieve="plano"] .fran-fila, html[data-relieve="plano"] .fran-cuatro__cuadro, html[data-relieve="plano"] .fran-pildora {
+  box-shadow: none !important;
+}
+html[data-relieve="plano"] .fran-3d, html[data-relieve="plano"] .fran-heroe__3d { filter: none !important; }
+html[data-relieve="plano"] .fran-panel::before, html[data-relieve="plano"] .fran-panel::after,
+html[data-relieve="plano"] .fran-heroe::before, html[data-relieve="plano"] .fran-heroe::after { display: none; }
+
+/* ================= Números que caben siempre en su cuadro ================= */
+/* Con la letra grande, el número se encoge solo hasta caber (medido contra el ancho del cuadro). */
+.fran-metrica__texto { flex: 1 1 0; container-type: inline-size; }
+.fran-metrica__texto b { font-size: clamp(10px, 15cqi, 17px) !important; overflow: hidden; }
+/* Con letra muy grande, los cuadros van de a uno (o dos) por renglón para que el número quepa entero. */
+html[data-letra="muy-grande"] .fran-metricas, html[data-letra="enorme"] .fran-metricas { grid-template-columns: 1fr !important; }
+html[data-letra="enorme"] .fran-tablero .fran-libros { grid-template-columns: 1fr !important; }
+html[data-letra="enorme"] .fran-tablero .fran-libros-chicos { grid-template-columns: 1fr 1fr !important; }
+html[data-letra="enorme"] .fran-heroe__cajas { grid-template-columns: 1fr !important; flex-direction: column; }
+.fran-modulo { container-type: inline-size; }
+.fran-modulo:not(.fran-modulo--chico) .fran-modulo__valor { font-size: clamp(10px, 11.5cqi, 20px) !important; }
+.fran-modulo--chico .fran-modulo__valor { font-size: clamp(10px, 12cqi, 14.5px) !important; }
+.fran-heroe__cajas > span, .fran-heroe__cajas > a { container-type: inline-size; }
+.fran-heroe__cajas > span > span, .fran-heroe__cajas > a > span { font-size: clamp(11px, 11cqi, 15px) !important; }

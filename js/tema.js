@@ -125,4 +125,24 @@
   }
   window.Letra = { min: MIN, max: MAX, paso: 5, actual: letraActual, elegir: elegirLetra };
   aplicarLetra(letraActual());
+
+  // Sombreado y relieve en porcentaje: 100 es como viene, 0 es plano, hasta 200 con halos más anchos.
+  const CLAVE_RELIEVE = 'fran-relieve';
+  const limitarRelieve = (n) => Math.min(200, Math.max(0, Math.round(n / 10) * 10));
+  function relieveActual() {
+    try { const v = Number(window.localStorage.getItem(CLAVE_RELIEVE)); return Number.isFinite(v) && window.localStorage.getItem(CLAVE_RELIEVE) !== null ? limitarRelieve(v) : 100; } catch (_error) { return 100; }
+  }
+  function aplicarRelieve(pct) {
+    const n = limitarRelieve(pct);
+    document.documentElement.style.setProperty('--relieve', String(n / 100));
+    document.documentElement.setAttribute('data-relieve', n <= 30 ? 'plano' : (n > 100 ? 'fuerte' : 'normal'));
+    return n;
+  }
+  function elegirRelieve(pct) {
+    const n = aplicarRelieve(pct);
+    try { window.localStorage.setItem(CLAVE_RELIEVE, String(n)); } catch (_error) { /* dura hasta cerrar la app */ }
+    return n;
+  }
+  window.Relieve = { min: 0, max: 200, paso: 10, actual: relieveActual, elegir: elegirRelieve };
+  aplicarRelieve(relieveActual());
 })();

@@ -766,12 +766,14 @@ function renderLibro(contenedor, id, ctx) {
   const { m, g, i, saldo } = saldoLibro(ctx, todos, id, mes);
   const raiz = ui.el(`<div>
     ${titular(id, ctx, '#/inicio', '', mes)}
-    ${heroe({ etiqueta: `Saldo de ${fechas.nombreMes(Number(mes.slice(5, 7))).toLowerCase()}`, valor: saldo, cajas: [['Gastos', g, 'menos'], ['Ingresos', i, 'mas']] }, ctx)}
+    ${heroe({ etiqueta: `Saldo de ${fechas.nombreMes(Number(mes.slice(5, 7))).toLowerCase()}`, valor: saldo, cajas: [['Gastos', g, 'menos', `#/libro/${id}/graficos`], ['Ingresos', i, 'mas', `#/libro/${id}/graficos`]] }, ctx)}
     ${id === 'personal' ? tarjetaDona(deTipo(m, 'gasto'), ctx) : ''}
     ${id === 'arriendos' ? '<a class="fran-boton-secundario fran-boton--emoji" href="#/libro/arriendos/propiedades"><span class="fran-cuadro fran-cuadro--40" aria-hidden="true">🏢</span>Cuánto dio cada propiedad</a>' : ''}
     ${avisoSinDetalle(m)}
     ${m.length ? `<div class="fran-lista">${listaPorDia(m, ctx)}</div>` : vacioConSalto(lista, ctx, 'No hay movimientos en este mes.')}
   </div>`);
+  // Tocar Gastos o Ingresos lleva a Gráficos con ese tipo ya elegido.
+  raiz.querySelectorAll('.fran-heroe__cajas a').forEach((a, n) => a.addEventListener('click', () => { vista.tipo = n === 0 ? 'gasto' : 'ingreso'; }));
   conectarMes(raiz, mes, ctx, redibujar);
   conectarVer(raiz, m, contenedor, id, redibujar, ctx);
   contenedor.append(raiz);
