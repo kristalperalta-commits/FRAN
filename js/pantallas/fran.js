@@ -1095,7 +1095,7 @@ function renderInformes(contenedor, id, ctx) {
 export function abrirMas(id, ctx) {
   if (id === 'prestamos') {
     const enFicha = window.location.hash.match(/^#\/cliente\/([^/]+)$/);
-    return ctx.navegar(enFicha ? `/libro/prestamos/registrar/interes/${enFicha[1]}` : '/libro/prestamos/registrar/nuevo');
+    return ctx.navegar(enFicha ? `/libro/prestamos/registrar/elegir/${enFicha[1]}` : '/libro/prestamos/registrar/elegir');
   }
   if (id === 'pension') return ctx.navegar('/libro/pension/mover/ingreso');
   return ctx.navegar(`/libro/${id}/agregar/${(TIPOS[id] || TIPOS.personal)[0][1]}`);
@@ -1349,7 +1349,13 @@ function renderAgregar(contenedor, id, clave, ctx) {
 
 // ---------- Registrar en Préstamos (boceto 8) ----------
 
-const TIPOS_PRESTAMO = [['nuevo', '＋', 'Nuevo préstamo'], ['abono', '↩️', 'Abono a capital'], ['interes', '💯', 'Pago de intereses'], ['acuerdo', '🤝', 'Acuerdo de pago']];
+// [clave, emoji, nombre, para qué sirve]. Primero se ven los cuatro en cuadros grandes; al tocar uno sale su formulario.
+const TIPOS_PRESTAMO = [
+  ['nuevo', '💵', 'Nuevo préstamo', 'Le presto plata a alguien'],
+  ['abono', '↩️', 'Abono a capital', 'Me devolvió parte del capital'],
+  ['interes', '💰', 'Pago de intereses', 'Me pagó los intereses'],
+  ['acuerdo', '🤝', 'Acuerdo de pago', 'Quedamos en una fecha'],
+];
 
 function renderRegistrar(contenedor, params, ctx) {
   const { ui, datos } = ctx;
@@ -1357,19 +1363,33 @@ function renderRegistrar(contenedor, params, ctx) {
   const estado = datos.estado;
   const clientes = [...estado.clientes].sort((a, b) => a.nombre.localeCompare(b.nombre, 'es'));
   const elegido = params.clienteId || '';
+  const conCliente = elegido ? `/${encodeURIComponent(elegido)}` : '';
+  const actual = TIPOS_PRESTAMO.find(([k]) => k === tipo);
+  // Paso 1: solo los cuatro cuadros grandes.
+  if (!actual) {
+    contenedor.append(ui.el(`<div class="fran-registrar">
+      <header class="fran-titulo"><a href="${elegido ? `#/cliente${conCliente}` : '#/libro/prestamos'}" class="fran-titulo__atras" aria-label="Volver">‹</a><h1>¿Qué vas a anotar?</h1></header>
+      <div class="fran-cuatro">${TIPOS_PRESTAMO.map(([k, ic, t, d]) => `<a href="#/libro/prestamos/registrar/${k}${conCliente}" class="fran-cuatro__cuadro">
+        <span class="fran-cuadro fran-cuadro--grande" aria-hidden="true">${ic}</span>
+        <span class="fran-cuatro__nombre">${ui.esc(t)}</span>
+        <small>${ui.esc(d)}</small>
+      </a>`).join('')}</div>
+    </div>`));
+    return;
+  }
+  // Paso 2: el formulario de lo que eligió, y nada más.
   const raiz = ui.el(`<div class="fran-registrar">
-    <header class="fran-agregar__cabeza"><a href="#/libro/prestamos">Cancelar</a><strong>Préstamos</strong><span></span></header>
-    <div class="fran-opciones">${TIPOS_PRESTAMO.map(([k, ic, t]) => `<a href="#/libro/prestamos/registrar/${k}${elegido ? `/${encodeURIComponent(elegido)}` : ''}" class="${k === tipo ? 'activo' : ''}"><span>${ic}</span>${ui.esc(t)}</a>`).join('')}</div>
-    <form novalidate class="fran-campos">
+    <header class="fran-titulo fran-titulo--libro"><a href="#/libro/prestamos/registrar/elegir${conCliente}" class="fran-titulo__atras" aria-label="Volver a elegir">‹</a><h1><span class="fran-cuadro fran-cuadro--28" aria-hidden="true">${actual[1]}</span><span>${ui.esc(actual[2])}</span></h1></header>
+    <form novalidate class="fran-campos fran-campos--grande">
       <label><small>Cliente</small><select name="cliente"><option value="">Elige…</option>${tipo === 'nuevo' || tipo === 'acuerdo' ? '<option value="__nuevo">＋ Cliente nuevo</option>' : ''}${clientes.map((c) => `<option value="${ui.esc(c.id)}"${c.id === elegido ? ' selected' : ''}>${ui.esc(c.nombre)}</option>`).join('')}</select></label>
       <label class="oculto" id="campo-nombre"><small>Nombre del cliente nuevo</small><input name="nombre" autocomplete="off"></label>
       <label class="oculto" id="campo-prestamo"><small>¿De cuál préstamo?</small><select name="prestamo"></select></label>
-      <label><small>Valor${tipo === 'acuerdo' ? ' (si ya lo sabes)' : ''}</small><input name="valor" inputmode="numeric" autocomplete="off" placeholder="0"></label>
+      <label class="fran-campo-valor"><small>Valor${tipo === 'acuerdo' ? ' (si ya lo sabes)' : ''}</small><input name="valor" inputmode="numeric" autocomplete="off" placeholder="0"></label>
       ${tipo === 'nuevo' ? `<div><small>Tasa mensual</small>${chips('tasa', [['5', '5%'], ['10', '10%'], ['12', '12%'], ['15', '15%'], ['20', '20%'], ['0', 'Sin interés']], '', ui)}</div>` : ''}
       ${tipo === 'acuerdo' ? `<div><small>Cada cuánto</small>${chips('repite', [['', 'Fecha fija'], ['diario', 'Diario'], ['semanal', 'Semanal'], ['quincenal', 'Quincenal'], ['mensual', 'Mensual']], '', ui)}</div>` : `<label><small>${tipo === 'nuevo' ? 'Sale por' : 'Entra por'}</small><select name="medio"><option value="efectivo">Efectivo</option><option value="virtual">Virtual</option></select></label>`}
       <label><small>${tipo === 'acuerdo' ? 'Fecha del cobro' : 'Fecha'}</small><input type="date" name="fecha" value="${ui.esc(ctx.hoy())}"></label>
       <label><small>Nota</small><input name="nota" autocomplete="off" placeholder="Escribe o dicta con el teclado"></label>
-      <button class="boton boton--primario fran-guardar">Guardar</button>
+      <button class="fran-boton-principal fran-guardar">Guardar</button>
     </form>
   </div>`);
   conectarChips(raiz);
