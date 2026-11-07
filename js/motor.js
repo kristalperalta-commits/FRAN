@@ -523,7 +523,18 @@ function calcularSinInteres(prestamo, pagos) {
 export function calcularPrestamo(prestamo, pagosDelPrestamo, hoy) {
   const pagos = pagosDe(prestamo, pagosDelPrestamo);
   const modalidad = prestamo.modalidad || 'interes_mensual';
-  const conDebeHoy = (r) => { r.debeHoy = r.deudaCliente + r.interesCorrido; return r; };
+  const conDebeHoy = (r) => {
+    // Marcado pagado a mano (ella dice que ya no debe nada): no queda nada pendiente.
+    if (prestamo.estadoManual === 'pagado') {
+      r.capitalPagado = r.capital;
+      r.capitalPendiente = 0;
+      r.interesPendiente = 0;
+      r.interesCorrido = 0;
+      r.deudaCliente = 0;
+    }
+    r.debeHoy = r.deudaCliente + r.interesCorrido;
+    return r;
+  };
   if (modalidad === 'capital_primero') return conDebeHoy(calcularCapitalPrimero(prestamo, pagos, hoy));
   if (modalidad === 'sin_interes') return conDebeHoy(calcularSinInteres(prestamo, pagos));
   const resultado = calcularInteresMensual(prestamo, pagos, hoy);

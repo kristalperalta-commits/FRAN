@@ -1427,3 +1427,13 @@ describe('intereses de quien ya no debe capital', () => {
     assert.equal(r.interesesSinCapital, 100000);
   });
 });
+
+describe('préstamo marcado pagado a mano', () => {
+  test('no deja nada pendiente', () => {
+    const r = modMotor.calcularPrestamo({ id: 'pp', clienteId: 'c', fecha: '2025-09-28', capital: 227000, tasa: 0, modalidad: 'interes_mensual', estadoManual: 'pagado', fechaEstado: '2026-11-06' }, [], '2026-11-06');
+    assert.equal(r.estado, 'pagado');
+    assert.equal(r.capitalPendiente, 0);
+    assert.equal(r.deudaCliente, 0);
+    assert.equal(r.debeHoy, 0);
+  });
+});
