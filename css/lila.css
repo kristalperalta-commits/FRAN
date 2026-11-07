@@ -545,3 +545,10 @@ html body .fran-form-sale > label:first-child { box-shadow: inset 0 0 0 2px var(
 /* Luz que pasa por la pantalla al actualizar */
 body.brillo-actualizado::after { content: ''; position: fixed; inset: 0; z-index: 70; pointer-events: none; background: linear-gradient(110deg, transparent 30%, rgba(255, 255, 255, 0.55) 48%, rgba(255, 255, 255, 0.85) 50%, rgba(255, 255, 255, 0.55) 52%, transparent 70%); background-size: 250% 100%; animation: brillo-pasa 1.2s ease-out forwards; }
 @keyframes brillo-pasa { from { background-position: 120% 0; } to { background-position: -120% 0; } }
+
+/* ---------- Crédito de banco ---------- */
+.fran-renglon--credito { margin-top: 10px; }
+.fran-cuatro--chico { margin: 12px 0; }
+.fran-cuatro--chico .fran-cuatro__cuadro { aspect-ratio: auto; min-height: 96px; padding: 12px 8px; border: 0; font: inherit; cursor: pointer; }
+.fran-cuatro--chico .fran-cuatro__cuadro.activo { box-shadow: inset 0 0 0 2px var(--accent); }
+.fran-cuatro--chico .fran-cuatro__nombre { font-size: 13.5px; }

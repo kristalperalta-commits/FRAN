@@ -1,7 +1,7 @@
 // Categorías de Agregar y nombres de los ingresos en Finanzas.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { adivinarCategoria, categoriasDe, delLibro, evaluarMonto, INGRESOS_DE_OTRO_LIBRO, repartirPagos, gananciasDe, cobrosDeCliente, renglonesPrestamos } from '../js/pantallas/fran.js';
+import { adivinarCategoria, categoriasDe, delLibro, evaluarMonto, INGRESOS_DE_OTRO_LIBRO, repartirPagos, gananciasDe, cobrosDeCliente, renglonesPrestamos, estadoCredito } from '../js/pantallas/fran.js';
 
 const vacio = { categoriasExtra: {}, categoriasOcultas: {} };
 const gasto = (categoria, fecha) => ({ libro: 'personal', tipo: 'gasto', categoria, fecha, valor: 1 });
@@ -117,4 +117,16 @@ test('tabla de préstamos: un renglón por préstamo, el más reciente primero, 
   assert.equal(filas.find((f) => f.nombre === 'Hija').cliente, 'Familia Uno');
   assert.equal(filas.find((f) => f.nombre === 'Dos').estado, 'al_dia');
   assert.equal(filas.reduce((s, f) => s + f.capital, 0), 1700);
+});
+
+test('crédito de banco: lo que hay en el banco, lo prestado y lo que se debe', () => {
+  const c = { monto: 5000000, movimientos: [
+    { tipo: 'presto', valor: 2000000 }, { tipo: 'cobro', valor: 200000 },
+    { tipo: 'pago', valor: 3100000, capital: 3000000 }, { tipo: 'devolvio', valor: 500000 },
+  ] };
+  const e = estadoCredito(c);
+  assert.equal(e.prestado, 1500000);
+  assert.equal(e.enBanco, 5000000 - 2000000 + 500000 + 200000 - 3100000);
+  assert.equal(e.deboBanco, 2000000);
+  assert.equal(e.ganado, 200000);
 });

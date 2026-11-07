@@ -565,6 +565,7 @@ function renderPrincipal(contenedor, ctx) {
     ${avisoAnotar ? renglon({ ruta: '#/libro/personal/agregar/gasto', icono: '📝', texto: 'Hoy no has anotado nada' }, ui) : ''}
     <div class="fran-libros">${['personal', 'prestamos', 'pension', 'productos'].map((id) => tarjetaLibro(id, false)).join('')}</div>
     <div class="fran-libros-chicos">${['arriendos', 'redes', 'terceros'].map((id) => tarjetaLibro(id, true)).join('')}</div>
+    ${(fran.creditos || []).map((c) => { const ec = estadoCredito(c); return `<a href="#/credito/${encodeURIComponent(c.id)}" class="fran-renglon fran-renglon--credito"><span class="fran-cuadro fran-cuadro--40" aria-hidden="true">🏛️</span><span class="fran-renglon__texto"><span>${ui.esc(c.nombre)}</span><small>Negocio aparte · en el banco ${dinero.formatear(ec.enBanco)}</small></span><span class="fran-renglon__valor">${conSigno(-ec.deboBanco, dinero)}</span><span class="fran-flecha" aria-hidden="true">›</span></a>`; }).join('')}
     ${sinDatos ? '' : `<a href="#/liquidez" class="fran-liquidez-boton"><span class="fran-cuadro fran-cuadro--40" aria-hidden="true">💧</span><span class="fran-renglon__texto"><span>Liquidez real</span><small>Toda la plata que puedo mover hoy</small></span><b>${conSigno(fondosLiquidez(ctx, tasaDolar(fran)).total, dinero)}</b><span class="fran-flecha" aria-hidden="true">›</span></a>`}
   </div>`);
   if (!sinDatos) traerDolar(ctx.hoy()).catch(() => {});
@@ -1880,6 +1881,87 @@ function marcarEntraSale(raiz, boton, form, entra) {
   form.querySelector('[data-titulo]').textContent = entra ? '⊕ Entró: ¿de quién o de qué?' : '⊖ Salió: ¿para quién o para qué?';
 }
 
+// ---------- Crédito de banco: plata prestada por el banco, aparte del negocio ----------
+
+const TIPOS_CREDITO = {
+  presto: ['🤝', 'Presté de esta plata', -1],
+  cobro: ['💰', 'Cobré intereses', 1],
+  devolvio: ['↩️', 'Me devolvieron capital', 1],
+  pago: ['🏛️', 'Pagué al banco', -1],
+  otro: ['✏️', 'Otro gasto del crédito', -1],
+};
+
+/** Cuánto hay del crédito en el banco, cuánto está prestado, cuánto se debe al banco y lo ganado. */
+export function estadoCredito(c) {
+  const suma = (t) => c.movimientos.filter((m) => m.tipo === t).reduce((s, m) => s + m.valor, 0);
+  const presto = suma('presto');
+  const devolvio = suma('devolvio');
+  const cobro = suma('cobro');
+  const pagado = suma('pago');
+  const capitalPagado = c.movimientos.filter((m) => m.tipo === 'pago').reduce((s, m) => s + (m.capital ?? m.valor), 0);
+  return {
+    enBanco: c.monto - presto + devolvio + cobro - pagado - suma('otro'),
+    prestado: presto - devolvio,
+    deboBanco: Math.max(0, c.monto - capitalPagado),
+    ganado: cobro,
+    pagadoBanco: pagado,
+  };
+}
+
+function renderCredito(contenedor, id, ctx) {
+  const { ui, dinero, fechas, datos } = ctx;
+  const fran = datos.estado.fran;
+  const c = (fran.creditos || []).find((x) => x.id === id);
+  if (!c) { contenedor.append(ui.el(`<div>${titular('personal', ctx, '#/inicio', 'Crédito')}<p class="fran-vacio">No encontré ese crédito.</p></div>`)); return; }
+  const e = estadoCredito(c);
+  const hoy = ctx.hoy();
+  const dibujar = () => { contenedor.innerHTML = ''; renderCredito(contenedor, id, ctx); };
+  const movs = [...c.movimientos].sort((a, b) => b.fecha.localeCompare(a.fecha));
+  const raiz = ui.el(`<div class="fran-virtual">
+    ${titular('personal', ctx, '#/inicio', c.nombre)}
+    ${heroe({ etiqueta: 'Le debo al banco', valor: -e.deboBanco, ayudaTexto: 'Es un negocio aparte: no entra a tus finanzas personales ni a la cartera del negocio de préstamos. Lo que cobres de intereses de esta plata sirve para pagarle al banco.', cajas: [['En el banco', e.enBanco], ['Prestado de aquí', e.prestado], ['Intereses cobrados', e.ganado, e.ganado ? 'mas' : '']] }, ctx)}
+    <p class="fran-nota">Me desembolsaron ${dinero.formatear(c.monto)} el ${ui.esc(fechas.formatear(c.fecha))}${c.cuenta ? ` en ${ui.esc(c.cuenta)}` : ''}.${c.nota ? ` ${ui.esc(c.nota)}` : ''}</p>
+    ${c.plan && c.plan.length ? `<details class="fran-tachados fran-prestado-pension" open><summary><span class="fran-cuadro fran-cuadro--40" aria-hidden="true">📝</span><span class="fran-renglon__texto"><span>Lo que pienso hacer</span><small>Todavía no está hecho</small></span></summary><div class="fran-lista">${c.plan.map((x) => `<div class="fran-liquidez__fila"><span>${ui.esc(x.texto)}</span>${x.valor ? conSigno(x.valor, dinero) : ''}</div>`).join('')}</div></details>` : ''}
+    <div class="fran-cuatro fran-cuatro--chico">${Object.entries(TIPOS_CREDITO).map(([k, [ic, t]]) => `<button type="button" class="fran-cuatro__cuadro" data-credito-nuevo="${k}"><span class="fran-cuadro fran-cuadro--40" aria-hidden="true">${ic}</span><span class="fran-cuatro__nombre">${ui.esc(t)}</span></button>`).join('')}</div>
+    <form class="fran-campos fran-campos--grande oculto" data-form-credito novalidate>
+      <label><small data-titulo>¿Quién o qué?</small><input name="concepto" autocomplete="off" placeholder="Nombre o detalle"></label>
+      <label class="fran-campo-valor"><small>Valor</small><input name="valor" inputmode="numeric" autocomplete="off" placeholder="0"></label>
+      <label class="oculto" data-campo-capital><small>De eso, ¿cuánto fue a capital? (si lo sabes)</small><input name="capital" inputmode="numeric" autocomplete="off" placeholder="0"></label>
+      <label><small>Fecha</small><input type="date" name="fecha" value="${ui.esc(hoy)}"></label>
+      <button class="fran-boton-principal fran-guardar">Guardar</button>
+    </form>
+    <p class="fran-seccion">Movimientos del crédito</p>
+    <div class="fran-lista">${movs.map((m) => { const [ic, t, sg] = TIPOS_CREDITO[m.tipo] || ['•', m.tipo, -1]; return `<div class="fran-fila"><span class="fran-ico">${ic}</span><span class="fran-fila__texto"><strong>${ui.esc(m.concepto || t)}</strong><small>${ui.esc(`${t} · ${fechas.formatear(m.fecha)}`)}</small></span><span class="fran-fila__valor numero ${sg < 0 ? 'fran-menos' : 'fran-mas'}">${dinero.formatear(m.valor)}</span><button type="button" class="fran-boton-secundario fran-boton--44" data-quitar-credito="${ui.esc(m.id)}">Quitar</button></div>`; }).join('') || '<p class="fran-vacio">Todavía no hay movimientos. La plata está completa en el banco.</p>'}</div>
+  </div>`);
+  const form = raiz.querySelector('[data-form-credito]');
+  let tipo = 'presto';
+  raiz.querySelectorAll('[data-credito-nuevo]').forEach((b) => b.addEventListener('click', () => {
+    tipo = b.dataset.creditoNuevo;
+    raiz.querySelectorAll('[data-credito-nuevo]').forEach((x) => x.classList.toggle('activo', x === b));
+    form.querySelector('[data-titulo]').textContent = `${TIPOS_CREDITO[tipo][1]}: ¿quién o qué?`;
+    form.querySelector('[data-campo-capital]').classList.toggle('oculto', tipo !== 'pago');
+    form.classList.remove('oculto');
+    form.elements.concepto.focus();
+  }));
+  form.addEventListener('submit', async (ev) => {
+    ev.preventDefault();
+    const f = ev.target.elements;
+    const valor = Number(f.valor.value.replace(/\D/g, ''));
+    if (!valor) { ui.toast('Escribe el valor.'); return; }
+    const capital = tipo === 'pago' && f.capital.value.trim() ? Number(f.capital.value.replace(/\D/g, '')) : null;
+    const mov = { id: `cr-${Date.now()}`, tipo, fecha: f.fecha.value || hoy, valor, concepto: f.concepto.value.trim(), ...(capital !== null ? { capital } : {}) };
+    await datos.actualizarFran({ creditos: fran.creditos.map((x) => (x.id === c.id ? { ...x, movimientos: [...x.movimientos, mov] } : x)) });
+    ui.toast('Guardado.');
+    dibujar();
+  });
+  raiz.querySelectorAll('[data-quitar-credito]').forEach((b) => b.addEventListener('click', async () => {
+    if (!(await ui.confirmar('¿Quitar este movimiento del crédito?', { aceptar: 'Sí, quitar', peligro: true }))) return;
+    await datos.actualizarFran({ creditos: fran.creditos.map((x) => (x.id === c.id ? { ...x, movimientos: x.movimientos.filter((m) => m.id !== b.dataset.quitarCredito) } : x)) });
+    dibujar();
+  }));
+  contenedor.append(raiz);
+}
+
 // ---------- Liquidez real: toda la plata que se puede mover hoy ----------
 
 const CLAVE_DOLAR = 'fran-dolar-hoy';
@@ -1926,6 +2008,10 @@ export function fondosLiquidez(ctx, tasa) {
       ...(a.disponible.efectivo ? [{ texto: `${a.descripcion.split(' · ')[0]} · en efectivo`, valor: a.disponible.efectivo }] : []),
       ...(a.disponible.virtual ? [{ texto: `${a.descripcion.split(' · ')[0]} · en virtual`, valor: a.disponible.virtual }] : []),
     ]) });
+  }
+  for (const c of fran.creditos || []) {
+    const ec = estadoCredito(c);
+    if (ec.enBanco) grupos.push({ icono: '🏛️', titulo: `${c.nombre} (se le debe al banco)`, filas: [{ texto: 'En el banco, de ese crédito', valor: ec.enBanco, ruta: `#/credito/${encodeURIComponent(c.id)}` }], nota: `Le debes al banco ${ctx.dinero.formatear(ec.deboBanco)}.` });
   }
   const p = fran.pension;
   const usd = p.cuentas.reduce((s, c) => s + c.usd, 0);
@@ -2331,6 +2417,7 @@ export async function render(contenedor, params, ctx) {
     case 'efectivo': return renderEfectivo(contenedor, ctx);
     case 'tarjetas': return renderTarjetas(contenedor, ctx);
     case 'liquidez': return renderLiquidez(contenedor, ctx);
+    case 'credito': return renderCredito(contenedor, params.id, ctx);
     case 'soloIntereses': return renderSoloIntereses(contenedor, ctx);
     case 'propiedad': {
       const { delAnio } = arriendosDelAnio(ctx);

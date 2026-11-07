@@ -11,7 +11,7 @@
 
 import * as ui from './ui.js';
 
-const VERSION_APP = '3.27.2';
+const VERSION_APP = '3.28.0';
 const contenedor = document.getElementById('pantalla');
 
 // ---------- Rutas (sección 7 de la especificación) ----------
@@ -23,6 +23,7 @@ const RUTAS = [
   { patron: '/otros', pantalla: 'fran', vista: 'otros', pestana: null, sinBarra: true },
   { patron: '/libro/arriendos/propiedades', pantalla: 'fran', vista: 'propiedades', pestana: 'inicio', libro: 'arriendos' },
   { patron: '/libro/arriendos/propiedad/:nombre', pantalla: 'fran', vista: 'propiedad', pestana: 'inicio', libro: 'arriendos' },
+  { patron: '/credito/:id', pantalla: 'fran', vista: 'credito', pestana: 'inicio', libro: 'personal' },
   { patron: '/liquidez', pantalla: 'fran', vista: 'liquidez', pestana: 'inicio', libro: 'personal' },
   { patron: '/tarjetas', pantalla: 'fran', vista: 'tarjetas', pestana: 'inicio', libro: 'personal' },
   { patron: '/efectivo', pantalla: 'fran', vista: 'efectivo', pestana: 'inicio', libro: 'personal' },
@@ -381,6 +382,8 @@ function registrarServiceWorker() {
   });
   navigator.serviceWorker.register('./sw.js').then((registro) => {
     registroSW = registro;
+    registro.update().catch(() => {});
+    setInterval(() => registro.update().catch(() => {}), 30 * 60000);
     // Instalada en el teléfono, la app casi nunca se recarga: al volver a ella se busca la versión nueva.
     document.addEventListener('visibilitychange', () => {
       if (document.visibilityState === 'visible') registro.update().catch(() => {});
