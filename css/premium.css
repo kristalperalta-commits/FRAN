@@ -672,3 +672,11 @@ html body .fran-iconos button small, html body .fran-iconos a small { overflow-w
 /* Libreta junto a "Hola, Fran": más grande y centrada en el espacio libre. */
 .fran-hola__libreta { width: 80px; height: 80px; margin: 0 auto; }
 .fran-hola__libreta svg { width: 74px; height: 74px; }
+
+/* Crédito: cada movimiento con sus botones; comprobante a pantalla. */
+.fran-credito-mov { margin-bottom: 10px; }
+.fran-credito-mov__botones { display: flex; flex-wrap: wrap; gap: 8px; padding: 0 4px 6px 56px; }
+.fran-credito-mov__botones button { width: auto; padding: 0 14px; }
+.fran-credito-editar { margin: 6px 0 12px; }
+.fran-foto-campo input[type="file"] { min-height: 44px; font-size: 14px; }
+.fran-comprobante { display: block; width: 100%; max-height: 70vh; object-fit: contain; border-radius: 16px; margin-bottom: 12px; }

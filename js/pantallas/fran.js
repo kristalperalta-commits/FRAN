@@ -567,9 +567,14 @@ function seccion(texto, icono3 = 'lista') {
   return `<p class="fran-seccion fran-seccion--yo">${icono3d(icono3, 'fran-3d--28')}${texto}<i></i></p>`;
 }
 
+/** Lo más nuevo primero: por fecha y, el mismo día, lo último que ella anotó arriba (pedido el 9 nov 2026). */
+function nuevosPrimero(lista) {
+  return lista.map((x, i) => [x, i]).sort(([a, i], [b, j]) => (b.fecha || '').localeCompare(a.fecha || '') || String(b.creadoEn || '').localeCompare(String(a.creadoEn || '')) || j - i).map(([x]) => x);
+}
+
 function listaPorDia(lista, ctx) {
   const { ui, dinero } = ctx;
-  const orden = [...lista].sort((a, b) => b.fecha.localeCompare(a.fecha));
+  const orden = nuevosPrimero(lista);
   const dias = new Map();
   for (const a of orden) { if (!dias.has(a.fecha)) dias.set(a.fecha, []); dias.get(a.fecha).push(a); }
   let html = '';
@@ -896,10 +901,11 @@ function renderPrestamos(contenedor, ctx, redibujar) {
   const cartera = carteraDe(ctx);
 
   const movimientos = [
-    ...prestamos.map((p) => ({ fecha: p.fecha, icono: '💵', titulo: nombreCliente(ctx, p.clienteId), sub: 'Nuevo préstamo', valor: -p.capital, ruta: `#/cliente/${encodeURIComponent(p.clienteId)}` })),
-    ...pagos.map((g) => ({ fecha: g.fecha, icono: g.capital && !g.interes ? '↩️' : '💵', titulo: nombreCliente(ctx, g.clienteId), sub: [g.interes ? `${dinero.formatear(g.interes)} int` : '', g.capital ? `${dinero.formatear(g.capital)} capital` : ''].filter(Boolean).join(' · '), valor: g.monto, ruta: `#/cliente/${encodeURIComponent(g.clienteId)}` })),
+    ...prestamos.map((p) => ({ fecha: p.fecha, creadoEn: p.creadoEn, icono: '💵', titulo: nombreCliente(ctx, p.clienteId), sub: 'Nuevo préstamo', valor: -p.capital, ruta: `#/cliente/${encodeURIComponent(p.clienteId)}` })),
+    ...pagos.map((g) => ({ fecha: g.fecha, creadoEn: g.creadoEn, icono: g.capital && !g.interes ? '↩️' : '💵', titulo: nombreCliente(ctx, g.clienteId), sub: [g.interes ? `${dinero.formatear(g.interes)} int` : '', g.capital ? `${dinero.formatear(g.capital)} capital` : ''].filter(Boolean).join(' · '), valor: g.monto, ruta: `#/cliente/${encodeURIComponent(g.clienteId)}` })),
     ...filasDeAsientos(delMes(lista, mes), dinero),
-  ].sort((a, b) => b.fecha.localeCompare(a.fecha) || Math.abs(b.valor) - Math.abs(a.valor));
+  ];
+  const movimientosOrden = nuevosPrimero(movimientos);
 
   const pastilla = (t, n, clase) => `<a href="#/clientes" class="fran-pastilla ${clase}"><i></i>${ui.esc(t)} ${n}</a>`;
   const raiz = ui.el(`<div>
@@ -926,7 +932,7 @@ function renderPrestamos(contenedor, ctx, redibujar) {
     </div>
     ${seccion('Movimientos del mes', 'grafica')}
     ${avisoSinDetalle(delMes(lista, mes))}
-    <div class="fran-lista fran-lista--tarjetas">${movimientos.map((x) => fila({ ui, icono: x.icono, icono3: x.valor < 0 ? 'billete' : 'recibo', titulo: x.titulo, sub: x.sub, derecha: `${x.valor < 0 ? '−' : '+'}${dinero.formatear(Math.abs(x.valor))}`, clase: x.valor < 0 ? 'fran-menos' : 'fran-mas', ruta: x.ruta })).join('') || vacioConSalto(lista, ctx, 'No hay movimientos en este mes.')}</div>
+    <div class="fran-lista fran-lista--tarjetas">${movimientosOrden.map((x) => fila({ ui, icono: x.icono, icono3: x.valor < 0 ? 'billete' : 'recibo', titulo: x.titulo, sub: x.sub, derecha: `${x.valor < 0 ? '−' : '+'}${dinero.formatear(Math.abs(x.valor))}`, clase: x.valor < 0 ? 'fran-menos' : 'fran-mas', ruta: x.ruta })).join('') || vacioConSalto(lista, ctx, 'No hay movimientos en este mes.')}</div>
   </div>`);
   conectarMes(raiz, mes, ctx, redibujar);
   contenedor.append(raiz);
@@ -945,7 +951,7 @@ function renderProductos(contenedor, ctx, redibujar) {
   const costoVendido = deTipo(m, 'ingreso').reduce((t, a) => t + (Number(a.costo) || 0), 0);
   const inventario = lista.filter((a) => a.tipo === 'gasto' && a.categoria === 'Inventario sin vender');
   const inversiones = lista.filter((a) => a.tipo === 'gasto' && a.categoria === 'Inversiones');
-  const vendido = deTipo(lista, 'ingreso').sort((a, b) => b.fecha.localeCompare(a.fecha));
+  const vendido = nuevosPrimero(deTipo(lista, 'ingreso'));
   const plegado = (icono, titulo, sub, total, cuerpo) => `<details class="fran-tachados fran-prestado-pension"><summary>${icono3dDe(icono, 'fran-3d--40')}<span class="fran-renglon__texto"><span>${ui.esc(titulo)}</span><small>${ui.esc(sub)}</small></span><b class="numero">${dinero.formatear(total)}</b></summary><div class="fran-lista">${cuerpo}</div></details>`;
   const filas = (l, signo) => l.map((a) => fila({ ui, ver: a.id, icono: iconoDe(a.categoria), titulo: (a.descripcion || a.categoria).split(' · ')[0], sub: [a.textoFecha || fechas.formatear(a.fecha), a.costo ? `costó ${dinero.formatear(a.costo)} · ganancia ${dinero.formatear(a.valor - a.costo)}` : ''].filter(Boolean).join(' · '), derecha: `${signo}${dinero.formatear(a.valor)}`, clase: signo === '+' ? 'fran-mas' : '' })).join('');
   const raiz = ui.el(`<div>
@@ -1212,7 +1218,7 @@ function renderDetalle(contenedor, id, tituloDetalle, lista, atras, ctx, conMes 
   const diasMes = mesUnico ? new Date(Number(mesUnico.slice(0, 4)), Number(mesUnico.slice(5, 7)), 0).getDate() : 0;
   const dibujar = () => {
     contenedor.innerHTML = '';
-    const ordenada = [...lista].sort((a, b) => (vista.orden === 'cantidad' ? b.valor - a.valor : b.fecha.localeCompare(a.fecha)));
+    const ordenada = vista.orden === 'cantidad' ? [...lista].sort((a, b) => b.valor - a.valor) : nuevosPrimero(lista);
     const maximo = ordenada.reduce((m, a) => Math.max(m, a.valor), 1);
     const raiz = ui.el(`<div>
       ${titular(id, ctx, atras, tituloDetalle)}
@@ -2133,7 +2139,7 @@ function renderCredito(contenedor, id, ctx) {
   const e = estadoCredito(c);
   const hoy = ctx.hoy();
   const dibujar = () => { contenedor.innerHTML = ''; renderCredito(contenedor, id, ctx); };
-  const movs = [...c.movimientos].sort((a, b) => b.fecha.localeCompare(a.fecha));
+  const movs = nuevosPrimero(c.movimientos);
   const raiz = ui.el(`<div class="fran-virtual">
     ${titular('personal', ctx, '#/inicio', c.nombre)}
     ${heroe({ etiqueta: 'Le debo al banco', valor: -e.deboBanco, ayudaTexto: 'Es un negocio aparte: no entra a tus finanzas personales ni a la cartera del negocio de préstamos. Lo que cobres de intereses de esta plata sirve para pagarle al banco.', cajas: [['En el banco', e.enBanco], ['Prestado de aquí', e.prestado], ['Intereses cobrados', e.ganado, e.ganado ? 'mas' : '']] }, ctx)}
@@ -2143,12 +2149,14 @@ function renderCredito(contenedor, id, ctx) {
     <form class="fran-campos fran-campos--grande oculto" data-form-credito novalidate>
       <label><small data-titulo>¿Quién o qué?</small><input name="concepto" autocomplete="off" placeholder="Nombre o detalle"></label>
       <label class="fran-campo-valor"><small>Valor</small><input name="valor" inputmode="numeric" autocomplete="off" placeholder="0"></label>
+      <label data-campo-tasa><small>Tasa de interés al mes (%)</small><input name="tasa" inputmode="decimal" autocomplete="off" placeholder="Ej. 20"></label>
+      <label class="fran-foto-campo"><small>Comprobante (foto o captura)</small><input type="file" name="foto" accept="image/*"></label>
       <label class="oculto" data-campo-capital><small>De eso, ¿cuánto fue a capital? (si lo sabes)</small><input name="capital" inputmode="numeric" autocomplete="off" placeholder="0"></label>
       <label><small>Fecha</small><input type="date" name="fecha" value="${ui.esc(hoy)}"></label>
       <button class="fran-boton-principal fran-guardar">Guardar</button>
     </form>
     ${seccion('Movimientos del crédito', 'grafica')}
-    <div class="fran-lista">${movs.map((m) => { const [ic, t, sg] = TIPOS_CREDITO[m.tipo] || ['•', m.tipo, -1]; return `<div class="fran-fila">${icono3dDe(ic)}<span class="fran-fila__texto"><strong>${ui.esc(m.concepto || t)}</strong><small>${ui.esc(`${t} · ${fechas.formatear(m.fecha)}`)}</small></span><span class="fran-fila__valor numero ${sg < 0 ? 'fran-menos' : 'fran-mas'}">${dinero.formatear(m.valor)}</span><button type="button" class="fran-boton-secundario fran-boton--44" data-quitar-credito="${ui.esc(m.id)}">Quitar</button></div>`; }).join('') || '<p class="fran-vacio">Todavía no hay movimientos. La plata está completa en el banco.</p>'}</div>
+    <div class="fran-lista">${movs.map((m) => { const [ic, t, sg] = TIPOS_CREDITO[m.tipo] || ['•', m.tipo, -1]; return `<div class="fran-credito-mov"><div class="fran-fila">${icono3dDe(ic)}<span class="fran-fila__texto"><strong>${ui.esc(m.concepto || t)}</strong><small>${ui.esc(`${t}${m.tasa ? ` · al ${String(m.tasa).replace('.', ',')} %` : ''} · ${fechas.formatear(m.fecha)}`)}${m.conFoto ? '' : (m.tipo === 'presto' ? ' · falta el comprobante' : '')}</small></span><span class="fran-fila__valor numero ${sg > 0 ? 'fran-mas' : 'fran-menos'}">${dinero.formatear(m.valor)}</span></div><span class="fran-credito-mov__botones">${m.conFoto ? `<button type="button" class="fran-boton-secundario fran-boton--44" data-ver-comprobante="${ui.esc(m.id)}">📷 Ver comprobante</button>` : ''}<button type="button" class="fran-boton-secundario fran-boton--44" data-editar-credito="${ui.esc(m.id)}">Editar</button><button type="button" class="fran-boton-secundario fran-boton--44" data-quitar-credito="${ui.esc(m.id)}">Quitar</button></span></div>`; }).join('') || '<p class="fran-vacio">Todavía no hay movimientos.</p>'}</div>
   </div>`);
   const form = raiz.querySelector('[data-form-credito]');
   let tipo = 'presto';
@@ -2157,6 +2165,7 @@ function renderCredito(contenedor, id, ctx) {
     raiz.querySelectorAll('[data-credito-nuevo]').forEach((x) => x.classList.toggle('activo', x === b));
     form.querySelector('[data-titulo]').textContent = `${TIPOS_CREDITO[tipo][1]}: ¿quién o qué?`;
     form.querySelector('[data-campo-capital]').classList.toggle('oculto', tipo !== 'pago');
+    form.querySelector('[data-campo-tasa]').classList.toggle('oculto', tipo !== 'presto');
     form.classList.remove('oculto');
     form.elements.concepto.focus();
   }));
@@ -2166,11 +2175,54 @@ function renderCredito(contenedor, id, ctx) {
     const valor = Number(f.valor.value.replace(/\D/g, ''));
     if (!valor) { ui.toast('Escribe el valor.'); return; }
     const capital = tipo === 'pago' && f.capital.value.trim() ? Number(f.capital.value.replace(/\D/g, '')) : null;
-    const mov = { id: `cr-${Date.now()}`, tipo, fecha: f.fecha.value || hoy, valor, concepto: f.concepto.value.trim(), ...(capital !== null ? { capital } : {}) };
+    const tasa = tipo === 'presto' && f.tasa.value.trim() ? Number(f.tasa.value.replace(',', '.').replace(/[^\d.]/g, '')) : null;
+    const mov = { id: `cr-${Date.now()}`, tipo, fecha: f.fecha.value || hoy, valor, concepto: f.concepto.value.trim(), ...(capital !== null ? { capital } : {}), ...(tasa ? { tasa } : {}) };
+    if (f.foto.files[0]) {
+      try { await guardarFoto(mov.id, await reducirFoto(f.foto.files[0])); mov.conFoto = true; } catch (error) { ui.toast(`La foto no se pudo guardar: ${error.message}`); }
+    }
     await datos.actualizarFran({ creditos: fran.creditos.map((x) => (x.id === c.id ? { ...x, movimientos: [...x.movimientos, mov] } : x)) });
     ui.toast('Guardado.');
     dibujar();
   });
+  // Completar un movimiento ya anotado: cliente, tasa, fecha, valor y comprobante.
+  raiz.querySelectorAll('[data-editar-credito]').forEach((b) => b.addEventListener('click', () => {
+    const m = c.movimientos.find((x) => x.id === b.dataset.editarCredito);
+    if (!m) return;
+    const caja = b.closest('.fran-credito-mov');
+    if (caja.querySelector('form')) { caja.querySelector('form').remove(); return; }
+    const fe = ui.el(`<form class="fran-campos fran-campos--grande fran-credito-editar" novalidate>
+      <label><small>¿Quién o qué?</small><input name="concepto" autocomplete="off" value="${ui.esc(m.concepto || '')}"></label>
+      <label class="fran-campo-valor"><small>Valor</small><input name="valor" inputmode="numeric" autocomplete="off" value="${ui.esc(dinero.formatear(m.valor))}"></label>
+      ${m.tipo === 'presto' ? `<label><small>Tasa de interés al mes (%)</small><input name="tasa" inputmode="decimal" autocomplete="off" value="${ui.esc(m.tasa ? String(m.tasa) : '')}" placeholder="Ej. 20"></label>` : ''}
+      <label><small>Fecha</small><input type="date" name="fecha" value="${ui.esc(m.fecha)}"></label>
+      <label class="fran-foto-campo"><small>${m.conFoto ? 'Cambiar el comprobante' : 'Subir el comprobante (foto o captura)'}</small><input type="file" name="foto" accept="image/*"></label>
+      <button class="fran-boton-principal fran-guardar">Guardar cambios</button>
+    </form>`);
+    caja.append(fe);
+    fe.addEventListener('submit', async (ev) => {
+      ev.preventDefault();
+      const f = ev.target.elements;
+      const valor = Number(f.valor.value.replace(/\D/g, ''));
+      if (!valor) { ui.toast('Escribe el valor.'); return; }
+      const cambios = { concepto: f.concepto.value.trim(), valor, fecha: f.fecha.value || m.fecha };
+      if (f.tasa) { const t = Number(f.tasa.value.replace(',', '.').replace(/[^\d.]/g, '')); if (t) cambios.tasa = t; }
+      if (f.foto.files[0]) {
+        try { await guardarFoto(m.id, await reducirFoto(f.foto.files[0])); cambios.conFoto = true; } catch (error) { ui.toast(`La foto no se pudo guardar: ${error.message}`); }
+      }
+      await datos.actualizarFran({ creditos: fran.creditos.map((x) => (x.id === c.id ? { ...x, movimientos: x.movimientos.map((y) => (y.id === m.id ? { ...y, ...cambios } : y)) } : x)) });
+      ui.toast('Guardado.');
+      dibujar();
+    });
+  }));
+  raiz.querySelectorAll('[data-ver-comprobante]').forEach((b) => b.addEventListener('click', async () => {
+    const foto = await leerFoto(b.dataset.verComprobante).catch(() => null);
+    if (!foto) { ui.toast('La foto está guardada en el aparato donde la subiste.'); return; }
+    const fondo = document.createElement('div');
+    fondo.className = 'fran-hoja-fondo';
+    fondo.innerHTML = `<div class="fran-hoja" role="dialog" aria-modal="true"><img class="fran-comprobante" alt="Comprobante" src="${foto}"><button type="button" class="fran-boton-principal">Cerrar</button></div>`;
+    fondo.addEventListener('click', (ev) => { if (ev.target === fondo || ev.target.closest('button')) fondo.remove(); });
+    document.body.append(fondo);
+  }));
   raiz.querySelectorAll('[data-quitar-credito]').forEach((b) => b.addEventListener('click', async () => {
     if (!(await ui.confirmar('¿Quitar este movimiento del crédito?', { aceptar: 'Sí, quitar', peligro: true }))) return;
     await datos.actualizarFran({ creditos: fran.creditos.map((x) => (x.id === c.id ? { ...x, movimientos: x.movimientos.filter((m) => m.id !== b.dataset.quitarCredito) } : x)) });
@@ -2321,7 +2373,7 @@ function renderLibreta(contenedor, ctx) {
   const tarjeta = (n) => `<div class="fran-libreta__item" data-nota="${ui.esc(n.id)}">
     <p>${ui.esc(n.texto)}</p>
     <small>${ui.esc(fechas.formatear(n.fecha))}${n.pasada ? ' · ya la pasé' : ''}</small>
-    <span class="fran-libreta__botones">${n.pasada ? `<button type="button" class="fran-boton-secundario fran-boton--44" data-volver="${ui.esc(n.id)}">Volver a pendientes</button>` : `<button type="button" class="fran-boton-principal fran-boton--44" data-pasar="${ui.esc(n.id)}" data-tipo="gasto">Pasar a gasto</button><button type="button" class="fran-boton-secundario fran-boton--44" data-pasar="${ui.esc(n.id)}" data-tipo="ingreso">Pasar a ingreso</button><button type="button" class="fran-boton-secundario fran-boton--44" data-hecha="${ui.esc(n.id)}">Ya la pasé</button>`}<button type="button" class="fran-boton-secundario fran-boton--44" data-borrar-nota="${ui.esc(n.id)}" aria-label="Borrar nota">Borrar</button></span>
+    <span class="fran-libreta__botones">${n.pasada ? `<button type="button" class="fran-boton-secundario fran-boton--44" data-volver="${ui.esc(n.id)}">Volver a pendientes</button>` : `<button type="button" class="fran-boton-principal fran-boton--44" data-pasar="${ui.esc(n.id)}" data-tipo="gasto">Pasar a gasto</button><button type="button" class="fran-boton-secundario fran-boton--44" data-pasar="${ui.esc(n.id)}" data-tipo="ingreso">Pasar a ingreso</button><button type="button" class="fran-boton-secundario fran-boton--44" data-hecha="${ui.esc(n.id)}">Ya la pasé</button>`}<button type="button" class="fran-boton-secundario fran-boton--44" data-editar-nota="${ui.esc(n.id)}">Editar</button><button type="button" class="fran-boton-secundario fran-boton--44" data-borrar-nota="${ui.esc(n.id)}" aria-label="Borrar nota">Borrar</button></span>
   </div>`;
   const raiz = ui.el(`<div>
     ${titular('personal', ctx, '#/inicio', 'Libreta')}
@@ -2344,6 +2396,26 @@ function renderLibreta(contenedor, ctx) {
     await ctx.datos.actualizarFran({ notas: notas.map((n) => (n.id === b.dataset.volver ? { ...n, pasada: false } : n)) });
     dibujar();
   }));
+  raiz.querySelectorAll('[data-editar-nota]').forEach((b) => b.addEventListener('click', () => {
+    const n = notas.find((x) => x.id === b.dataset.editarNota);
+    const caja = b.closest('.fran-libreta__item');
+    if (!n || caja.querySelector('form')) return;
+    const fe = ui.el(`<form class="fran-libreta__escribir fran-libreta__escribir--grande" novalidate><textarea name="texto" rows="6" aria-label="Editar nota">${ui.esc(n.texto)}</textarea><span class="fran-libreta__botones"><button class="fran-boton-principal fran-boton--44">Guardar cambios</button><button type="button" class="fran-boton-secundario fran-boton--44" data-cancelar>Cancelar</button></span></form>`);
+    caja.querySelector('p').replaceWith(fe);
+    caja.querySelector('.fran-libreta__botones:not(form .fran-libreta__botones)').classList.add('oculto');
+    const t = fe.querySelector('textarea');
+    t.focus();
+    t.setSelectionRange(t.value.length, t.value.length);
+    fe.querySelector('[data-cancelar]').addEventListener('click', dibujar);
+    fe.addEventListener('submit', async (ev) => {
+      ev.preventDefault();
+      const texto = t.value.trim();
+      if (!texto) { ui.toast('La nota quedó vacía. Si no la quieres, bórrala.'); return; }
+      await ctx.datos.actualizarFran({ notas: notas.map((x) => (x.id === n.id ? { ...x, texto, editadaEl: ctx.hoy() } : x)) });
+      ui.toast('Nota guardada.');
+      dibujar();
+    });
+  }));
   raiz.querySelectorAll('[data-borrar-nota]').forEach((b) => b.addEventListener('click', async () => {
     if (!(await ui.confirmar('¿Borrar esta nota?', { aceptar: 'Sí, borrar', peligro: true }))) return;
     await ctx.datos.actualizarFran({ notas: notas.filter((n) => n.id !== b.dataset.borrarNota) });
@@ -2363,7 +2435,7 @@ function renderMiPlata(contenedor, ctx) {
   const mesAntes = partida.fecha ? fechas.nombreMes(Number(fechas.sumarMeses(`${partida.fecha.slice(0, 7)}-01`, -1).slice(5, 7))).toLowerCase() : '';
   const arranqueTexto = partida.fecha ? `Cierre de ${mesAntes}` : 'Con lo que arrancó Fran';
   const fmt = (v) => `${v < 0 ? '−' : ''}${dinero.formatear(Math.abs(v))}`;
-  const lista = (g) => [...(c.grupos[g] || [])].sort((x, y) => y.fecha.localeCompare(x.fecha)).map((e) => fila({ ui, icono: e.icono, titulo: e.titulo, sub: `${fechas.formatear(e.fecha)} · ${e.donde}`, derecha: dinero.formatear(Math.abs(e.efecto)), clase: e.efecto > 0 ? 'fran-mas' : (e.efecto < 0 ? 'fran-menos' : '') })).join('');
+  const lista = (g) => nuevosPrimero(c.grupos[g] || []).map((e) => fila({ ui, icono: e.icono, titulo: e.titulo, sub: `${fechas.formatear(e.fecha)} · ${e.donde}`, derecha: dinero.formatear(Math.abs(e.efecto)), clase: e.efecto > 0 ? 'fran-mas' : (e.efecto < 0 ? 'fran-menos' : '') })).join('');
   const plegado = (g, icono, titulo, sub) => (cuantos(g) ? `<details class="fran-tachados fran-prestado-pension"><summary>${icono3dDe(icono, 'fran-3d--40')}<span class="fran-renglon__texto"><span>${ui.esc(titulo)}</span><small>${cuantos(g)} ${cuantos(g) === 1 ? 'movimiento' : 'movimientos'}${sub ? ` · ${ui.esc(sub)}` : ''}</small></span><b>${conSigno(suma(g), dinero, suma(g) > 0 ? 'mas' : (suma(g) < 0 ? 'menos' : ''))}</b></summary><div class="fran-lista">${lista(g)}</div></details>` : '');
   const filaCuenta = (texto, v, signo) => `<p><span>${ui.esc(texto)}</span><span class="numero${signo ? ` fran-${signo}` : (v < 0 ? ' fran-menos' : '')}">${dinero.formatear(Math.abs(v))}</span></p>`;
   const raiz = ui.el(`<div class="fran-virtual">
@@ -2414,7 +2486,7 @@ function renderTarjetas(contenedor, ctx) {
     ${heroe({ etiqueta: 'Debo en tarjetas', valor: -total, ayudaTexto: 'Cada tarjeta parte de lo que se debía en su último extracto (o lo anotado al empezar Fran) y suma lo que pagaste con ella después. Lo que le abonas a la tarjeta lo resta.' }, ctx)}
     ${tarjetas.map((t, i) => `<section class="fran-tarjeta fran-tarjeta-credito">
       <span class="fran-tarjeta-credito__cabeza">${icono3dDe(ICONO(t.nombre), 'fran-3d--48')}<span class="fran-renglon__texto"><span>${ui.esc(t.nombre)}</span><small>${t.nota ? `${ui.esc(t.nota)}: ${dinero.formatear(t.base)}` : (t.fecha ? `Extracto al ${ui.esc(fechas.formatear(t.fecha))}: ${dinero.formatear(t.base)}` : `Al empezar Fran: ${dinero.formatear(t.base)}`)}${t.pagoHasta ? ` · Pagar antes del ${ui.esc(fechas.formatear(t.pagoHasta))}` : ''}</small></span><b>${conSigno(-t.deudaHoy, dinero)}</b></span>
-      ${t.movimientos.length ? `<div class="fran-lista">${t.movimientos.sort((a, b) => b.fecha.localeCompare(a.fecha)).map((a) => fila({ ui, icono: iconoDe(a.categoria), titulo: a.categoria, sub: `${fechas.formatear(a.fecha)}${a.descripcion ? ` · ${a.descripcion}` : ''}`, derecha: `${a.efecto > 0 ? '−' : '+'}${dinero.formatear(Math.abs(a.efecto))}`, clase: a.efecto > 0 ? 'fran-menos' : 'fran-mas' })).join('')}</div>` : '<p class="fran-nota">Sin compras anotadas después de esa fecha.</p>'}
+      ${t.movimientos.length ? `<div class="fran-lista">${nuevosPrimero(t.movimientos).map((a) => fila({ ui, icono: iconoDe(a.categoria), titulo: a.categoria, sub: `${fechas.formatear(a.fecha)}${a.descripcion ? ` · ${a.descripcion}` : ''}`, derecha: `${a.efecto > 0 ? '−' : '+'}${dinero.formatear(Math.abs(a.efecto))}`, clase: a.efecto > 0 ? 'fran-menos' : 'fran-mas' })).join('')}</div>` : '<p class="fran-nota">Sin compras anotadas después de esa fecha.</p>'}
       <button type="button" class="fran-boton-secundario fran-boton--44" data-extracto="${i}">Actualizar con el extracto</button>
       <form class="fran-campos fran-campos--grande oculto" data-form-extracto="${i}" novalidate>
         <label class="fran-campo-valor"><small>¿Cuánto se debe según el extracto?</small><input name="valor" inputmode="numeric" autocomplete="off" placeholder="0"></label>
@@ -2457,12 +2529,12 @@ function filasEfectivo(ctx) {
     const quien = m.prestamoId ? clienteDe(m.prestamoId) : '';
     const icono = m.tipo === 'prestamo' ? '💵' : (m.tipo === 'pago' ? '↩️' : (m.signo > 0 ? '⬇️' : '⬆️'));
     const grupo = m.tipo === 'prestamo' ? 'Préstamos' : (m.tipo === 'pago' ? 'Pagos recibidos' : (m.signo > 0 ? 'Entró (anotado a mano)' : 'Salió (anotado a mano)'));
-    filas.push({ id: m.id, grupo, manual: ['aporte', 'retiro'].includes(m.tipo), fecha: m.fecha, icono, titulo: quien || m.nota || QUE[m.tipo] || m.tipo, sub: quien ? QUE[m.tipo] : (m.nota && QUE[m.tipo] ? QUE[m.tipo] : ''), valor: m.monto * m.signo });
+    filas.push({ id: m.id, creadoEn: m.creadoEn, grupo, manual: ['aporte', 'retiro'].includes(m.tipo), fecha: m.fecha, icono, titulo: quien || m.nota || QUE[m.tipo] || m.tipo, sub: quien ? QUE[m.tipo] : (m.nota && QUE[m.tipo] ? QUE[m.tipo] : ''), valor: m.monto * m.signo });
   }
   for (const a of estado.fran.asientos) {
     if (a.libro === 'terceros') continue;
     const esEf = (c) => /^efectivo$/i.test(c || '');
-    const base = { fecha: a.fecha, grupo: a.categoria, icono: iconoDe(a.categoria), titulo: a.descripcion || a.categoria, sub: '' };
+    const base = { fecha: a.fecha, creadoEn: a.creadoEn, grupo: a.categoria, icono: iconoDe(a.categoria), titulo: a.descripcion || a.categoria, sub: '' };
     if (a.tipo === 'transferencia') {
       if (esEf(a.cuenta)) filas.push({ ...base, valor: -a.valor });
       if (esEf(a.destino)) filas.push({ ...base, valor: a.valor });
@@ -2486,7 +2558,7 @@ function renderEfectivo(contenedor, ctx) {
   if (!vista.mesEfectivo || !meses.includes(vista.mesEfectivo)) vista.mesEfectivo = meses[meses.length - 1];
   const mes = vista.mesEfectivo;
   const anterior = partida + filas.filter((f) => f.fecha.slice(0, 7) < mes).reduce((s, f) => s + f.valor, 0);
-  const delMesE = filas.filter((f) => f.fecha.slice(0, 7) === mes).sort((a, b) => b.fecha.localeCompare(a.fecha));
+  const delMesE = nuevosPrimero(filas.filter((f) => f.fecha.slice(0, 7) === mes));
   const entro = delMesE.filter((f) => f.valor > 0).reduce((s, f) => s + f.valor, 0);
   const salio = delMesE.filter((f) => f.valor < 0).reduce((s, f) => s - f.valor, 0);
   const mesAntes = fechas.nombreMes(Number(fechas.sumarMeses(`${mes}-01`, -1).slice(5, 7))).toLowerCase();
@@ -2574,19 +2646,19 @@ function filasVirtuales(ctx) {
   for (const m of estado.movimientos) {
     if (m.caja !== 'virtual' || m.tipo === 'saldo_inicial') continue;
     const quien = m.prestamoId ? nombreDe(m.prestamoId) : '';
-    filas.push({ fecha: m.fecha, concepto: quien ? `${quien} · ${m.tipo === 'prestamo' ? 'Préstamo' : 'Pago'}` : (m.nota || m.tipo.replace(/_/g, ' ')), valor: m.monto * m.signo });
+    filas.push({ fecha: m.fecha, creadoEn: m.creadoEn, concepto: quien ? `${quien} · ${m.tipo === 'prestamo' ? 'Préstamo' : 'Pago'}` : (m.nota || m.tipo.replace(/_/g, ' ')), valor: m.monto * m.signo });
   }
   for (const a of estado.fran.asientos) {
     if (a.libro === 'terceros') continue;
     const concepto = a.descripcion || a.categoria;
     if (a.tipo === 'transferencia') {
-      if (a.cuenta && !CUENTA_NO_VIRTUAL.test(a.cuenta)) filas.push({ fecha: a.fecha, concepto, valor: -a.valor });
-      if (a.destino && !CUENTA_NO_VIRTUAL.test(a.destino)) filas.push({ fecha: a.fecha, concepto, valor: a.valor });
+      if (a.cuenta && !CUENTA_NO_VIRTUAL.test(a.cuenta)) filas.push({ fecha: a.fecha, creadoEn: a.creadoEn, concepto, valor: -a.valor });
+      if (a.destino && !CUENTA_NO_VIRTUAL.test(a.destino)) filas.push({ fecha: a.fecha, creadoEn: a.creadoEn, concepto, valor: a.valor });
     } else if (a.cuenta && !CUENTA_NO_VIRTUAL.test(a.cuenta)) {
-      filas.push({ fecha: a.fecha, concepto, valor: a.tipo === 'ingreso' ? a.valor : -a.valor });
+      filas.push({ fecha: a.fecha, creadoEn: a.creadoEn, concepto, valor: a.tipo === 'ingreso' ? a.valor : -a.valor });
     }
   }
-  for (const m of estado.fran.virtualMov) filas.push({ id: m.id, fecha: m.fecha, concepto: m.concepto || (m.tipo === 'entra' ? 'Entró' : 'Salió'), valor: m.tipo === 'entra' ? m.valor : -m.valor });
+  for (const m of estado.fran.virtualMov) filas.push({ id: m.id, creadoEn: m.creadoEn || ((String(m.id || '').match(/\d{12,}/) || [])[0] ? new Date(Number(String(m.id).match(/\d{12,}/)[0])).toISOString() : ''), fecha: m.fecha, concepto: m.concepto || (m.tipo === 'entra' ? 'Entró' : 'Salió'), valor: m.tipo === 'entra' ? m.valor : -m.valor });
   return filas;
 }
 
@@ -2606,7 +2678,7 @@ function renderVirtual(contenedor, ctx) {
   const mes = vista.mesVirtual;
   const guardado = historial.find((h) => h.mes === mes);
   const anterior = guardado ? guardado.anterior : partida + filas.filter((f) => f.fecha.slice(0, 7) < mes).reduce((s, f) => s + f.valor, 0);
-  const delMesV = guardado ? (guardado.filas || []) : filas.filter((f) => f.fecha.slice(0, 7) === mes).sort((a, b) => b.fecha.localeCompare(a.fecha));
+  const delMesV = guardado ? (guardado.filas || []) : nuevosPrimero(filas.filter((f) => f.fecha.slice(0, 7) === mes));
   const entro = delMesV.filter((f) => f.valor > 0).reduce((s, f) => s + f.valor, 0);
   const salio = delMesV.filter((f) => f.valor < 0).reduce((s, f) => s - f.valor, 0);
   const queda = guardado ? guardado.queda : anterior + entro - salio;

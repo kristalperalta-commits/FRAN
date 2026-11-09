@@ -11,7 +11,7 @@
 
 import * as ui from './ui.js';
 
-const VERSION_APP = '3.37.1';
+const VERSION_APP = '3.38.0';
 const contenedor = document.getElementById('pantalla');
 
 // ---------- Rutas (sección 7 de la especificación) ----------
@@ -443,6 +443,21 @@ async function aplicarOrdenesDeAvisos(orden = null) {
   }
 }
 
+/** La plata se ve con puntos de mil mientras se escribe (1.000.000), en todos los campos de valor. */
+function activarPuntosDeMil() {
+  document.addEventListener('input', (e) => {
+    const el = e.target;
+    if (!el || el.tagName !== 'INPUT' || el.inputMode !== 'numeric' || el.type === 'number') return;
+    if (el.name === 'tasa' || el.dataset.sinPuntos !== undefined) return;
+    const solo = el.value.replace(/\D/g, '').replace(/^0+(?=\d)/, '');
+    const bonito = solo.replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+    if (bonito !== el.value) {
+      el.value = bonito;
+      try { el.setSelectionRange(bonito.length, bonito.length); } catch (_error) { /* algunos campos no dejan */ }
+    }
+  });
+}
+
 function registrarServiceWorker() {
   const protocolo = window.location.protocol;
   if (protocolo !== 'http:' && protocolo !== 'https:') return;
@@ -517,6 +532,7 @@ async function arrancar() {
   });
   registrarServiceWorker();
   activarDeslizarParaActualizar();
+  activarPuntosDeMil();
   aplicarOrdenesDeAvisos();
   if ('serviceWorker' in navigator) navigator.serviceWorker.addEventListener('message', (e) => { if (e.data && e.data.tipo === 'orden-aviso') aplicarOrdenesDeAvisos(e.data); });
   try {
