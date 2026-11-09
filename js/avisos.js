@@ -10,7 +10,7 @@
 import { NUBE } from './nube-config.js';
 
 // Llave pública VAPID: es pública por diseño, solo sirve para que el navegador acepte avisos de Fran.
-export const LLAVE_PUBLICA = 'BFD5JiwiFCO7sHXJq_QqMB1Q3fuQ0lfIXqLZE2cHUvrZo3Oh6ZcWPmpZ4IYd3oZ0cOU39bGOZYw3cBe7ZiTqazk';
+export const LLAVE_PUBLICA = 'BFD5JiwiZ8AONNLRrRHNAV93wMQ7_zDl6uq9ndcYv25uFWHFbteAN3J2llsas5ipkg456fEQ6I_zhZnRI8FWYuI';
 
 function aBytes(base64url) {
   const relleno = '='.repeat((4 - (base64url.length % 4)) % 4);
@@ -51,6 +51,12 @@ export async function activar(nube) {
   if (permiso !== 'granted') return 'negado';
   const registro = await navigator.serviceWorker.ready;
   let sub = await registro.pushManager.getSubscription();
+  // Si quedó una suscripción hecha con otra llave, se cambia por una con la llave de hoy.
+  if (sub && sub.options && sub.options.applicationServerKey) {
+    const actual = new Uint8Array(sub.options.applicationServerKey);
+    const buena = aBytes(LLAVE_PUBLICA);
+    if (actual.length !== buena.length || actual.some((x, i) => x !== buena[i])) { await sub.unsubscribe().catch(() => {}); sub = null; }
+  }
   if (!sub) sub = await registro.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: aBytes(LLAVE_PUBLICA) });
   const j = sub.toJSON();
   const fila = { user_id: sesion.usuario, endpoint: j.endpoint, p256dh: j.keys.p256dh, auth: j.keys.auth, aparato: navigator.userAgent.slice(0, 120), actualizado_en: new Date().toISOString() };
