@@ -57,7 +57,7 @@ const VERDES = ['#34D399', '#2DD4BF', '#A3E635', '#22D3EE', '#86EFAC', '#5EEAD4'
 export const coloresDe = (tipo) => (tipo === 'ingreso' || tipo === 'ahorro' ? VERDES : COLORES);
 
 const ICONOS = [
-  [/aliment|comida|mercado/, '🍎'], [/vivienda|hogar/, '🏠'], [/carro|auto/, '🚗'], [/gasolina|combustible/, '⛽'],
+  [/aliment|comida|mercado/, '🍽️'], [/vivienda|hogar/, '🏠'], [/carro|auto/, '🚗'], [/gasolina|combustible/, '⛽'],
   [/servicio/, '💡'], [/compra/, '🛍️'], [/medicina|salud/, '💊'], [/abogado/, '⚖️'], [/social/, '👥'], [/viaje/, '✈️'],
   [/electronic/, '📱'], [/belleza/, '💄'], [/deporte/, '⚽'], [/entreten/, '🎬'], [/transporte/, '🚌'], [/educacion/, '📚'],
   [/regalo/, '🎁'], [/agua/, '💧'], [/ropa/, '👕'], [/tarjeta/, '💳'], [/descuadre/, '❓'], [/deuda/, '📄'],
@@ -88,7 +88,7 @@ export function iconoDe(categoria) {
 
 // Emoji → ilustración 3D de la misma familia (app/iconos/3d). Todo lo que se ve en Fran es 3D.
 const EMOJI_3D = {
-  '🍎': 'manzana', '🏠': 'casa', '🚗': 'carro', '⛽': 'gasolina', '💡': 'bombilla', '🛍️': 'bolsas', '💊': 'pastilla', '⚖️': 'balanza',
+  '🍎': 'manzana', '🍽️': 'plato', '🏠': 'casa', '🚗': 'carro', '⛽': 'gasolina', '💡': 'bombilla', '🛍️': 'bolsas', '💊': 'pastilla', '⚖️': 'balanza',
   '👥': 'personas', '✈️': 'avion', '📱': 'celular', '💄': 'labial', '⚽': 'balon', '🎬': 'claqueta', '🚌': 'bus', '📚': 'libros',
   '🎁': 'regalo', '💧': 'gota', '👕': 'camiseta', '💳': 'tarjeta', '❓': 'pregunta', '📄': 'documento', '💵': 'billete', '🏢': 'edificio',
   '👷': 'obrero', '🎨': 'paleta', '🧱': 'ladrillo', '📑': 'lista', '🏗️': 'edificio', '📺': 'tv', '📦': 'caja', '📈': 'grafica',
@@ -1648,6 +1648,57 @@ const TIPOS_PRESTAMO = [
   ['acuerdo', '🤝', 'Acuerdo de pago', 'Quedamos en una fecha'],
 ];
 
+/** Nombres del historial de préstamos (Excel) que no son de ningún cliente con ficha. */
+function nombresSinFicha(estado) {
+  const vistos = new Map();
+  for (const a of estado.fran.asientos || []) {
+    if (a.libro !== 'prestamos' || a.clienteId || !a.persona) continue;
+    const n = norm(a.persona);
+    if (!n || vistos.has(n)) continue;
+    vistos.set(n, a.persona.trim());
+  }
+  return [...vistos.values()].filter((p) => !estado.clientes.some((c) => personaEsDe(p, c, estado.clientes)));
+}
+
+/** El campo Cliente: se escribe la inicial y salen los que coinciden. El + abre la ficha de uno nuevo. */
+function conectarBuscaCliente(raiz, form, clientes, delHistorial, alCambiar, ui) {
+  const buscar = form.elements.buscar;
+  const oculto = form.elements.cliente;
+  const lista = raiz.querySelector('.fran-buscacliente__lista');
+  const mas = raiz.querySelector('[data-nuevo]');
+  const nuevo = raiz.querySelector('#campo-nombre');
+  const empieza = (texto, q) => palabrasDe(norm(texto)).some((w) => w.startsWith(q)) || norm(texto).startsWith(q);
+  const elegir = (valor, nombre) => {
+    oculto.value = valor;
+    buscar.value = valor === '__nuevo' ? '' : nombre;
+    lista.classList.add('oculto');
+    if (valor === '__nuevo') { form.elements.nombre.value = nombre || ''; (nombre ? form.elements.cedula : form.elements.nombre).focus(); }
+    alCambiar();
+  };
+  const pintar = () => {
+    const q = norm(buscar.value);
+    if (!q) { lista.classList.add('oculto'); lista.innerHTML = ''; return; }
+    const propios = clientes.filter((c) => empieza(c.nombre, q) || empieza(c.alias || '', q)).slice(0, 12);
+    const viejos = delHistorial.filter((n) => empieza(n, q)).slice(0, 8);
+    lista.innerHTML = [
+      ...propios.map((c) => `<button type="button" role="option" data-id="${ui.esc(c.id)}" data-nombre="${ui.esc(c.nombre)}"><span>${ui.esc(c.nombre)}</span>${c.alias ? `<small>${ui.esc(c.alias)}</small>` : ''}</button>`),
+      ...viejos.map((n) => `<button type="button" role="option" data-id="__nuevo" data-nombre="${ui.esc(n)}"><span>${ui.esc(n)}</span><small>Del historial · toca para hacerle ficha</small></button>`),
+      !propios.length && !viejos.length ? `<p class="fran-buscacliente__nada">No hay nadie con "${ui.esc(buscar.value.trim())}".${mas ? ' Toca + para crearlo.' : ''}</p>` : '',
+    ].join('');
+    lista.classList.remove('oculto');
+  };
+  buscar.addEventListener('input', () => {
+    if (oculto.value) { oculto.value = ''; nuevo.classList.add('oculto'); alCambiar(); }
+    pintar();
+  });
+  buscar.addEventListener('focus', () => { if (!oculto.value) pintar(); });
+  lista.addEventListener('click', (e) => {
+    const b = e.target.closest('button[data-id]');
+    if (b) elegir(b.dataset.id, b.dataset.nombre);
+  });
+  if (mas) mas.addEventListener('click', () => elegir('__nuevo', oculto.value ? '' : buscar.value.trim()));
+}
+
 function renderRegistrar(contenedor, params, ctx) {
   const { ui, datos } = ctx;
   const tipo = params.tipo;
@@ -1669,11 +1720,28 @@ function renderRegistrar(contenedor, params, ctx) {
     return;
   }
   // Paso 2: el formulario de lo que eligió, y nada más.
+  const puedeNuevo = tipo === 'nuevo' || tipo === 'acuerdo';
+  const elegidoNombre = (clientes.find((c) => c.id === elegido) || {}).nombre || '';
+  // Los que pasaron por el Excel y todavía no tienen ficha: también se pueden elegir.
+  const delHistorial = puedeNuevo ? nombresSinFicha(estado) : [];
   const raiz = ui.el(`<div class="fran-registrar">
     <header class="fran-titulo fran-titulo--libro"><a href="#/libro/prestamos/registrar/elegir${conCliente}" class="fran-titulo__atras" aria-label="Volver a elegir">‹</a><h1><span class="fran-cuadro fran-cuadro--28" aria-hidden="true">${actual[1]}</span><span>${ui.esc(actual[2])}</span></h1></header>
     <form novalidate class="fran-campos fran-campos--grande">
-      <label><small>Cliente</small><select name="cliente"><option value="">Elige…</option>${tipo === 'nuevo' || tipo === 'acuerdo' ? '<option value="__nuevo">＋ Cliente nuevo</option>' : ''}${clientes.map((c) => `<option value="${ui.esc(c.id)}"${c.id === elegido ? ' selected' : ''}>${ui.esc(c.nombre)}</option>`).join('')}</select></label>
-      <label class="oculto" id="campo-nombre"><small>Nombre del cliente nuevo</small><input name="nombre" autocomplete="off"></label>
+      <div class="fran-buscacliente"><small>Cliente</small>
+        <div class="fran-buscacliente__fila">
+          <input name="buscar" autocomplete="off" autocapitalize="words" placeholder="Escribe la inicial o el nombre" value="${ui.esc(elegidoNombre)}" aria-label="Buscar cliente">
+          ${puedeNuevo ? '<button type="button" class="fran-buscacliente__mas" data-nuevo aria-label="Cliente nuevo" title="Cliente nuevo">+</button>' : ''}
+        </div>
+        <input type="hidden" name="cliente" value="${ui.esc(elegido)}">
+        <div class="fran-buscacliente__lista oculto" role="listbox"></div>
+      </div>
+      <div class="oculto fran-campos fran-clientenuevo" id="campo-nombre">
+        <p class="fran-clientenuevo__titulo">Cliente nuevo</p>
+        <label><small>Nombre</small><input name="nombre" autocomplete="off" autocapitalize="words"></label>
+        <label><small>Cédula</small><input name="cedula" inputmode="numeric" autocomplete="off"></label>
+        <label><small>Teléfono</small><input name="telefono" type="tel" inputmode="tel" autocomplete="off"></label>
+        <label><small>Dirección</small><input name="direccion" autocomplete="off"></label>
+      </div>
       <label class="oculto" id="campo-prestamo"><small>¿De cuál préstamo?</small><select name="prestamo"></select></label>
       <label class="fran-campo-valor"><small>Valor${tipo === 'acuerdo' ? ' (si ya lo sabes)' : ''}</small><input name="valor" inputmode="numeric" autocomplete="off" placeholder="0"></label>
       ${tipo === 'nuevo' ? `<div><small>Tasa mensual</small>${chips('tasa', [['5', '5%'], ['10', '10%'], ['12', '12%'], ['15', '15%'], ['20', '20%'], ['0', 'Sin interés']], '', ui)}</div>` : ''}
@@ -1697,14 +1765,14 @@ function renderRegistrar(contenedor, params, ctx) {
     form.elements.prestamo.innerHTML = (activos.length > 1 ? '<option value="">Elige…</option>' : '') + activos.map((p) => `<option value="${ui.esc(p.id)}">${ui.esc(nombreP(p))}</option>`).join('');
     campoPrestamo.classList.toggle('oculto', activos.length < 2);
   }
-  form.elements.cliente.addEventListener('change', alCambiarCliente);
+  conectarBuscaCliente(raiz, form, clientes, delHistorial, alCambiarCliente, ui);
   alCambiarCliente();
   form.addEventListener('submit', async (e) => {
     e.preventDefault();
     try {
       const el = form.elements;
       let clienteId = el.cliente.value;
-      if (!clienteId) { ui.toast('Elige el cliente.'); return; }
+      if (!clienteId) { ui.toast('Busca el cliente y tócalo en la lista, o toca + si es nuevo.', 4000); return; }
       const valor = el.valor.value.trim() ? ctx.dinero.leer(el.valor.value) : null;
       const fecha = el.fecha.value || ctx.hoy();
       const nota = el.nota.value.trim();
@@ -1714,7 +1782,9 @@ function renderRegistrar(contenedor, params, ctx) {
       if (clienteId === '__nuevo') {
         const nombre = el.nombre.value.trim();
         if (!nombre) { ui.toast('Escribe el nombre del cliente.'); return; }
-        clienteId = (await datos.agregarCliente({ nombre })).id;
+        const repetido = datos.estado.clientes.find((c) => norm(c.nombre) === norm(nombre));
+        if (repetido) { ui.toast(`${repetido.nombre} ya tiene ficha. Búscalo arriba.`, 4000); return; }
+        clienteId = (await datos.agregarCliente({ nombre, cedula: el.cedula.value.trim(), telefono: el.telefono.value.trim(), direccion: el.direccion.value.trim() })).id;
       }
       const cliente = datos.estado.clientes.find((c) => c.id === clienteId);
       if (tipo === 'nuevo') {
@@ -1745,6 +1815,39 @@ function soloDigitos(t) {
 }
 
 const NOMBRE_MEDIO = { efectivo: 'Efectivo', virtual: 'Virtual' };
+
+/** Nombre y alias del cliente, sin tildes. */
+function nombresDe(c) {
+  return [c.nombre, ...String(c.alias || '').split(/[,;/]/)].map(norm).filter(Boolean);
+}
+const palabrasDe = (n) => n.replace(/[^a-z0-9ñ ]/g, ' ').split(/\s+/).filter(Boolean);
+const RELLENO = ['de', 'del', 'y', 'don', 'dona'];
+const TITULOS = ['don', 'dona', 'tio', 'tia', 'sr', 'sra', 'senor', 'senora', 'celador', 'profe'];
+
+/**
+ * Los cobros viejos del Excel guardan solo el nombre corto ("Ana", "Don Pedro", "Gómez").
+ * Se le dan al cliente solo si ese nombre es de uno solo. Si lo comparten dos, no se adivina.
+ * "Laura" no es "Mamá de Laura": lo que va después de "de" no cuenta.
+ */
+export function personaEsDe(persona, cliente, clientes) {
+  const p = norm(persona);
+  if (!p) return false;
+  if (nombresDe(cliente).includes(p)) return true;
+  if (clientes.some((c) => c.id !== cliente.id && nombresDe(c).includes(p))) return false;
+  // "Pedro (sobrino de Doña Ana)" es "Pedro sobrino Ana": las palabras de relleno no cuentan.
+  const buscadas = palabrasDe(p).filter((w) => !RELLENO.includes(w));
+  if (!buscadas.length) return false;
+  const conPalabras = (c, prueba) => nombresDe(c).some((n) => prueba(palabrasDe(n)));
+  const unico = (prueba) => {
+    const quienes = clientes.filter((c) => conPalabras(c, prueba));
+    return quienes.length ? (quienes.length === 1 && quienes[0].id === cliente.id) : null;
+  };
+  if (buscadas.length > 1) return unico((w) => buscadas.every((x) => w.includes(x))) === true;
+  const [x] = buscadas;
+  const primero = unico((w) => w.find((y) => !TITULOS.includes(y)) === x);
+  if (primero !== null) return primero;
+  return unico((w) => w.some((y, i) => y === x && w[i - 1] !== 'de')) === true;
+}
 
 /** Todo lo que el cliente pagó, con lo que se sabe de cada cobro. Lo que no se sabe queda vacío. */
 export function cobrosDeCliente(asientosCliente, pagos, cliente) {
@@ -2009,8 +2112,10 @@ function renderFicha(contenedor, id, ctx) {
   const textoAcuerdo = acuerdo ? `Acuerdo: ${[acuerdo.monto ? `${dinero.formatear(acuerdo.monto)} ${acuerdo.repite ? cuando : ''}`.trim() : (acuerdo.repite ? cuando : ''), !acuerdo.repite && acuerdo.monto ? cuando : (!acuerdo.repite ? cuando : ''), acuerdo.nota].filter(Boolean).join(' · ')}` : '';
   const capitalPrimero = propios.some((p) => p.modalidad === 'capital_primero');
   const conTexto = propios.find((p) => p.acuerdoTexto);
-  const asientosCliente = (estado.fran.asientos || []).filter((a) => a.clienteId === id || (a.persona && norm(a.persona) === norm(cliente.nombre)));
+  const asientosCliente = (estado.fran.asientos || []).filter((a) => a.clienteId === id || (!a.clienteId && a.persona && (norm(a.persona) === norm(cliente.nombre) || (a.libro === 'prestamos' && personaEsDe(a.persona, cliente, estado.clientes)))));
   const cobros = cobrosDeCliente(asientosCliente, pagos, cliente);
+  const conInteres = cobros.filter((m) => !m.perdon && m.interes > 0);
+  const interesesPagados = { n: conInteres.length, total: conInteres.reduce((s, m) => s + m.interes, 0), desde: conInteres.map((m) => m.fecha).sort()[0] };
   const historial = [
     ...propios.flatMap((p) => (p.detalle
       ? p.detalle.map((d) => ({ f: d.fecha || '2000-01-01', sinFecha: d.fecha ? null : (d.texto || 'sin fecha'), icono: '💵', t: d.nombre || 'Préstamo', v: `−${dinero.formatear(d.capital)}`, c: 'fran-menos', ruta: `#/prestamo/${encodeURIComponent(p.id)}` }))
@@ -2023,13 +2128,14 @@ function renderFicha(contenedor, id, ctx) {
     ${titular('prestamos', ctx, '#/clientes', 'Cliente')}
     <div class="fran-cliente fran-tarjeta">
       <span class="fran-avatar">${ui.esc(cliente.nombre.charAt(0).toUpperCase())}</span>
-      <div><strong>${ui.esc(cliente.nombre)}</strong>${conTexto ? `<small>${ui.esc(`Acuerdo: ${conTexto.acuerdoTexto}`)}</small>` : (textoAcuerdo ? `<small>${ui.esc(textoAcuerdo)}</small>` : '')}</div>
+      <div><strong>${ui.esc(cliente.nombre)}</strong>${[cliente.cedula ? `C.C. ${cliente.cedula}` : '', cliente.direccion].filter(Boolean).map((x) => `<small>${ui.esc(x)}</small>`).join('')}${conTexto ? `<small>${ui.esc(`Acuerdo: ${conTexto.acuerdoTexto}`)}</small>` : (textoAcuerdo ? `<small>${ui.esc(textoAcuerdo)}</small>` : '')}</div>
       ${r.soloIntereses ? '<span class="fran-solo">Solo intereses</span>' : ui.chipEstado(r.estado)}
     </div>
     ${heroe({ etiqueta: 'Si paga hoy, debe', valor: r.debeHoy, cajas: [['Capital pendiente', r.capitalPendiente], ['Intereses', r.interesPendiente + r.interesCorrido]] }, ctx)}
     ${corridos.length ? `<div class="fran-corrido"><p class="fran-corrido__titulo">Intereses de estos días</p>${corridos.map((x) => `<div class="fran-corrido__fila"><span><span>${ui.esc(`Préstamo del ${fechas.formatear(x.fecha)} · ${dinero.formatear(x.capitalPendiente)}`)}</span><small>${ui.esc(`${dinero.formatear(x.interesDelMes)} al mes · ${dinero.formatear(x.interesDiario)} por día · ${x.diasCorridos} ${x.diasCorridos === 1 ? 'día' : 'días'} desde el ${fechas.formatear(x.corridoDesde)}`)}</small></span><b class="numero">${dinero.formatear(x.interesCorrido)}</b></div>`).join('')}</div>` : ''}
     <div class="fran-progreso"><span style="width:${pct}%"></span></div>
     <p class="fran-nota">${abonosPlan && !recuperado ? `Abono a capital anotado: ${dinero.formatear(abonosPlan)}.` : `Recuperado ${dinero.formatear(recuperado)} de ${dinero.formatear(r.capitalPrestado)} de capital.`}${capitalPrimero ? (r.capitalPendiente === 0 ? ' Ya recuperó todo el capital: lo que pague es ganancia.' : ' Cuando llegue a 100%, todo lo que pague es ganancia.') : ''}</p>
+    ${interesesPagados.n ? `<p class="fran-nota fran-nota--pagado">Ha pagado <strong class="numero">${dinero.formatear(interesesPagados.total)}</strong> de intereses en ${interesesPagados.n} ${interesesPagados.n === 1 ? 'pago' : 'pagos'}, desde ${ui.esc(fechas.formatear(interesesPagados.desde))}.</p>` : ''}
     ${seccion('Historial', 'lista')}
     <div class="fran-lista">${historial.map((h) => fila({ ui, icono: h.icono, titulo: h.t, sub: h.sinFecha ? `Fecha por confirmar (${h.sinFecha})` : (h.textoFecha || fechas.formatear(h.f)), derecha: h.v, clase: h.c, ruta: h.ruta, ver: h.ver })).join('') || '<p class="fran-vacio">Sin movimientos.</p>'}</div>
     <div class="fran-tres">

@@ -680,3 +680,33 @@ html body .fran-iconos button small, html body .fran-iconos a small { overflow-w
 .fran-credito-editar { margin: 6px 0 12px; }
 .fran-foto-campo input[type="file"] { min-height: 44px; font-size: 14px; }
 .fran-comprobante { display: block; width: 100%; max-height: 70vh; object-fit: contain; border-radius: 16px; margin-bottom: 12px; }
+
+/* ---------- 3.39.0 · Buscar cliente al registrar (inicial + botón +) ---------- */
+.fran-buscacliente { display: grid; gap: 6px; position: relative; }
+.fran-buscacliente__fila { display: flex; gap: 8px; align-items: stretch; }
+.fran-buscacliente__fila input { flex: 1; min-width: 0; }
+.fran-buscacliente__mas {
+  flex: 0 0 52px; min-height: 48px; border: 0; border-radius: 14px;
+  background: var(--hero); color: #fff;
+  font-size: 28px; font-weight: 700; line-height: 1; cursor: pointer;
+  box-shadow: 0 calc(4px * var(--relieve, 1)) calc(10px * var(--relieve, 1)) rgba(0, 0, 0, .18);
+}
+.fran-buscacliente__lista {
+  display: grid; max-height: 320px; overflow: auto; border-radius: 14px;
+  background: var(--surface);
+  border: 1px solid var(--fran-borde, rgba(127, 127, 127, .25));
+}
+.fran-buscacliente__lista button {
+  display: grid; gap: 2px; text-align: left; padding: 12px 14px; min-height: 48px;
+  border: 0; border-bottom: 1px solid var(--fran-borde, rgba(127, 127, 127, .18));
+  background: transparent; color: var(--text); font: inherit; cursor: pointer;
+}
+.fran-buscacliente__lista button:last-child { border-bottom: 0; }
+.fran-buscacliente__lista button:active { background: rgba(127, 127, 127, .12); }
+.fran-buscacliente__lista small { opacity: .7; font-size: .85em; }
+.fran-buscacliente__nada { margin: 0; padding: 12px 14px; opacity: .8; }
+.fran-clientenuevo {
+  padding: 12px; border-radius: 14px; border: 1px dashed var(--fran-borde, rgba(127, 127, 127, .35));
+}
+.fran-clientenuevo__titulo { margin: 0; font-weight: 700; }
+.fran-nota--pagado strong { white-space: nowrap; }

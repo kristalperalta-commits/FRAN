@@ -523,7 +523,8 @@ function renderGrupo(contenedor, grupo, ctx) {
 function renderFormulario(contenedor, cliente, ctx) {
   const { ui, datos } = ctx;
   const esNuevo = !cliente;
-  const valores = cliente || { nombre: '', alias: '', telefono: '', direccion: '', nota: '', grupo: '', tipo: 'cliente' };
+  const pedido = esNuevo ? (leerConsulta().nombre || '') : '';
+  const valores = cliente || { nombre: pedido, alias: '', cedula: '', telefono: '', direccion: '', nota: '', grupo: '', tipo: 'cliente' };
   const rutaAtras = esNuevo ? '#/clientes' : `#/cliente/${encodeURIComponent(cliente.id)}`;
 
   // Grupos ya usados, para sugerirlos mientras escribe.
@@ -534,6 +535,7 @@ function renderFormulario(contenedor, cliente, ctx) {
     <form class="formulario" novalidate>
       ${ui.campo({ etiqueta: 'Nombre', nombre: 'nombre', valor: valores.nombre, requerido: true, placeholder: 'Nombre completo', atributos: { autocomplete: 'off', autocapitalize: 'words' } })}
       ${ui.campo({ etiqueta: 'Otros nombres con que lo conoces', nombre: 'alias', valor: valores.alias, ayuda: 'Por ejemplo: "Ernesto Empresa", "el de la moto"', atributos: { autocomplete: 'off' } })}
+      ${ui.campo({ etiqueta: 'Cédula', nombre: 'cedula', valor: valores.cedula || '', atributos: { inputmode: 'numeric', autocomplete: 'off' } })}
       ${ui.campo({ etiqueta: 'Teléfono', nombre: 'telefono', tipo: 'tel', valor: valores.telefono, ayuda: 'Con él puedes llamar o escribir por WhatsApp desde la ficha', placeholder: '300 123 4567' })}
       ${ui.campo({ etiqueta: 'Dirección', nombre: 'direccion', valor: valores.direccion, atributos: { autocomplete: 'off' } })}
       ${ui.campo({
@@ -573,6 +575,7 @@ function renderFormulario(contenedor, cliente, ctx) {
     const datosCliente = {
       nombre: lectura.nombre,
       alias: lectura.alias,
+      cedula: lectura.cedula,
       telefono: lectura.telefono,
       direccion: lectura.direccion,
       tipo: lectura.tipo === 'familia' ? 'familia' : 'cliente',
