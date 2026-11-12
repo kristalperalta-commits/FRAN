@@ -11,7 +11,7 @@
   /* Luz del tema: sale del acento de cada color (Lila, Rosa, Azul, Naranja, Verde). */
   /* --relieve lo mueve la barra "Sombreado" de la tuerquita (1 = como viene; 0 = sin luces). */
   --relieve: 1;
-  --luz-alfa: calc(min(var(--relieve), 1) * 100%);
+  --luz-alfa: 100%; /* js/tema.js lo cambia con la barra Sombreado (el iPhone no acepta calc() aquí) */
   --luz: color-mix(in srgb, color-mix(in srgb, var(--accent) 70%, #fff) var(--luz-alfa), transparent);
   --luz-suave: color-mix(in srgb, color-mix(in srgb, var(--accent) 45%, transparent) var(--luz-alfa), transparent);
   --luz-fuerte: color-mix(in srgb, color-mix(in srgb, var(--accent) 80%, transparent) var(--luz-alfa), transparent);
@@ -218,7 +218,7 @@ html body .pestana--mas span {
   background: var(--hero) !important;
   box-shadow: inset 0 2px 0 rgba(255,255,255,.55), inset 0 0 0 1.5px color-mix(in srgb, var(--luz) 60%, transparent), 0 0 30px color-mix(in srgb, var(--accent) 85%, transparent), 0 12px 24px rgba(2,6,23,.45) !important;
 }
-html[data-modo="oscuro"] .pestana--activa { color: var(--luz) !important; text-shadow: 0 0 12px var(--luz-fuerte); }
+html[data-modo="oscuro"] .pestana--activa { color: color-mix(in srgb, var(--accent) 70%, #fff) !important; text-shadow: 0 0 12px var(--luz-fuerte); }
 html[data-modo="oscuro"] .pestana--activa .pestana__icono { filter: drop-shadow(0 0 8px var(--luz-fuerte)); }
 html[data-modo="claro"] .pestana--activa { color: var(--accent) !important; }
 html body .pestana__texto { font-size: 12px; }
@@ -483,7 +483,9 @@ html[data-letra="enorme"] .fran-heroe__cajas { grid-template-columns: 1fr !impor
 
 /* ================= Ajustes del 7 nov (noche): barra pegada, cuadros en dos filas, Informes ================= */
 /* Barra inferior pegada al borde de abajo (lo pidió Fran), con esquinas redondas solo arriba. */
-html body .barra-inferior { left: 0 !important; right: 0 !important; bottom: 0 !important; width: auto !important; transform: none !important; border-radius: 28px 28px 0 0 !important; height: calc(70px + env(safe-area-inset-bottom, 0px)) !important; padding: 0 8px env(safe-area-inset-bottom, 0px) !important; }
+html body .barra-inferior { left: 0 !important; right: 0 !important; bottom: 0 !important; width: auto !important; transform: none !important; border-radius: 28px 28px 0 0 !important; height: calc(70px + var(--abajo-barra)) !important; padding: 0 8px var(--abajo-barra) !important; }
+/* 3.40.0: el menú quedaba casi 1 cm por encima del borde en el iPhone. Solo media franja del gesto de inicio. */
+:root { --abajo-barra: calc(env(safe-area-inset-bottom, 0px) * 0.45); }
 /* Cuadros de Inicio (Efectivo, Virtual, Tarjetas, Ganancia): arriba el icono y el nombre, abajo todo el ancho para el número. */
 .fran-metrica { display: grid !important; grid-template-columns: auto minmax(0, 1fr); grid-template-areas: "icono nombre" "valor valor" "extra extra"; column-gap: 10px; row-gap: 2px; align-items: center; container-type: inline-size; }
 .fran-metrica .fran-3d { grid-area: icono; }
@@ -710,3 +712,16 @@ html body .fran-iconos button small, html body .fran-iconos a small { overflow-w
 }
 .fran-clientenuevo__titulo { margin: 0; font-weight: 700; }
 .fran-nota--pagado strong { white-space: nowrap; }
+
+/* ================= 3.40.0 · Conté mi efectivo ================= */
+.fran-conteo { margin: 14px 0; padding: 16px; border-radius: 22px; background: var(--surface); color: var(--text); border: 1px solid var(--fran-borde, rgba(127,127,127,.25)); display: grid; gap: 10px; }
+.fran-conteo__cabeza { display: flex; align-items: center; gap: 12px; }
+.fran-conteo__ultima, .fran-conteo__debe, .fran-conteo__nada { margin: 0; line-height: 1.35; }
+.fran-conteo__debe b { font-size: 1.15em; }
+.fran-conteo__cuentas { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+.fran-conteo__cuentas > span { display: grid; gap: 2px; padding: 10px; border-radius: 14px; background: color-mix(in srgb, var(--accent) 10%, transparent); min-width: 0; }
+.fran-conteo__cuentas b { font-size: clamp(13px, 4vw, 17px); overflow-wrap: anywhere; }
+.fran-conteo__boton { width: 100%; }
+.fran-conteo__aviso { padding: 12px; border-radius: 14px; background: color-mix(in srgb, var(--accent) 12%, transparent); display: grid; gap: 8px; }
+.fran-conteo__aviso p { margin: 0; }
+.fran-conteo__lista summary { cursor: pointer; padding: 6px 0; }

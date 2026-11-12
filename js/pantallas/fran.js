@@ -2651,6 +2651,113 @@ function filasEfectivo(ctx) {
   return filas;
 }
 
+// ---------- Conté mi efectivo (3.40.0, pedido el 12 nov 2026) ----------
+// Fran calcula lo que debería haber; aquí queda cuándo ella lo contó de verdad y si cuadró.
+
+/** Lo que Fran dice que había en efectivo al terminar ese día. */
+function efectivoAl(filas, partida, fecha) {
+  return partida + filas.filter((f) => f.fecha <= fecha).reduce((s, f) => s + f.valor, 0);
+}
+
+/** Lo que movió el efectivo después de un conteo: días siguientes, o el mismo día pero anotado después de contar. */
+function movidoDesde(filas, conteo) {
+  return filas.filter((f) => f.fecha > conteo.fecha
+    || (f.fecha === conteo.fecha && typeof f.creadoEn === 'string' && f.creadoEn.length > 10 && f.creadoEn > conteo.creadoEn));
+}
+
+function ultimoConteo(estado) {
+  return (estado.fran.conteos || []).filter((x) => x.caja === 'efectivo')
+    .sort((a, b) => a.fecha.localeCompare(b.fecha) || String(a.creadoEn).localeCompare(String(b.creadoEn))).pop() || null;
+}
+
+function textoCuadre(dif, dinero, ajuste = 0) {
+  if (!dif && ajuste) return ajuste < 0 ? `Faltaban ${dinero.formatear(-ajuste)} (anotado como descuadre)` : `Sobraban ${dinero.formatear(ajuste)} (anotado)`;
+  if (!dif) return 'Cuadró';
+  return dif < 0 ? `Faltaban ${dinero.formatear(-dif)}` : `Sobraban ${dinero.formatear(dif)}`;
+}
+
+function avisoConteo(u, dinero) {
+  const dif = u.contado - u.debia;
+  return `<div class="fran-conteo__aviso"><p>Fran decía ${dinero.formatear(u.debia)} y usted contó ${dinero.formatear(u.contado)}. ${dif < 0 ? `Faltan <b>${dinero.formatear(-dif)}</b>.` : `Sobran <b>${dinero.formatear(dif)}</b>.`}</p>
+    <p><small>El conteo ya quedó guardado. Si no sabe en qué se fue (o de dónde salió), anótelo para que Fran cuadre con lo que tiene en la mano.</small></p>
+    <div class="fran-dos"><button type="button" class="fran-boton-principal" data-cuadrar>${dif < 0 ? 'Anotar como descuadre' : 'Anotar lo que sobró'}</button><button type="button" class="fran-boton-secundario" data-no-cuadrar>Lo reviso yo</button></div></div>`;
+}
+
+function bloqueConteo(ctx, filas, partida, total) {
+  const { ui, dinero, fechas } = ctx;
+  const hoy = ctx.hoy();
+  const u = ultimoConteo(ctx.datos.estado);
+  const anteriores = (ctx.datos.estado.fran.conteos || []).filter((x) => x.caja === 'efectivo' && (!u || x.id !== u.id)).sort((a, b) => b.fecha.localeCompare(a.fecha)).slice(0, 12);
+  let resumen = '<p class="fran-conteo__nada">Todavía no ha contado el efectivo en Fran. Cuente la plata y anótela aquí.</p>';
+  if (u) {
+    const desde = movidoDesde(filas, u);
+    const entro = desde.filter((f) => f.valor > 0).reduce((s, f) => s + f.valor, 0);
+    const salio = desde.filter((f) => f.valor < 0).reduce((s, f) => s - f.valor, 0);
+    // Exacto: lo contado más todo lo que Fran cambió desde ese momento (aunque se haya anotado con fecha vieja).
+    const esperado = u.contado + (total - u.debia);
+    const otros = (total - u.debia) - (entro - salio);
+    const dias = Math.round((Date.parse(hoy) - Date.parse(u.fecha)) / 86400000);
+    resumen = `<p class="fran-conteo__ultima"><b>Última vez que contó:</b> ${ui.esc(fechas.formatear(u.fecha))}${dias > 0 ? ` (hace ${dias} ${dias === 1 ? 'día' : 'días'})` : ' (hoy)'}</p>
+      <div class="fran-conteo__cuentas">
+        <span><small>Contó</small><b class="numero">${dinero.formatear(u.contado)}</b><small class="${u.contado === u.debia && !u.ajuste ? 'fran-mas' : 'fran-menos'}">${ui.esc(textoCuadre(u.contado - u.debia, dinero, u.ajuste))}</small></span>
+        <span><small>Entró después</small><b class="numero fran-mas">${dinero.formatear(entro)}</b></span>
+        <span><small>Salió después</small><b class="numero fran-menos">${dinero.formatear(salio)}</b></span>
+      </div>
+      <p class="fran-conteo__debe">Debe tener hoy: <b class="numero">${dinero.formatear(esperado)}</b>${otros ? ` <small>(incluye ${dinero.formatear(Math.abs(otros))} anotado ese mismo día o con fecha de antes)</small>` : ''}${esperado !== total ? ` <small>(Fran dice ${dinero.formatear(total)} porque falta anotar la diferencia del conteo)</small>` : ''}</p>
+      ${desde.length ? `<details class="fran-conteo__lista"><summary>Ver lo que se movió desde ese día (${desde.length})</summary><div class="fran-lista">${nuevosPrimero(desde).map((f) => `<div class="fran-fila"><span class="fran-fila__texto"><strong>${ui.esc(f.titulo)}</strong><small>${ui.esc(fechas.formatear(f.fecha))}</small></span><span class="fran-fila__valor numero ${f.valor < 0 ? 'fran-menos' : 'fran-mas'}">${dinero.formatear(Math.abs(f.valor))}</span></div>`).join('')}</div></details>` : ''}`;
+  }
+  return `<section class="fran-conteo">
+    <div class="fran-conteo__cabeza">${icono3d('billete', 'fran-3d--40')}<span class="fran-renglon__texto"><span>Conteo del efectivo</span><small>Para saber desde cuándo está confirmada la plata</small></span></div>
+    ${resumen}
+    <button type="button" class="fran-boton-principal fran-conteo__boton" data-contar>Conté mi efectivo</button>
+    <form class="fran-campos fran-campos--grande oculto" data-form-conteo novalidate>
+      <label class="fran-campo-valor"><small>¿Cuánto contó?</small><input name="contado" inputmode="numeric" autocomplete="off" placeholder="0"></label>
+      <label><small>Fecha</small><input type="date" name="fecha" value="${ui.esc(hoy)}" max="${ui.esc(hoy)}"></label>
+      <button class="fran-boton-principal fran-guardar">Guardar conteo</button>
+    </form>
+    ${u && vista.conteoPendiente === u.id && u.contado !== u.debia ? avisoConteo(u, dinero) : ''}
+    ${anteriores.length ? `<details class="fran-conteo__lista"><summary>Conteos anteriores</summary><div class="fran-lista">${anteriores.map((x) => `<div class="fran-fila"><span class="fran-fila__texto"><strong>${ui.esc(fechas.formatear(x.fecha))}</strong><small>${ui.esc(textoCuadre(x.contado - x.debia, dinero, x.ajuste))}</small></span><span class="fran-fila__valor numero">${dinero.formatear(x.contado)}</span></div>`).join('')}</div></details>` : ''}
+  </section>`;
+}
+
+function conectarConteo(raiz, ctx, filas, partida, dibujar) {
+  const { ui, datos } = ctx;
+  const form = raiz.querySelector('[data-form-conteo]');
+  if (!form) return;
+  raiz.querySelector('[data-contar]').addEventListener('click', () => { form.classList.toggle('oculto'); if (!form.classList.contains('oculto')) form.elements.contado.focus(); });
+  form.elements.contado.addEventListener('input', (e) => { const n = e.target.value.replace(/\D/g, ''); e.target.value = n ? Number(n).toLocaleString('es-CO') : ''; });
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const f = form.elements;
+    const texto = f.contado.value.replace(/\D/g, '');
+    if (!texto) { ui.toast('Escriba cuánto contó.'); return; }
+    const contado = Number(texto);
+    const fecha = f.fecha.value || ctx.hoy();
+    const debia = efectivoAl(filas, partida, fecha);
+    const conteo = { id: `conteo-${Date.now()}`, caja: 'efectivo', fecha, contado, debia, creadoEn: new Date().toISOString() };
+    await datos.actualizarFran({ conteos: [...(datos.estado.fran.conteos || []), conteo] });
+    if (contado === debia) { vista.conteoPendiente = null; ui.toast('Listo: cuadró. Quedó anotado el conteo.'); } else vista.conteoPendiente = conteo.id;
+    dibujar();
+  });
+  const cuadrar = raiz.querySelector('[data-cuadrar]');
+  if (!cuadrar) return;
+  const u = ultimoConteo(datos.estado);
+  raiz.querySelector('[data-no-cuadrar]').addEventListener('click', () => { vista.conteoPendiente = null; dibujar(); });
+  cuadrar.addEventListener('click', async () => {
+    const dif = u.contado - u.debia;
+    try {
+      if (dif < 0) await datos.agregarAsiento({ libro: 'personal', fecha: u.fecha, tipo: 'gasto', categoria: 'Descuadre o Perdida', valor: -dif, cuenta: 'Efectivo', descripcion: 'Descuadre al contar el efectivo · no se sabe en qué se gastó' });
+      else await datos.movimientoCaja({ fecha: u.fecha, tipo: 'aporte', caja: 'efectivo', monto: dif, nota: 'Sobró al contar el efectivo', origen: 'otro' });
+      // Con la diferencia anotada, ese conteo ya cuadra.
+      const conteos = (datos.estado.fran.conteos || []).map((x) => (x.id === u.id ? { ...x, debia: u.contado, ajuste: dif, creadoEn: new Date().toISOString() } : x));
+      vista.conteoPendiente = null;
+      await datos.actualizarFran({ conteos });
+      ui.toast('Anotado. Ya cuadra con lo que contó.');
+      dibujar();
+    } catch (error) { ui.toast(error.message); }
+  });
+}
+
 function renderEfectivo(contenedor, ctx) {
   const { ui, dinero, fechas, datos, motor } = ctx;
   const hoy = ctx.hoy();
@@ -2679,6 +2786,7 @@ function renderEfectivo(contenedor, ctx) {
   const raiz = ui.el(`<div class="fran-virtual">
     ${titular('personal', ctx, '#/inicio', 'Plata en efectivo', mes)}
     ${heroe({ etiqueta: 'Efectivo hoy', valor: total, ilustracion: 'billete', ayudaTexto: `Arranca con el cierre del mes pasado y suma o resta solo lo que entró o salió en efectivo.${apartado ? ` De eso, ${dinero.formatear(apartado)} está apartado y ${dinero.formatear(total - apartado)} es para gastar.` : ''}`, cajas: [[`Cierre de ${mesAntes}`, anterior], ['Entró', entro, entro ? 'mas' : ''], ['Salió', salio, salio ? 'menos' : '']] }, ctx)}
+    ${bloqueConteo(ctx, filas, partida, total)}
     ${apartados.length ? `<details class="fran-tachados fran-prestado-pension"><summary>${icono3d('bolsa', 'fran-3d--40')}<span class="fran-renglon__texto"><span>Apartado</span><small>Para gastar quedan ${dinero.formatear(total - apartado)}</small></span><b class="numero">${dinero.formatear(apartado)}</b></summary>
       <div class="fran-lista">${apartados.map((x) => `<div class="fran-fila"><span class="fran-fila__texto"><strong>${ui.esc(x.nombre)}</strong>${x.nota ? `<small>${ui.esc(x.nota)}</small>` : ''}</span><span class="fran-fila__valor numero">${dinero.formatear(x.valor)}</span><button type="button" class="fran-boton-secundario fran-boton--44" data-quitar-apartado="${ui.esc(x.id)}">Ya no</button></div>`).join('')}</div>
     </details>` : ''}
@@ -2702,6 +2810,7 @@ function renderEfectivo(contenedor, ctx) {
     </details>`; }).join('') || '<p class="fran-vacio">Nada en efectivo este mes.</p>'}
   </div>`);
   raiz.querySelector('[data-elegir-mes]').addEventListener('click', () => abrirMeses(mes, ctx, (m) => { vista.mesEfectivo = m; dibujar(); }, meses));
+  conectarConteo(raiz, ctx, filas, partida, dibujar);
   const form = raiz.querySelector('[data-form-mov]');
   let tipo = 'aporte';
   raiz.querySelectorAll('[data-nuevo]').forEach((b) => b.addEventListener('click', () => {

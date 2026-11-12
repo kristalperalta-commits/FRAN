@@ -137,6 +137,8 @@
     // En el estilo Sencillo todo va plano, sin importar la barra.
     const efectivo = estiloActual() === 'sencillo' ? 0 : n;
     document.documentElement.style.setProperty('--relieve', String(efectivo / 100));
+    // El iPhone no entiende calc() dentro de color-mix: la luz se volvía transparente. Va el porcentaje ya hecho.
+    document.documentElement.style.setProperty('--luz-alfa', `${Math.min(efectivo, 100)}%`);
     document.documentElement.setAttribute('data-relieve', efectivo <= 30 ? 'plano' : (efectivo > 100 ? 'fuerte' : 'normal'));
     return n;
   }
