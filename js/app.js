@@ -11,7 +11,7 @@
 
 import * as ui from './ui.js';
 
-const VERSION_APP = '3.40.0';
+const VERSION_APP = '3.41.0';
 const contenedor = document.getElementById('pantalla');
 
 // ---------- Rutas (sección 7 de la especificación) ----------

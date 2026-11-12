@@ -267,7 +267,9 @@ export function miPlata(ctx, hasta = null) {
     else if (a.tipo === 'ingreso') mover(a.cuenta, a.valor);
     else mover(a.cuenta, -a.valor);
   }
-  return { efectivo, virtual, tarjetas, total: efectivo + virtual - tarjetas };
+  // Lo que debo (3.41.0, pedido el 12 nov 2026): tarjetas y lo usado de las cuentas que no es mío. El efectivo no se resta.
+  const deuda = tarjetas + Math.max(0, -virtual);
+  return { efectivo, virtual, tarjetas, deuda, total: efectivo + virtual - tarjetas };
 }
 
 /**
@@ -631,7 +633,7 @@ export function historiaPlata(ctx) {
   const limite = ctx.fechas.sumarDias(hoy, -13);
   let desde = iniciales[0] && iniciales[0] < limite ? limite : limite;
   const serie = [];
-  for (let f = desde; f <= hoy; f = ctx.fechas.sumarDias(f, 1)) serie.push({ fecha: f, valor: miPlata(ctx, f).total });
+  for (let f = desde; f <= hoy; f = ctx.fechas.sumarDias(f, 1)) serie.push({ fecha: f, valor: -miPlata(ctx, f).deuda });
   return serie;
 }
 
@@ -739,8 +741,8 @@ function renderPrincipal(contenedor, ctx) {
       <a href="#/agenda" class="fran-campana" aria-label="Avisos y cobros de hoy"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 22a2.5 2.5 0 0 0 2.45-2h-4.9A2.5 2.5 0 0 0 12 22zm7-6V11a7 7 0 0 0-5.5-6.84V3.5a1.5 1.5 0 0 0-3 0v.66A7 7 0 0 0 5 11v5l-2 2v1h18v-1z"/></svg>${hoyAgenda.length ? `<b class="fran-campana__numero">${hoyAgenda.length}</b>` : (hayAviso ? '<i></i>' : '')}</a></span>
     </header>
     <section class="fran-panel fran-entra" style="--i:0">
-      <span class="fran-panel__etiqueta"><small>${plata.total < 0 ? 'Mi plata hoy · me hace falta' : 'Mi plata hoy · debo tener'}</small>${ayuda('Es efectivo más virtual, menos lo que debo en tarjetas. Si sale con ⊖, es lo que me hace falta. La línea muestra cómo ha ido día por día.', ui)}</span>
-      <strong class="fran-panel__valor">${conPeso(plata.total, dinero)}${serie.length >= 2 ? `<span class="fran-panel__tendencia ${serie[serie.length - 1].valor >= serie[serie.length - 2].valor ? 'sube' : 'baja'}" aria-label="${serie[serie.length - 1].valor >= serie[serie.length - 2].valor ? 'Subió desde ayer' : 'Bajó desde ayer'}"><svg viewBox="0 0 24 24"><path d="M4 16l6-6 4 4 6-7" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/><path d="M15 7h5v5" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg></span>` : ''}</strong>
+      <span class="fran-panel__etiqueta"><small>Lo que debo hoy · tarjetas y virtual</small>${ayuda('Es lo que debo en tarjetas más lo que he usado de las cuentas virtuales que no es mío. El efectivo no se le resta: va aparte, abajo. La línea muestra cómo ha ido día por día (si sube, debo menos).', ui)}</span>
+      <strong class="fran-panel__valor">${conPeso(-plata.deuda, dinero)}${serie.length >= 2 ? `<span class="fran-panel__tendencia ${serie[serie.length - 1].valor >= serie[serie.length - 2].valor ? 'sube' : 'baja'}" aria-label="${serie[serie.length - 1].valor >= serie[serie.length - 2].valor ? 'Subió desde ayer' : 'Bajó desde ayer'}"><svg viewBox="0 0 24 24"><path d="M4 16l6-6 4 4 6-7" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/><path d="M15 7h5v5" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg></span>` : ''}</strong>
       ${graficaPlata(serie)}
       ${serie.length >= 2 ? `<span class="fran-panel__pie"><small>${ui.esc(fechas.formatear(serie[0].fecha).replace(/ \d{4}$/, ''))}</small><small>Hoy</small></span>` : ''}
       <a href="#/mi-plata" class="fran-panel__boton">Ver detalles <span aria-hidden="true">→</span></a>
@@ -2546,9 +2548,9 @@ function renderMiPlata(contenedor, ctx) {
   const filaCuenta = (texto, v, signo) => `<p><span>${ui.esc(texto)}</span><span class="numero${signo ? ` fran-${signo}` : (v < 0 ? ' fran-menos' : '')}">${dinero.formatear(Math.abs(v))}</span></p>`;
   const raiz = ui.el(`<div class="fran-virtual">
     ${titular('personal', ctx, '#/inicio', 'Mi plata hoy')}
-    ${heroe({ etiqueta: hoy.total < 0 ? 'Me hace falta' : 'Debo tener', valor: hoy.total, cajas: [['Efectivo', hoy.efectivo, '', '#/efectivo'], ['Virtual', hoy.virtual, '', '#/virtual'], ['Tarjetas', -hoy.tarjetas, '', '#/tarjetas']] }, ctx)}
-    <p class="fran-nota fran-miplata__cuenta">Efectivo ${fmt(hoy.efectivo)} + virtual ${fmt(hoy.virtual)} − tarjetas ${dinero.formatear(hoy.tarjetas)} = <b>${fmt(hoy.total)}</b></p>
-    ${seccion('Cómo se llegó a este número', 'grafica')}
+    ${heroe({ etiqueta: 'Lo que debo hoy', valor: -hoy.deuda, cajas: [['Tarjetas', -hoy.tarjetas, '', '#/tarjetas'], ['Virtual', Math.min(0, hoy.virtual), '', '#/virtual'], ['Efectivo (aparte)', hoy.efectivo, '', '#/efectivo']] }, ctx)}
+    <p class="fran-nota fran-miplata__cuenta">Tarjetas ${dinero.formatear(hoy.tarjetas)} + virtual ${dinero.formatear(Math.max(0, -hoy.virtual))} = <b>debo ${dinero.formatear(hoy.deuda)}</b>. El efectivo (${fmt(hoy.efectivo)}) va aparte: no se le resta.</p>
+    ${seccion('Las cuentas del día a día: efectivo + virtual − tarjetas', 'grafica')}
     <div class="fran-virtual__cuadro">
       ${filaCuenta(arranqueTexto, c.arranque)}
       ${cuantos('entro') ? filaCuenta('Entró', suma('entro'), 'mas') : ''}
