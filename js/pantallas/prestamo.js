@@ -13,6 +13,8 @@
   Dinero en enteros; fechas como texto AAAA-MM-DD (nunca new Date('AAAA-MM-DD')).
 */
 
+import { guardarFoto, leerFoto, reducirFoto } from '../fotos.js';
+
 const TEXTO_MODALIDAD = {
   interes_mensual: 'Interés mensual',
   capital_primero: 'Capital primero',
@@ -310,7 +312,7 @@ function renderFicha(contenedor, params, ctx) {
     filaDato('Entregado en', prestamo.porConfirmar ? 'Por confirmar' : ui.esc(TEXTO_MEDIO[prestamo.medio] || prestamo.medio)),
     filaDato('De dónde salió', prestamo.porConfirmar ? 'Por confirmar' : (fuentesHtml || ui.esc('Sin fuentes'))),
     prestamo.garantia ? filaDato('Garantía', ui.esc(prestamo.garantia)) : '',
-    prestamo.nota ? filaDato('Nota', ui.esc(prestamo.nota)) : '',
+    prestamo.nota ? filaDato('Nota', ui.esc(String(prestamo.nota).replace(/^CLAUDE D\d+,?\s*/i, ''))) : '',
     prestamo.estadoManual
       ? filaDato('Estado manual', ui.esc(`${ui.textoEstado(prestamo.estadoManual)} desde ${fechas.formatear(prestamo.fechaEstado)}`))
       : '',
@@ -422,6 +424,15 @@ function renderFicha(contenedor, params, ctx) {
       </section>
 
       <section class="seccion">
+        <h2 class="seccion__titulo">Fotos y documentos</h2>
+        <div class="tarjeta prestamo-fotos">
+          <div class="prestamo-fotos__lista" data-fotos></div>
+          <label class="boton boton--secundario prestamo-fotos__agregar">Agregar foto o documento<input type="file" accept="image/*" multiple data-agregar-foto></label>
+          <p class="prestamo-fotos__aviso">Quedan guardadas en este aparato (no viajan a la nube).</p>
+        </div>
+      </section>
+
+      <section class="seccion">
         <h2 class="seccion__titulo">Cuentas</h2>
         <div class="tarjeta"><dl class="prestamo-datos">${cuentasHtml}</dl></div>
       </section>
@@ -438,6 +449,43 @@ function renderFicha(contenedor, params, ctx) {
     </div>
   `);
   contenedor.append(raiz);
+
+  // --- Fotos y documentos del préstamo (3.44.0): contrato firmado, prenda, comprobantes ---
+  const claveFotos = `prestamo-fotos:${prestamo.id}`;
+  const cajaFotos = raiz.querySelector('[data-fotos]');
+  let fotos = [];
+  const pintarFotos = () => {
+    cajaFotos.innerHTML = fotos.length
+      ? fotos.map((f, i) => `<figure><img src="${ui.esc(f.texto)}" alt="Foto ${i + 1}" data-ver-foto="${i}"><button type="button" class="prestamo-fotos__quitar" data-quitar-foto="${i}">Quitar</button></figure>`).join('')
+      : '<p class="prestamo-fotos__vacio">Todavía no hay fotos de este préstamo.</p>';
+  };
+  leerFoto(claveFotos).then((lista) => { fotos = Array.isArray(lista) ? lista : []; pintarFotos(); }).catch(() => pintarFotos());
+  raiz.querySelector('[data-agregar-foto]').addEventListener('change', async (evento) => {
+    const archivos = [...evento.target.files];
+    evento.target.value = '';
+    try {
+      for (const archivo of archivos) fotos.push({ texto: await reducirFoto(archivo, 1600), fecha: hoy });
+      await guardarFoto(claveFotos, fotos);
+      ui.toast(archivos.length === 1 ? 'Foto guardada' : 'Fotos guardadas');
+    } catch (error) { ui.toast(`La foto no se pudo guardar: ${error.message}`); }
+    pintarFotos();
+  });
+  cajaFotos.addEventListener('click', async (evento) => {
+    const quitar = evento.target.closest('[data-quitar-foto]');
+    if (quitar) {
+      if (quitar.dataset.seguro !== 'si') { quitar.dataset.seguro = 'si'; quitar.textContent = '¿Quitar? Toque otra vez'; return; }
+      fotos.splice(Number(quitar.dataset.quitarFoto), 1);
+      try { await guardarFoto(claveFotos, fotos); } catch (error) { ui.toast(error.message); }
+      pintarFotos();
+      return;
+    }
+    const img = evento.target.closest('[data-ver-foto]');
+    if (img) {
+      const capa = ui.el(`<div class="prestamo-fotos__grande"><img src="${ui.esc(img.getAttribute('src'))}" alt="Foto en grande"></div>`);
+      capa.addEventListener('click', () => capa.remove());
+      document.body.append(capa);
+    }
+  });
 
   // --- Paneles que se abren y cierran ---
   raiz.addEventListener('click', async (evento) => {

@@ -2119,29 +2119,23 @@ function renderTablaPrestamos(contenedor, ctx) {
   contenedor.append(raiz);
 }
 
-// Préstamos del cliente aparte, cada uno con lo que debe y su nota (3.42.0, pedido el 13 nov 2026).
-function bloquePrestamosCliente(propios, r, ctx) {
+// Ficha del cliente: dos botones, Préstamos e Historial (3.44.0, pedido el 14 nov 2026).
+// Préstamos muestra solo fecha y capital; la nota, la prenda y las fotos van dentro de cada préstamo.
+function listaPrestamosCliente(propios, r, ctx) {
   const { ui, dinero, fechas } = ctx;
-  if (!propios.length) return '';
   const porId = new Map((r.resultados || []).map((x) => [x.prestamoId, x]));
   const lista = [...propios].sort((a, b) => String(b.fecha || '').localeCompare(String(a.fecha || '')));
-  return `${seccion(`Préstamos (${lista.length})`, 'grafica')}
-    <div class="fran-prestamos-cliente">${lista.map((p) => {
-      const x = porId.get(p.id) || {};
-      const pendiente = x.capitalPendiente ?? p.capital;
-      const nota = String(p.nota || '').replace(/^CLAUDE D\d+,?\s*/i, '').trim();
-      const datosFila = [
-        `Prestó ${dinero.formatear(p.capital)}`,
-        p.totalPactado ? `paga ${dinero.formatear(p.totalPactado)}` : '',
-        `debe de capital ${dinero.formatear(pendiente)}`,
-      ].filter(Boolean).join(' · ');
-      return `<a class="fran-prestamo-cliente fran-tarjeta" href="#/prestamo/${encodeURIComponent(p.id)}">
-        <span class="fran-prestamo-cliente__cabeza"><strong>${p.fecha ? `Préstamo del ${ui.esc(fechas.formatear(p.fecha))}` : 'Préstamo sin fecha'}</strong><b class="numero">${dinero.formatear(pendiente)}</b></span>
-        <small>${ui.esc(datosFila)}</small>
-        ${p.garantia ? `<small>Prenda: ${ui.esc(p.garantia)}</small>` : ''}
-        ${nota ? `<p class="fran-prestamo-cliente__nota">${ui.esc(nota)}</p>` : ''}
-      </a>`;
-    }).join('')}</div>`;
+  if (!lista.length) return '<p class="fran-vacio">No tiene préstamos.</p>';
+  return `<div class="fran-lista">${lista.map((p) => {
+    const x = porId.get(p.id) || {};
+    const pendiente = x.capitalPendiente ?? p.capital;
+    const sinFecha = p.porConfirmar && p.porConfirmar.fecha;
+    return fila({
+      ui, icono: '💵', titulo: sinFecha ? 'Fecha por confirmar' : fechas.formatear(p.fecha),
+      sub: pendiente !== p.capital ? (pendiente > 0 ? `Le falta ${dinero.formatear(pendiente)}` : 'Capital recuperado') : '',
+      derecha: dinero.formatear(p.capital), clase: '', ruta: `#/prestamo/${encodeURIComponent(p.id)}`,
+    });
+  }).join('')}</div>`;
 }
 
 function renderFicha(contenedor, id, ctx) {
@@ -2175,6 +2169,7 @@ function renderFicha(contenedor, id, ctx) {
       : [{ f: p.fecha, sinFecha: p.porConfirmar && p.porConfirmar.fecha, icono: '💵', t: 'Préstamo', v: `−${dinero.formatear(p.capital)}`, c: 'fran-menos', ruta: `#/prestamo/${encodeURIComponent(p.id)}` }])),
     ...cobros.map((m) => ({ f: m.fecha, textoFecha: m.textoFecha, icono: m.perdon ? '🎁' : (m.titulo === 'Intereses' ? '%' : '↩️'), t: m.titulo, v: `+${dinero.formatear(m.valor)}`, c: 'fran-mas', ver: m.clave })),
   ].sort((a, b) => b.f.localeCompare(a.f));
+  const ver = vista.ficha && vista.ficha.id === id ? vista.ficha.ver : '';
   const tel = soloDigitos(cliente.telefono);
   const editar = `#/cliente/${encodeURIComponent(id)}/editar`;
   const raiz = ui.el(`<div>
@@ -2189,9 +2184,9 @@ function renderFicha(contenedor, id, ctx) {
     <div class="fran-progreso"><span style="width:${pct}%"></span></div>
     <p class="fran-nota">${abonosPlan && !recuperado ? `Abono a capital anotado: ${dinero.formatear(abonosPlan)}.` : `Recuperado ${dinero.formatear(recuperado)} de ${dinero.formatear(r.capitalPrestado)} de capital.`}${capitalPrimero ? (r.capitalPendiente === 0 ? ' Ya recuperó todo el capital: lo que pague es ganancia.' : ' Cuando llegue a 100%, todo lo que pague es ganancia.') : ''}</p>
     ${interesesPagados.n ? `<p class="fran-nota fran-nota--pagado">Ha pagado <strong class="numero">${dinero.formatear(interesesPagados.total)}</strong> de intereses en ${interesesPagados.n} ${interesesPagados.n === 1 ? 'pago' : 'pagos'}, desde ${ui.esc(fechas.formatear(interesesPagados.desde))}.</p>` : ''}
-    ${bloquePrestamosCliente(propios, r, ctx)}
-    ${seccion('Historial', 'lista')}
-    <div class="fran-lista">${historial.map((h) => fila({ ui, icono: h.icono, titulo: h.t, sub: h.sinFecha ? `Fecha por confirmar (${h.sinFecha})` : (h.textoFecha || fechas.formatear(h.f)), derecha: h.v, clase: h.c, ruta: h.ruta, ver: h.ver })).join('') || '<p class="fran-vacio">Sin movimientos.</p>'}</div>
+    <div class="fran-segmento fran-ficha-botones"><button type="button" data-ficha-ver="prestamos" class="${ver === 'prestamos' ? 'activo' : ''}">Préstamos (${propios.length})</button><button type="button" data-ficha-ver="historial" class="${ver === 'historial' ? 'activo' : ''}">Historial</button></div>
+    ${ver === 'prestamos' ? listaPrestamosCliente(propios, r, ctx) : ''}
+    ${ver === 'historial' ? `<div class="fran-lista">${historial.map((h) => fila({ ui, icono: h.icono, titulo: h.t, sub: h.sinFecha ? `Fecha por confirmar (${h.sinFecha})` : (h.textoFecha || fechas.formatear(h.f)), derecha: h.v, clase: h.c, ruta: h.ruta, ver: h.ver })).join('') || '<p class="fran-vacio">Sin movimientos.</p>'}</div>` : ''}
     <div class="fran-tres">
       <a href="${tel ? `tel:+${tel}` : editar}">${icono3d('telefono', 'fran-3d--40')}${tel ? 'Llamar' : 'Poner teléfono'}</a>
       <a href="${tel ? `https://wa.me/${tel}` : editar}"${tel ? ' target="_blank" rel="noopener"' : ''}>${icono3d('chat', 'fran-3d--40')}WhatsApp</a>
@@ -2200,6 +2195,11 @@ function renderFicha(contenedor, id, ctx) {
     <a class="fran-enlace-suave" href="${editar}">Editar datos del cliente</a>
   </div>`);
   const volver = () => { contenedor.innerHTML = ''; renderFicha(contenedor, id, ctx); window.scrollTo(0, 0); };
+  raiz.querySelectorAll('[data-ficha-ver]').forEach((b) => b.addEventListener('click', () => {
+    vista.ficha = { id, ver: ver === b.dataset.fichaVer ? '' : b.dataset.fichaVer };
+    const y0 = window.scrollY;
+    contenedor.innerHTML = ''; renderFicha(contenedor, id, ctx); window.scrollTo(0, y0);
+  }));
   raiz.querySelectorAll('[data-ver]').forEach((b) => b.addEventListener('click', () => {
     const m = cobros.find((x) => x.clave === b.dataset.ver);
     if (m) verCobro(contenedor, m, cobros, cliente, volver, ctx);
