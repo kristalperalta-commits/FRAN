@@ -1426,8 +1426,16 @@ export function adivinarCategoria(asientos, libro, tipo, descripcion, permitidas
   return mejor(iguales) || mejor(parecidas);
 }
 
+/** Las cuentas de siempre más las que ella agregó (3.43.0). Las nuevas cuentan como virtual, salvo que empiecen por Efectivo o Tarjeta. */
+function cuentasDe(fran) {
+  const extra = (fran.categoriasExtra && fran.categoriasExtra['cuentas:propias']) || [];
+  return [...CUENTAS, ...extra.filter((c) => !CUENTAS.includes(c))];
+}
+const OTRA_CUENTA = '＋ Otra cuenta…';
+
 function renderAgregar(contenedor, id, clave, ctx) {
   const { ui, datos, dinero, fechas } = ctx;
+  const CUENTAS_HOY = cuentasDe(datos.estado.fran);
   const tipos = TIPOS[id] || TIPOS.personal;
   const def = tipos.find((t) => t[1] === clave) || tipos[0];
   const tipo = def[2];
@@ -1446,8 +1454,8 @@ function renderAgregar(contenedor, id, clave, ctx) {
     <div class="fran-segmento">${tipos.map((t) => `<a href="#/libro/${id}/agregar/${t[1]}" class="${t === def ? 'activo' : ''}">${ui.esc(t[0])}</a>`).join('')}</div>
     <form novalidate>
       ${esTransfer ? `
-        <p class="fran-seccion">Sale de</p>${chips('cuenta', CUENTAS, 'Efectivo', ui)}
-        <p class="fran-seccion">Entra a</p>${chips('destino', CUENTAS, 'Nequi propio', ui)}` : `
+        <p class="fran-seccion">Sale de</p>${chips('cuenta', CUENTAS_HOY, 'Efectivo', ui)}
+        <p class="fran-seccion">Entra a</p>${chips('destino', CUENTAS_HOY, 'Nequi propio', ui)}` : `
         ${pidePropiedad ? `<p class="fran-seccion fran-agregar__paso">¿Para qué propiedad?</p>
         <div class="fran-iconos fran-iconos--prop">${propiedades.map((p) => `<button type="button" data-prop="${ui.esc(p.nombre)}"><span>${iconoPropiedad(p, 'fran-3d--48')}</span><small>${ui.esc(p.nombre)}</small></button>`).join('')}</div>
         <p class="fran-seccion fran-agregar__paso oculto" data-paso-cat>¿De qué fue el gasto?</p>` : ''}
@@ -1466,7 +1474,7 @@ function renderAgregar(contenedor, id, clave, ctx) {
         <div class="fran-teclado${esTransfer ? '' : ' oculto'}" data-teclado>
           <input type="text" class="fran-entrada oculto" name="nueva" placeholder="Nombre de la categoría nueva" autocomplete="off">
           <div class="fran-teclado__valor">
-            ${esTransfer || id === 'terceros' ? '<span></span>' : `<label class="fran-cuenta"><small>${tipo === 'ingreso' ? 'Entra por' : 'Pagado con'}</small><select name="cuenta">${CUENTAS.map((c) => `<option>${ui.esc(c)}</option>`).join('')}</select></label>`}
+            ${esTransfer || id === 'terceros' ? '<span></span>' : `<label class="fran-cuenta"><small>${tipo === 'ingreso' ? 'Entra por' : 'Pagado con'}</small><select name="cuenta">${CUENTAS_HOY.map((c) => `<option>${ui.esc(c)}</option>`).join('')}<option>${OTRA_CUENTA}</option></select></label>`}
             <output class="numero" data-monto aria-live="polite">0</output>
           </div>
           <label class="fran-nota-campo"><span>Nota:</span><input type="text" name="nota" autocomplete="off" placeholder="Introduce una nota…" aria-label="Nota">${esTransfer ? '' : FOTO}</label>
@@ -1575,6 +1583,19 @@ function renderAgregar(contenedor, id, clave, ctx) {
     } catch { conTeclado(); }
   });
 
+  // «Otra cuenta…»: pide el nombre, la deja elegida y queda guardada para la próxima vez.
+  const selCuenta = raiz.querySelector('select[name="cuenta"]');
+  if (selCuenta) selCuenta.addEventListener('change', () => {
+    if (selCuenta.value !== OTRA_CUENTA) return;
+    const nombre = String(window.prompt('¿Cómo se llama la cuenta o el método de pago?') || '').trim().slice(0, 40);
+    if (!nombre) { selCuenta.value = 'Efectivo'; return; }
+    const ya = [...selCuenta.options].find((o) => o.value.toLowerCase() === nombre.toLowerCase() && o.value !== OTRA_CUENTA);
+    if (ya) { selCuenta.value = ya.value; return; }
+    const op = document.createElement('option'); op.textContent = nombre;
+    selCuenta.insertBefore(op, selCuenta.options[selCuenta.options.length - 1]);
+    selCuenta.value = nombre;
+  });
+
   const guardarMovimiento = async () => {
     const valor = evaluarMonto(expresion);
     if (!(valor > 0)) { ui.toast('Marca el valor en el teclado.'); return; }
@@ -1587,7 +1608,12 @@ function renderAgregar(contenedor, id, clave, ctx) {
     if (!esTransfer && !elegida && !categoriaNueva) { ui.toast('Elige la categoría.'); return; }
     if (pidePropiedad && !propiedadElegida) { ui.toast('Elige la propiedad.'); return; }
     const fecha = campoFecha.value || hoy;
+    if (cuenta === OTRA_CUENTA) { ui.toast('Escribe el nombre de la cuenta.'); return; }
     try {
+      if (cuenta && !cuentasDe(datos.estado.fran).includes(cuenta)) {
+        const f0 = datos.estado.fran;
+        await datos.actualizarFran({ categoriasExtra: { ...f0.categoriasExtra, 'cuentas:propias': [...((f0.categoriasExtra || {})['cuentas:propias'] || []), cuenta] } });
+      }
       const asiento = await datos.agregarAsiento({ libro: id, fecha, tipo, categoria: esTransfer ? 'Transferencia' : (categoriaNueva || elegida), descripcion: nota.value, valor, cuenta, destino, conFoto: !!foto, propiedad: propiedadElegida || '' });
       if (notaDeLibreta) { await marcarNotaPasada(ctx, notaDeLibreta); notaDeLibreta = null; }
       if (foto) await guardarFoto(asiento.id, foto).catch(() => ui.toast('El movimiento quedó, pero la foto no se pudo guardar.'));
