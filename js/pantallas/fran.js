@@ -464,7 +464,8 @@ function carteraDe(ctx) {
   const estado = ctx.datos.estado;
   const r = ctx.motor.resumenNegocio(estado, ctx.hoy());
   const faltan = estado.prestamos.filter((p) => p.porConfirmar && (p.porConfirmar.fecha || ((p.modalidad || 'interes_mensual') === 'interes_mensual' && p.porConfirmar.tasa))).length;
-  return { r, provisional: faltan > 0, faltan, valor: r.capitalEnCalle + r.interesesPendientes };
+  // Mientras falten préstamos por confirmar, la cartera es solo el capital: los intereses todavía no se pueden dar por ciertos.
+  return { r, provisional: faltan > 0, faltan, valor: faltan > 0 ? r.capitalEnCalle : r.capitalEnCalle + r.interesesPendientes };
 }
 
 /** Lo invertido en el negocio tecnológico que sigue sin venderse. */

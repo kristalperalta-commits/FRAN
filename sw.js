@@ -5,7 +5,7 @@
   Al cambiar VERSION se crea un caché nuevo y se borran los viejos al activar.
 */
 
-const VERSION = '3.56.0';
+const VERSION = '3.57.0';
 const NOMBRE_CACHE = `mis-prestamos-v${VERSION}`;
 
 // Lista fija de todo lo que compone la app (incluye archivos de pantallas aunque
@@ -137,7 +137,7 @@ const ARCHIVOS = [
 ];
 
 // Instalación: el código (html, css, js) tiene que bajar completo; si falta uno, esta versión no se
-// instala y sigue la anterior entera, para no quedar con archivos viejos y nuevos mezclados (3.56.0).
+// instala y sigue la anterior entera, para no quedar con archivos viejos y nuevos mezclados (3.57.0).
 // Las imágenes sí pueden faltar: se bajan después.
 self.addEventListener('install', (evento) => {
   evento.waitUntil(
@@ -189,7 +189,8 @@ self.addEventListener('fetch', (evento) => {
   if (url.pathname.endsWith('/sw.js') || peticion.cache === 'no-store') return;
 
   evento.respondWith(
-    caches.match(peticion, { ignoreSearch: true }).then(async (enCache) => {
+    // Solo se sirve lo guardado de ESTA versión: nunca un archivo de una versión vieja mezclado con los nuevos.
+    caches.open(NOMBRE_CACHE).then((cache) => cache.match(peticion, { ignoreSearch: true })).then(async (enCache) => {
       if (enCache) return enCache;
       try {
         const respuesta = await fetch(peticion);
