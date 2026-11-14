@@ -227,6 +227,19 @@ export function tarjetaDeCuenta(tarjetas, cuenta) {
   return i;
 }
 
+/**
+ * Qué mueve una cuenta: 'efectivo', 'tarjeta', 'virtual' o '' (sin cuenta, no mueve nada).
+ * Una sola regla para Inicio, Mi plata, Efectivo y Virtual (3.46.0). Una "Tarjeta …" que no es
+ * ninguna de las tarjetas anotadas cuenta como virtual, para que el gasto no se pierda.
+ */
+export function tipoDeCuenta(cuenta, tarjetas) {
+  const n = norm(cuenta);
+  if (!n) return '';
+  if (n === 'efectivo' || n.startsWith('efectivo ')) return 'efectivo';
+  if (n.startsWith('tarjeta')) return !tarjetas || tarjetaDeCuenta(tarjetas, cuenta) >= 0 ? 'tarjeta' : 'virtual';
+  return 'virtual';
+}
+
 /** Cada tarjeta: lo que se debía en su último extracto (o lo anotado al empezar) más lo de después. */
 export function estadoTarjetas(fran, hasta = null) {
   const tarjetas = (fran.tarjetas || []).map((t) => ({ ...t, base: t.deuda || 0, deudaHoy: t.deuda || 0, movimientos: [] }));
@@ -254,10 +267,9 @@ export function miPlata(ctx, hasta = null) {
   let virtual = motor.saldoCaja(estado.movimientos, 'virtual', hasta || undefined);
   const tarjetas = estadoTarjetas(estado.fran, hasta).reduce((s, t) => s + t.deudaHoy, 0);
   const mover = (cuenta, valor) => {
-    if (!cuenta) return;
-    if (cuenta === 'Efectivo') efectivo += valor;
-    else if (cuenta.startsWith('Tarjeta')) return; // va en la deuda de su tarjeta
-    else virtual += valor;
+    const tipo = tipoDeCuenta(cuenta, estado.fran.tarjetas);
+    if (tipo === 'efectivo') efectivo += valor;
+    else if (tipo === 'virtual') virtual += valor; // 'tarjeta' va en la deuda de su tarjeta
   };
   for (const m of estado.fran.virtualMov || []) { if (hasta && m.fecha > hasta) continue; virtual += m.tipo === 'entra' ? m.valor : -m.valor; }
   for (const a of estado.fran.asientos || []) {
@@ -295,14 +307,14 @@ export function cuentaMiPlata(ctx) {
     eventos.push({ fecha: m.fecha, titulo: m.concepto || (v >= 0 ? 'Entró' : 'Salió'), donde: 'Virtual', efecto: v, grupo: v >= 0 ? 'entro' : 'salio', icono: v >= 0 ? '💵' : '💸' });
   }
   // Igual que miPlata: efectivo y virtual se mueven por la cuenta; las tarjetas por su deuda.
-  const enCaja = (cuenta) => (!cuenta || cuenta.startsWith('Tarjeta') ? 0 : 1);
+  const enCaja = (cuenta) => (['efectivo', 'virtual'].includes(tipoDeCuenta(cuenta, tarjetas)) ? 1 : 0);
   const enTarjeta = (cuenta, fecha) => {
     const i = tarjetaDeCuenta(tarjetas, cuenta || '');
     if (i < 0) return 0;
     if (tarjetas[i].fecha && fecha <= tarjetas[i].fecha) return 0; // ya va dentro del extracto
     return 1;
   };
-  const nombreCuenta = (c) => (!c ? '' : (c === 'Efectivo' ? 'Efectivo' : (c.startsWith('Tarjeta') ? c : 'Virtual')));
+  const nombreCuenta = (c) => ({ efectivo: 'Efectivo', virtual: 'Virtual', tarjeta: c }[tipoDeCuenta(c, tarjetas)] || '');
   for (const a of fran.asientos || []) {
     if (a.libro === 'terceros') continue;
     const v = a.valor;
@@ -1596,7 +1608,13 @@ function renderAgregar(contenedor, id, clave, ctx) {
     selCuenta.value = nombre;
   });
 
+  let guardandoMovimiento = false;
   const guardarMovimiento = async () => {
+    if (guardandoMovimiento) return;
+    guardandoMovimiento = true;
+    try { await guardarMovimientoUnaVez(); } finally { guardandoMovimiento = false; }
+  };
+  const guardarMovimientoUnaVez = async () => {
     const valor = evaluarMonto(expresion);
     if (!(valor > 0)) { ui.toast('Marca el valor en el teclado.'); return; }
     const form = raiz.querySelector('form');
@@ -1993,7 +2011,7 @@ function renderSoloIntereses(contenedor, ctx) {
     <div class="fran-lista">${filas.map((f) => (f.suelto ? filaSuelta(f) : filaCliente(f))).join('') || '<p class="fran-vacio">Nadie debe solo intereses.</p>'}</div>
     <form class="fran-campos fran-campos--grande oculto" data-form-pago novalidate>
       <label class="fran-campo-valor"><small data-quien>Pagó</small><input name="valor" inputmode="numeric" autocomplete="off"></label>
-      <label><small>Entra por</small><select name="cuenta"><option>Efectivo</option><option>Nequi propio</option><option>Uno propio</option><option>Bancolombia</option></select></label>
+      <label><small>Entra por</small><select name="cuenta">${cuentasDe(ctx.datos.estado.fran).filter((c) => tipoDeCuenta(c) !== 'tarjeta').map((c) => `<option>${ui.esc(c)}</option>`).join('')}</select></label>
       <label><small>Fecha</small><input type="date" name="fecha" value="${ui.esc(hoy)}"></label>
       <button class="fran-boton-principal fran-guardar">Guardar el abono</button>
     </form>
@@ -2102,7 +2120,8 @@ function renderTablaPrestamos(contenedor, ctx) {
   } else {
     const porCliente = new Map();
     for (const f of filas) { if (!porCliente.has(f.clienteId)) porCliente.set(f.clienteId, []); porCliente.get(f.clienteId).push(f); }
-    cuerpo = [...porCliente.values()].map((lista) => `<details class="fran-tabla-bloque fran-tabla-cliente">
+    cuerpo = `<input type="search" class="fran-buscar-cliente" data-buscar-cliente placeholder="Buscar cliente: escriba las primeras letras" autocomplete="off" value="${ui.esc(vista.buscaTabla || '')}">
+      <p class="fran-vacio oculto" data-sin-coincidencias>Nadie empieza por esas letras.</p>` + [...porCliente.values()].sort((a, b) => a[0].cliente.localeCompare(b[0].cliente, 'es')).map((lista) => `<details class="fran-tabla-bloque fran-tabla-cliente" data-nombre="${ui.esc(norm(lista[0].cliente))}">
       <summary>${cabeza(lista[0].cliente, lista)}<small>${punto(lista[0].estado)}${lista.length > 1 ? `${lista[0].estado ? ' · ' : ''}${lista.length} préstamos` : ''}</small></summary>
       <div class="fran-tabla-titulos"><span>Fecha</span><span>Nombre</span><span>Capital</span></div>
       ${lista.map((f) => renglon(f, false)).join('')}
@@ -2116,6 +2135,23 @@ function renderTablaPrestamos(contenedor, ctx) {
     ${filas.length ? cuerpo : '<p class="fran-vacio">Todavía no hay préstamos en este aparato.</p>'}
   </div>`);
   raiz.querySelectorAll('[data-tabla]').forEach((b) => b.addEventListener('click', () => { vista.tabla = b.dataset.tabla; dibujar(); }));
+  const buscador = raiz.querySelector('[data-buscar-cliente]');
+  if (buscador) {
+    // Sale quien tenga un nombre o apellido que empiece por lo escrito: "a" trae Ana y Alberto; "an", solo Ana.
+    const filtrar = () => {
+      const q = norm(buscador.value);
+      vista.buscaTabla = buscador.value;
+      let visibles = 0;
+      raiz.querySelectorAll('.fran-tabla-cliente').forEach((d) => {
+        const coincide = !q || d.dataset.nombre.startsWith(q) || d.dataset.nombre.split(/\s+/).some((palabra) => palabra.startsWith(q));
+        d.classList.toggle('oculto', !coincide);
+        if (coincide) visibles += 1;
+      });
+      raiz.querySelector('[data-sin-coincidencias]').classList.toggle('oculto', visibles > 0);
+    };
+    buscador.addEventListener('input', filtrar);
+    filtrar();
+  }
   contenedor.append(raiz);
 }
 
@@ -2155,7 +2191,7 @@ function renderFicha(contenedor, id, ctx) {
   // Lo que corre de intereses por los días que lleva cada préstamo en el mes.
   const corridos = r.resultados.filter((x) => x.interesCorrido > 0);
   const acuerdo = (estado.fran.agenda || []).find((x) => (x.fecha || x.repite) && (x.clienteId === id || norm(x.nombre) === norm(cliente.nombre)));
-  const cuando = acuerdo && (acuerdo.repite ? `${acuerdo.repite}s` : (acuerdo.fecha ? fechas.formatear(acuerdo.fecha) : ''));
+  const cuando = acuerdo && (acuerdo.repite ? ({ diario: 'cada día', semanal: 'cada semana', quincenal: 'cada quincena', mensual: 'cada mes' }[acuerdo.repite] || acuerdo.repite) : (acuerdo.fecha ? fechas.formatear(acuerdo.fecha) : ''));
   const textoAcuerdo = acuerdo ? `Acuerdo: ${[acuerdo.monto ? `${dinero.formatear(acuerdo.monto)} ${acuerdo.repite ? cuando : ''}`.trim() : (acuerdo.repite ? cuando : ''), !acuerdo.repite && acuerdo.monto ? cuando : (!acuerdo.repite ? cuando : ''), acuerdo.nota].filter(Boolean).join(' · ')}` : '';
   const capitalPrimero = propios.some((p) => p.modalidad === 'capital_primero');
   const conTexto = propios.find((p) => p.acuerdoTexto);
@@ -2693,7 +2729,7 @@ function filasEfectivo(ctx) {
   }
   for (const a of estado.fran.asientos) {
     if (a.libro === 'terceros') continue;
-    const esEf = (c) => /^efectivo$/i.test(c || '');
+    const esEf = (c) => tipoDeCuenta(c) === 'efectivo';
     const base = { fecha: a.fecha, creadoEn: a.creadoEn, grupo: a.categoria, icono: iconoDe(a.categoria), titulo: a.descripcion || a.categoria, sub: '' };
     if (a.tipo === 'transferencia') {
       if (esEf(a.cuenta)) filas.push({ ...base, valor: -a.valor });
@@ -2917,13 +2953,14 @@ function filasVirtuales(ctx) {
     const quien = m.prestamoId ? nombreDe(m.prestamoId) : '';
     filas.push({ fecha: m.fecha, creadoEn: m.creadoEn, concepto: quien ? `${quien} · ${m.tipo === 'prestamo' ? 'Préstamo' : 'Pago'}` : (m.nota || m.tipo.replace(/_/g, ' ')), valor: m.monto * m.signo });
   }
+  const esVirtual = (c) => tipoDeCuenta(c, estado.fran.tarjetas) === 'virtual';
   for (const a of estado.fran.asientos) {
     if (a.libro === 'terceros') continue;
     const concepto = a.descripcion || a.categoria;
     if (a.tipo === 'transferencia') {
-      if (a.cuenta && !CUENTA_NO_VIRTUAL.test(a.cuenta)) filas.push({ fecha: a.fecha, creadoEn: a.creadoEn, concepto, valor: -a.valor });
-      if (a.destino && !CUENTA_NO_VIRTUAL.test(a.destino)) filas.push({ fecha: a.fecha, creadoEn: a.creadoEn, concepto, valor: a.valor });
-    } else if (a.cuenta && !CUENTA_NO_VIRTUAL.test(a.cuenta)) {
+      if (esVirtual(a.cuenta)) filas.push({ fecha: a.fecha, creadoEn: a.creadoEn, concepto, valor: -a.valor });
+      if (esVirtual(a.destino)) filas.push({ fecha: a.fecha, creadoEn: a.creadoEn, concepto, valor: a.valor });
+    } else if (esVirtual(a.cuenta)) {
       filas.push({ fecha: a.fecha, creadoEn: a.creadoEn, concepto, valor: a.tipo === 'ingreso' ? a.valor : -a.valor });
     }
   }

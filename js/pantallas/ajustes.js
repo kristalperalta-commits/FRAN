@@ -280,7 +280,21 @@ function seccionNube(ctx) {
       <div class="ajustes-botones">
         <button type="button" class="boton boton--secundario boton--grande" id="nube-restaurar">Volver a esa copia</button>
         <button type="button" class="boton boton--secundario boton--grande" id="nube-olvidar">Borrar esa copia</button>
-      </div>` : ''}`;
+      </div>` : ''}
+      <div id="nube-copias"></div>`;
+    // Copias que Fran guarda sola en este aparato antes de cambiar los datos (las últimas 5).
+    if (nube.copiasLocales) nube.copiasLocales().then((copias) => {
+      const caja = cuerpo.querySelector('#nube-copias');
+      if (!caja || !copias.length) return;
+      caja.innerHTML = `<p class="ajustes-ayuda">Copias de seguridad de este aparato. Fran guarda una antes de bajar o juntar datos de la nube, importar o borrar todo.</p>
+        ${copias.map((c, i) => `<div class="ajustes-botones"><button type="button" class="boton boton--secundario boton--grande" data-copia="${i}">${ui.esc(`${new Date(c.cuando).toLocaleString('es-CO', { day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' })} · ${c.motivo}`)}</button></div>`).join('')}`;
+      caja.querySelectorAll('[data-copia]').forEach((b) => b.addEventListener('click', async () => {
+        const copia = copias[Number(b.dataset.copia)];
+        if (!(await ui.confirmar('¿Dejar los datos como estaban en esa copia? Lo de ahora queda guardado como otra copia, por si quiere devolverse.', { aceptar: 'Sí, volver a esa copia', peligro: true }))) return;
+        try { await nube.restaurarCopiaLocal(copia.cuando); ui.toast('Listo: los datos quedaron como en esa copia.', 5000); } catch (error) { ui.toast(textoError(error), 6000); }
+        pintar();
+      }));
+    }).catch(() => {});
     cuerpo.querySelector('#nube-sync').addEventListener('click', async () => {
       const resultado = await nube.sincronizar('manual');
       ui.toast(resultado === 'error' ? 'No se pudo sincronizar.' : 'Sincronizado.');
@@ -396,13 +410,14 @@ function seccionCopia(ctx) {
     const archivo = entradaArchivo.files && entradaArchivo.files[0];
     if (!archivo) return;
     const seguro = await ui.confirmar(
-      `¿Importar "${archivo.name}"? Se reemplaza todo lo que tienes guardado ahora (${cantidad.clientes} clientes, ${cantidad.prestamos} préstamos, ${cantidad.pagos} pagos).`,
+      `¿Importar "${archivo.name}"? Se reemplaza TODO lo que hay ahora: ${cantidad.clientes} clientes, ${cantidad.prestamos} préstamos, ${cantidad.pagos} pagos y también los libros (gastos, arriendos, agenda, notas). Si está en la nube, el cambio llega al otro aparato. Antes de hacerlo queda una copia guardada en este aparato.`,
       { aceptar: 'Sí, importar', peligro: true }
     );
     if (!seguro) return;
     botonImportar.disabled = true;
     try {
       const texto = await leerArchivoComoTexto(archivo);
+      if (ctx.nube && ctx.nube.guardarCopiaLocal) await ctx.nube.guardarCopiaLocal('antes de importar una copia');
       const estado = await datos.importarJSON(texto);
       ui.toast(`Copia importada: ${estado.clientes.length} clientes y ${estado.prestamos.length} préstamos.`, 4000);
       ctx.navegar('#/inicio');
@@ -475,8 +490,8 @@ function seccionBorrar(ctx) {
     <section class="tarjeta ajustes-seccion ajustes-seccion--peligro">
       <h2 class="ajustes-seccion__titulo">Borrar todo</h2>
       <p class="ajustes-texto">
-        Borra todos los clientes, préstamos, pagos y movimientos de caja de este teléfono.
-        No se puede deshacer. Descarga una copia antes.
+        Borra TODO: clientes, préstamos, pagos, caja y también los libros (gastos, arriendos, agenda, notas).
+        Si está en la nube, también se borra en el otro aparato. Antes de borrar queda una copia guardada en este aparato.
       </p>
       <div class="ajustes-botones">
         <button type="button" class="boton boton--peligro boton--grande" id="boton-borrar-todo">Borrar todos los datos</button>
@@ -489,7 +504,7 @@ function seccionBorrar(ctx) {
     const cantidadClientes = datos.listar('clientes').length;
     const cantidadPrestamos = datos.listar('prestamos').length;
     const primera = await ui.confirmar(
-      `¿Borrar todos los datos? Se van ${cantidadClientes} clientes y ${cantidadPrestamos} préstamos con todos sus pagos y movimientos.`,
+      `¿Borrar todos los datos? Se van ${cantidadClientes} clientes, ${cantidadPrestamos} préstamos y todos los libros, aquí y en la nube.`,
       { aceptar: 'Sí, borrar', peligro: true }
     );
     if (!primera) return;
@@ -500,6 +515,7 @@ function seccionBorrar(ctx) {
     if (!segunda) return;
     boton.disabled = true;
     try {
+      if (ctx.nube && ctx.nube.guardarCopiaLocal) await ctx.nube.guardarCopiaLocal('antes de borrar todo');
       await datos.borrarTodo();
       ui.toast('Todo borrado. La app quedó vacía.');
       ctx.navegar('#/inicio');

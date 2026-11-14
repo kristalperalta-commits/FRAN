@@ -302,6 +302,8 @@ function completarEstado(estado) {
       ...(p.porConfirmar && typeof p.porConfirmar === 'object' ? { porConfirmar: p.porConfirmar } : {}),
       ...(Array.isArray(p.detalle) ? { detalle: p.detalle } : {}),
       ...(p.acuerdoTexto ? { acuerdoTexto: limpiarTexto(p.acuerdoTexto) } : {}),
+      ...(limpiarTexto(p.nombreExcel) ? { nombreExcel: limpiarTexto(p.nombreExcel) } : {}),
+      ...(esFechaValida(p.interesesPagadosHasta) ? { interesesPagadosHasta: p.interesesPagadosHasta } : {}),
       creadoEn: esFechaValida(p.creadoEn) ? p.creadoEn : hoy(),
     });
   }
@@ -896,7 +898,16 @@ function armarPrestamo(datosPrestamo, existente) {
     exigirFecha(interesesPagadosHasta, 'hasta la que pagó intereses');
     exigir(interesesPagadosHasta >= fecha, 'La fecha hasta la que pagó intereses no puede ser anterior al préstamo.');
   }
+  // "Por confirmar" se conserva al editar la nota o el estado. Al corregir la fecha o la tasa se quita solo esa parte.
+  let porConfirmar = datosPrestamo.porConfirmar !== undefined ? datosPrestamo.porConfirmar : (existente?.porConfirmar ?? null);
+  if (porConfirmar && typeof porConfirmar === 'object' && existente) {
+    const queda = { ...porConfirmar };
+    if (fecha !== existente.fecha) delete queda.fecha;
+    if (tasa !== existente.tasa) delete queda.tasa;
+    porConfirmar = Object.keys(queda).some((k) => queda[k]) ? queda : null;
+  }
   return {
+    ...(porConfirmar && typeof porConfirmar === 'object' ? { porConfirmar } : {}),
     ...(acuerdoTexto ? { acuerdoTexto } : {}),
     ...(Array.isArray(detalle) ? { detalle } : {}),
     ...(nombreExcel ? { nombreExcel } : {}),
@@ -1019,7 +1030,10 @@ function cambiarPrestamo(datosPrestamo) {
     exigir(nuevo.fecha === anterior.fecha, 'No se puede cambiar la fecha de un préstamo que ya tiene pagos.');
     exigir(!cambiaModalidad, 'No se puede cambiar la modalidad de un préstamo que ya tiene pagos.');
   }
-  exigir(nuevo.clienteId === anterior.clienteId, 'Un préstamo no se puede pasar a otro cliente.');
+  if (nuevo.clienteId !== anterior.clienteId) {
+    exigir(buscar('clientes', nuevo.clienteId), 'No se encontró el cliente al que quieres pasar el préstamo.');
+    for (const g of estadoActual.pagos) if (g.prestamoId === nuevo.id) g.clienteId = nuevo.clienteId;
+  }
 
   estadoActual.prestamos[indice] = nuevo;
   if (cambiaPlata) {
@@ -1584,6 +1598,7 @@ export const datos = {
   // Lo marcado "importado" se reemplaza; lo demás se conserva. La agenda se junta por id.
   async actualizarHistoricos(texto) {
     const objeto = typeof texto === 'string' ? JSON.parse(texto) : texto;
+    const antesDeHistoricos = JSON.stringify(estadoActual);
     const nuevo = completarFran(objeto.fran);
     exigir(nuevo.asientos.length > 0, 'El archivo no trae movimientos de históricos.');
     const propios = estadoActual.fran.asientos.filter((a) => !a.importado);
@@ -1631,6 +1646,13 @@ export const datos = {
       const fila = { id: m.id, fecha: m.fecha, caja: m.caja, tipo: m.tipo, monto: m.monto, signo: m.signo === -1 ? -1 : 1, origen: '', prestamoId: null, pagoId: null, parId: null, nota: limpiarTexto(m.nota), creadoEn: m.creadoEn };
       const i = estadoActual.movimientos.findIndex((x) => x.id === m.id);
       if (i >= 0) estadoActual.movimientos[i] = fila; else estadoActual.movimientos.push(fila);
+    }
+    try {
+      validarEstado(completarEstado(JSON.parse(JSON.stringify(estadoActual))));
+    } catch (error) {
+      estadoActual = JSON.parse(antesDeHistoricos);
+      idsBase = idsDe(estadoActual);
+      throw new Error(`Ese archivo dejaría los datos dañados, así que no se aplicó. ${error && error.message ? error.message : ''}`.trim());
     }
     await guardar();
     return { historicos: nuevo.asientos.length, propios: propios.length, agenda: agenda.length };

@@ -65,6 +65,22 @@ export function estado() {
   return { ...estadoSync, desconectada, sesion: estadoSync.sesion ? { correo: estadoSync.sesion.correo } : null };
 }
 
+/** Id de la persona que entró, o null. */
+export function usuario() {
+  return estadoSync.sesion ? estadoSync.sesion.usuario : null;
+}
+
+/** Llamada a la nube con la sesión de ella (renueva el permiso si venció). */
+export function pedir(ruta, opciones = {}) {
+  if (!estadoSync.sesion) throw new Error('Primero entra a la nube.');
+  return llamar(ruta, opciones);
+}
+
+/** true mientras se están aplicando datos que llegaron del otro aparato. */
+export function aplicandoDatosRemotos() {
+  return aplicandoRemoto;
+}
+
 export function suscribir(fn) {
   oyentes.add(fn);
   return () => oyentes.delete(fn);
@@ -294,7 +310,7 @@ function abrirCopias() {
 }
 
 /** Guarda lo que hay en este aparato antes de que la nube lo cambie. Quedan las últimas 5. */
-async function guardarCopiaLocal(motivo) {
+export async function guardarCopiaLocal(motivo) {
   if (typeof indexedDB === 'undefined') return;
   try {
     const texto = datos.exportarJSON();
@@ -324,6 +340,14 @@ export async function copiasLocales() {
     cursor.onsuccess = () => { const c = cursor.result; if (!c) { resolver(salida); return; } salida.push({ cuando: c.key, ...c.value }); c.continue(); };
     cursor.onerror = () => rechazar(cursor.error);
   });
+}
+
+/** Vuelve a dejar los datos como estaban en esa copia. Lo de ahora queda guardado como otra copia. */
+export async function restaurarCopiaLocal(cuando) {
+  const copia = (await copiasLocales()).find((c) => c.cuando === cuando);
+  if (!copia) throw new Error('No encontré esa copia.');
+  await guardarCopiaLocal('antes de volver a una copia');
+  await datos.importarJSON(copia.texto);
 }
 
 /* ---------- Sincronización ---------- */

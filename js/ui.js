@@ -117,10 +117,11 @@ export function toast(texto, duracionMs = 2600) {
   aviso.className = 'toast';
   aviso.textContent = String(texto);
   contenedor.append(aviso);
-  setTimeout(() => {
-    aviso.classList.add('toast--saliendo');
-    setTimeout(() => aviso.remove(), 320);
-  }, duracionMs);
+  // Un mensaje largo necesita más tiempo para leerse; al tocarlo se cierra.
+  const duracion = Math.max(duracionMs, 1600 + String(texto).length * 55);
+  const cerrar = () => { aviso.classList.add('toast--saliendo'); setTimeout(() => aviso.remove(), 320); };
+  aviso.addEventListener('click', cerrar);
+  setTimeout(cerrar, duracion);
 }
 
 // ---------- Diálogo de confirmación ----------

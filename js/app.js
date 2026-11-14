@@ -11,7 +11,7 @@
 
 import * as ui from './ui.js';
 
-const VERSION_APP = '3.45.0';
+const VERSION_APP = '3.46.0';
 const contenedor = document.getElementById('pantalla');
 
 // ---------- Rutas (sección 7 de la especificación) ----------
@@ -399,6 +399,25 @@ function activarDeslizarParaActualizar() {
  * internet cuál es la última versión; si esta es más vieja, se borra lo guardado y se recarga.
  * Una sola vez por versión, para no quedar en un ciclo.
  */
+/** ¿Hay algo escrito sin guardar en la pantalla? Sirve para no borrarlo con un redibujo o una recarga. */
+function escribiendo() {
+  const pantalla = document.getElementById('pantalla');
+  if (!pantalla) return false;
+  const monto = pantalla.querySelector('[data-monto]');
+  if (monto && monto.offsetParent && monto.textContent.trim() !== '0' && monto.textContent.trim() !== '') return true;
+  for (const campo of pantalla.querySelectorAll('input:not([type=hidden]):not([type=file]):not([type=date]):not([type=checkbox]):not([type=radio]):not([type=search]), textarea')) {
+    if (!campo.offsetParent || campo.dataset.buscar !== undefined) continue;
+    if (campo.value !== campo.defaultValue && campo.value.trim() !== '') return true;
+  }
+  return false;
+}
+
+/** Recarga la app, pero espera si ella está escribiendo algo. */
+function recargarConCuidado() {
+  if (escribiendo()) { setTimeout(recargarConCuidado, 5000); return; }
+  window.location.reload();
+}
+
 async function revisarVersion() {
   try {
     const texto = await (await fetch(`./sw.js?v=${Date.now()}`, { cache: 'no-store' })).text();
@@ -409,9 +428,9 @@ async function revisarVersion() {
     if (registroSW) await registroSW.update().catch(() => {});
     if ('caches' in window) {
       const nombres = await caches.keys();
-      await Promise.all(nombres.map((n) => caches.delete(n)));
+      await Promise.all(nombres.filter((n) => n !== 'fran-ordenes').map((n) => caches.delete(n)));
     }
-    window.location.reload();
+    recargarConCuidado();
   } catch (_error) {
     // Sin internet: sigue con la versión que tiene.
   }
@@ -468,7 +487,7 @@ function registrarServiceWorker() {
   navigator.serviceWorker.addEventListener('controllerchange', () => {
     if (!yaHabiaVersion || recargando) return;
     recargando = true;
-    window.location.reload();
+    recargarConCuidado();
   });
   navigator.serviceWorker.register('./sw.js').then((registro) => {
     registroSW = registro;
@@ -513,15 +532,37 @@ async function arrancar() {
   }
 
   // Cada guardado vuelve a dibujar la pantalla actual conservando la posición.
+  // Si los datos llegan del otro aparato mientras ella escribe, no se le borra el formulario.
+  let redibujoPendiente = false;
   if (typeof ctx.datos.suscribir === 'function') {
-    ctx.datos.suscribir(() => renderizar({ conservarScroll: true }));
+    ctx.datos.suscribir(() => {
+      if (ctx.nube && ctx.nube.aplicandoDatosRemotos && ctx.nube.aplicandoDatosRemotos() && escribiendo()) {
+        if (!redibujoPendiente) ui.toast('Llegaron datos del otro aparato. Se verán al salir de esta pantalla.', 5000);
+        redibujoPendiente = true;
+        return;
+      }
+      redibujoPendiente = false;
+      renderizar({ conservarScroll: true });
+    });
   }
+
+  // Tocar dos veces "guardar" no guarda dos veces: el segundo envío seguido del mismo formulario se ignora.
+  let ultimoEnvio = { form: null, cuando: 0 };
+  document.addEventListener('submit', (evento) => {
+    const ahora = Date.now();
+    if (ultimoEnvio.form === evento.target && ahora - ultimoEnvio.cuando < 1200) {
+      evento.preventDefault();
+      evento.stopImmediatePropagation();
+      return;
+    }
+    ultimoEnvio = { form: evento.target, cuando: ahora };
+  }, true);
 
   try {
     const nube = await import('./nube.js');
     ctx.nube = nube;
     nube.iniciar(ctx.datos, { avisar: ui.toast });
-    // Aviso fijo cuando la sesión de la nube se cerró sola: lo anotado no está llegando al otro aparato (3.45.0).
+    // Aviso fijo cuando la sesión de la nube se cerró sola: lo anotado no está llegando al otro aparato (3.46.0).
     const avisoNube = () => {
       let barra = document.getElementById('aviso-nube');
       if (!nube.estado().desconectada) { if (barra) barra.remove(); return; }

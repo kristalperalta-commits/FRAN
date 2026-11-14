@@ -302,7 +302,7 @@ function renderFicha(contenedor, params, ctx) {
     filaDato('Cliente', `<a href="${rutaDelCliente}">${ui.esc(nombre)}</a>`),
     filaDato('Fecha', ui.esc(prestamo.porConfirmar && prestamo.porConfirmar.fecha ? `Por confirmar. En el Excel dice: ${prestamo.porConfirmar.fecha}` : fechas.formatear(prestamo.fecha))),
     filaDato('Capital prestado', ui.esc(pesos(ctx, prestamo.capital))),
-    esMensual ? filaDato('Tasa', prestamo.porConfirmar ? ui.esc(prestamo.porConfirmar.tasa) : `${ui.esc(Math.round(prestamo.tasa * 100) / 100)} % mensual`) : '',
+    esMensual ? filaDato('Tasa', prestamo.porConfirmar && prestamo.porConfirmar.tasa ? ui.esc(prestamo.porConfirmar.tasa) : `${ui.esc(Math.round(prestamo.tasa * 100) / 100)} % mensual`) : '',
     filaDato('Modalidad', ui.esc(TEXTO_MODALIDAD[prestamo.modalidad] || prestamo.modalidad)),
     prestamo.totalPactado ? filaDato('Total pactado', ui.esc(pesos(ctx, prestamo.totalPactado))) : '',
     prestamo.plazoMeses
@@ -381,6 +381,7 @@ function renderFicha(contenedor, params, ctx) {
         <button type="button" class="boton" data-panel="estado">Cambiar estado</button>
         <button type="button" class="boton" data-panel="acuerdo">Acuerdo de pago</button>
         <button type="button" class="boton" data-panel="nota">Editar nota</button>
+        <button type="button" class="boton" data-panel="corregir">Corregir o borrar</button>
       </div>
 
       <div class="tarjeta prestamo-panel oculto" id="panel-estado">
@@ -416,6 +417,19 @@ function renderFicha(contenedor, params, ctx) {
           ${ui.campo({ etiqueta: 'Plazo en meses (opcional)', nombre: 'plazoMeses', tipo: 'number', valor: prestamo.plazoMeses || '', atributos: { min: 1, step: 1 }, ayuda: 'Si pactaron devolver el capital en cierto tiempo' })}
           <button type="submit" class="boton boton--primario boton--grande">Guardar</button>
         </form>
+      </div>
+
+      <div class="tarjeta prestamo-panel oculto" id="panel-corregir">
+        <h2>Corregir este préstamo</h2>
+        <form id="form-corregir" novalidate>
+          ${ui.campo({ etiqueta: 'Cliente', nombre: 'clienteId', tipo: 'select', valor: prestamo.clienteId, opciones: ctx.datos.listar('clientes').slice().sort((a, b) => nombreDe(a).localeCompare(nombreDe(b), 'es')).map((c) => ({ valor: c.id, texto: nombreDe(c) })), ayuda: 'Si quedó a nombre de otra persona, elija aquí la correcta.' })}
+          ${pagos.length ? '<p class="suave">Ya tiene pagos: la fecha y el capital no se pueden cambiar. Si hace falta, borre primero los pagos.</p>' : `
+          ${ui.campo({ etiqueta: 'Fecha del préstamo', nombre: 'fecha', tipo: 'date', valor: prestamo.porConfirmar && prestamo.porConfirmar.fecha ? '' : prestamo.fecha, atributos: { max: hoy }, ayuda: prestamo.porConfirmar && prestamo.porConfirmar.fecha ? `Está por confirmar. En el Excel dice: ${prestamo.porConfirmar.fecha}` : '' })}
+          ${ui.campo({ etiqueta: 'Capital prestado', nombre: 'capital', valor: ui.formatearDinero(prestamo.capital), atributos: { inputmode: 'numeric', autocomplete: 'off' } })}`}
+          ${esMensual ? ui.campo({ etiqueta: 'Tasa (% mensual)', nombre: 'tasa', valor: prestamo.porConfirmar && prestamo.porConfirmar.tasa ? '' : String(prestamo.tasa).replace('.', ','), atributos: { inputmode: 'decimal', autocomplete: 'off', 'data-sin-puntos': '1' }, ayuda: prestamo.porConfirmar && prestamo.porConfirmar.tasa ? `Está por confirmar. En el Excel dice: ${prestamo.porConfirmar.tasa}` : 'Por ejemplo 10, 20 o 12,5' }) : ''}
+          <button type="submit" class="boton boton--primario boton--grande">Guardar corrección</button>
+        </form>
+        <button type="button" class="boton boton--peligro boton--grande prestamo-borrar" data-borrar-prestamo>Borrar este préstamo</button>
       </div>
 
       <section class="seccion">
@@ -515,7 +529,50 @@ function renderFicha(contenedor, params, ctx) {
 
     if (evento.target.closest('[data-quitar-acuerdo]')) {
       await guardarPrestamo(ctx, { id: prestamo.id, acuerdo: null }, 'Acuerdo quitado');
+      return;
     }
+
+    if (evento.target.closest('[data-borrar-prestamo]')) {
+      const cuantos = pagos.length;
+      const seguro = await ui.confirmar(
+        `¿Borrar el préstamo de ${nombre} por ${pesos(ctx, prestamo.capital)}? ${cuantos ? `Se borran también sus ${cuantos === 1 ? 'pago' : `${cuantos} pagos`} y` : 'Se borran también'} sus movimientos de caja. No se puede deshacer.`,
+        { aceptar: 'Sí, borrar', peligro: true },
+      );
+      if (!seguro) return;
+      try {
+        await ctx.datos.eliminarPrestamo(prestamo.id);
+        await guardarFoto(`prestamo-fotos:${prestamo.id}`, []).catch(() => {});
+        ui.toast('Préstamo borrado');
+        ctx.navegar(`/cliente/${encodeURIComponent(prestamo.clienteId)}`);
+      } catch (error) {
+        ui.toast(error && error.message ? error.message : 'No se pudo borrar el préstamo.', 6000);
+      }
+    }
+  });
+
+  raiz.querySelector('#form-corregir').addEventListener('submit', async (evento) => {
+    evento.preventDefault();
+    const valores = ui.leerFormulario(evento.target);
+    const cambios = { id: prestamo.id };
+    if (valores.clienteId && valores.clienteId !== prestamo.clienteId) cambios.clienteId = valores.clienteId;
+    if (!pagos.length) {
+      if (valores.fecha && valores.fecha !== prestamo.fecha) cambios.fecha = valores.fecha;
+      const capital = ui.leerDinero(String(valores.capital || ''));
+      if (!(capital > 0)) { ui.toast('Escriba el capital prestado.'); return; }
+      if (capital !== prestamo.capital) cambios.capital = capital;
+    }
+    if (esMensual && String(valores.tasa || '').trim() !== '') {
+      const tasa = Number(String(valores.tasa).replace(',', '.'));
+      if (!Number.isFinite(tasa) || tasa < 0 || tasa > 100) { ui.toast('La tasa debe ser un número entre 0 y 100.'); return; }
+      if (tasa !== prestamo.tasa) cambios.tasa = tasa;
+      else if (prestamo.porConfirmar && prestamo.porConfirmar.tasa) {
+        // Confirmó la misma tasa que ya estaba: deja de estar por confirmar.
+        const { tasa: _confirmada, ...resto } = prestamo.porConfirmar;
+        cambios.porConfirmar = Object.keys(resto).length ? resto : null;
+      }
+    }
+    if (Object.keys(cambios).length === 1) { ui.toast('No cambió nada.'); return; }
+    await guardarPrestamo(ctx, cambios, 'Préstamo corregido');
   });
 
   raiz.querySelector('#form-acuerdo').addEventListener('submit', async (evento) => {

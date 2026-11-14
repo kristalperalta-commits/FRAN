@@ -37,10 +37,6 @@ export function estado() {
   return Notification.permission; // 'default', 'granted' o 'denied'
 }
 
-function cabeceras(sesion) {
-  return { apikey: NUBE.clave, Authorization: `Bearer ${sesion.token}`, 'Content-Type': 'application/json' };
-}
-
 /** Pide permiso, se suscribe y guarda la suscripción en la nube. Devuelve 'ok' o el motivo. */
 export async function activar(nube) {
   if (!disponible()) return 'no-soportado';
@@ -59,14 +55,12 @@ export async function activar(nube) {
   }
   if (!sub) sub = await registro.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: aBytes(LLAVE_PUBLICA) });
   const j = sub.toJSON();
-  const fila = { user_id: sesion.usuario, endpoint: j.endpoint, p256dh: j.keys.p256dh, auth: j.keys.auth, aparato: navigator.userAgent.slice(0, 120), actualizado_en: new Date().toISOString() };
-  const r = await fetch(`${NUBE.url}/rest/v1/suscripciones_push?on_conflict=endpoint`, {
-    method: 'POST', headers: { ...cabeceras(sesion), Prefer: 'resolution=merge-duplicates,return=minimal' }, body: JSON.stringify(fila),
-  });
-  if (!r.ok) {
-    let detalle = '';
-    try { detalle = (await r.json()).message || ''; } catch { /* nada */ }
-    throw new Error(detalle.includes('suscripciones_push') ? 'La nube todavía no tiene la tabla de avisos. Falta el paso del panel de Supabase.' : (detalle || `La nube respondió ${r.status}.`));
+  const fila = { user_id: nube.usuario(), endpoint: j.endpoint, p256dh: j.keys.p256dh, auth: j.keys.auth, aparato: navigator.userAgent.slice(0, 120), actualizado_en: new Date().toISOString() };
+  try {
+    await nube.pedir('/rest/v1/suscripciones_push?on_conflict=endpoint', { method: 'POST', headers: { Prefer: 'resolution=merge-duplicates,return=minimal' }, body: JSON.stringify(fila) });
+  } catch (error) {
+    const detalle = String((error && error.message) || '');
+    throw new Error(detalle.includes('suscripciones_push') ? 'La nube todavía no tiene la tabla de avisos. Falta el paso del panel de Supabase.' : (detalle || 'La nube no respondió.'));
   }
   try { window.localStorage.setItem('fran-avisos', 'si'); } catch { /* nada */ }
   return 'ok';
@@ -78,7 +72,7 @@ export async function desactivar(nube) {
   const sub = await registro.pushManager.getSubscription();
   const sesion = nube && nube.estado().sesion;
   if (sub && sesion) {
-    await fetch(`${NUBE.url}/rest/v1/suscripciones_push?endpoint=eq.${encodeURIComponent(sub.endpoint)}`, { method: 'DELETE', headers: cabeceras(sesion) }).catch(() => {});
+    await Promise.resolve().then(() => nube.pedir(`/rest/v1/suscripciones_push?endpoint=eq.${encodeURIComponent(sub.endpoint)}`, { method: 'DELETE' })).catch(() => {});
     await sub.unsubscribe().catch(() => {});
   }
   try { window.localStorage.removeItem('fran-avisos'); } catch { /* nada */ }
