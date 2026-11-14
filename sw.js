@@ -5,7 +5,7 @@
   Al cambiar VERSION se crea un caché nuevo y se borran los viejos al activar.
 */
 
-const VERSION = '3.51.0';
+const VERSION = '3.52.0';
 const NOMBRE_CACHE = `mis-prestamos-v${VERSION}`;
 
 // Lista fija de todo lo que compone la app (incluye archivos de pantallas aunque
@@ -98,11 +98,9 @@ const ARCHIVOS = [
   './iconos/3d/clasico-azul.png',
   './iconos/3d/engranaje-azul.png',
   './css/estilos.css',
-  './css/pantallas/inicio.css',
   './css/pantallas/clientes.css',
   './css/pantallas/prestamo.css',
   './css/pantallas/caja.css',
-  './css/pantallas/agenda.css',
   './css/pantallas/ajustes.css',
   './css/pantallas/fran.css',
   './css/lila.css',
@@ -129,11 +127,9 @@ const ARCHIVOS = [
   './js/fechas.js',
   './js/dinero.js',
   './js/casos.js',
-  './js/pantallas/inicio.js',
   './js/pantallas/clientes.js',
   './js/pantallas/prestamo.js',
   './js/pantallas/caja.js',
-  './js/pantallas/agenda.js',
   './js/pantallas/ajustes.js',
   './js/pantallas/fran.js',
   './iconos/icono.svg',
@@ -141,7 +137,7 @@ const ARCHIVOS = [
 ];
 
 // Instalación: el código (html, css, js) tiene que bajar completo; si falta uno, esta versión no se
-// instala y sigue la anterior entera, para no quedar con archivos viejos y nuevos mezclados (3.51.0).
+// instala y sigue la anterior entera, para no quedar con archivos viejos y nuevos mezclados (3.52.0).
 // Las imágenes sí pueden faltar: se bajan después.
 self.addEventListener('install', (evento) => {
   evento.waitUntil(

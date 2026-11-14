@@ -105,15 +105,15 @@ const LOGO_RED = {
   instagram: '<svg viewBox="0 0 48 48"><defs><linearGradient id="ig-g" x1="0" y1="1" x2="1" y2="0"><stop offset="0" stop-color="#FEDA75"/><stop offset=".3" stop-color="#FA7E1E"/><stop offset=".6" stop-color="#D62976"/><stop offset="1" stop-color="#4F5BD5"/></linearGradient></defs><rect width="48" height="48" rx="12" fill="url(#ig-g)"/><rect x="11" y="11" width="26" height="26" rx="8" fill="none" stroke="#fff" stroke-width="3.2"/><circle cx="24" cy="24" r="6.2" fill="none" stroke="#fff" stroke-width="3.2"/><circle cx="31.6" cy="16.4" r="2" fill="#fff"/></svg>',
 };
 function logoRed(nombre, clase = '') {
-  const svg = LOGO_RED[norm(nombre)];
+  const svg = Object.hasOwn(LOGO_RED, norm(nombre)) ? LOGO_RED[norm(nombre)] : null;
   return svg ? svg.replace('<svg ', `<svg class="fran-3d fran-logo-red ${clase}" aria-hidden="true" `) : '';
 }
 
 export function icono3dDe(categoriaOEmoji, clase = 'fran-3d--40') {
   const logo = logoRed(categoriaOEmoji, clase);
   if (logo) return logo;
-  const emoji = EMOJI_3D[categoriaOEmoji] ? categoriaOEmoji : iconoDe(categoriaOEmoji);
-  const archivo = EMOJI_3D[emoji];
+  const emoji = Object.hasOwn(EMOJI_3D, categoriaOEmoji) ? categoriaOEmoji : iconoDe(categoriaOEmoji);
+  const archivo = Object.hasOwn(EMOJI_3D, emoji) ? EMOJI_3D[emoji] : null;
   if (!archivo) return `<span class="fran-ico">${emoji}</span>`;
   return `<img class="fran-3d ${clase} fran-ico--3d" src="iconos/3d/${archivo}.png" alt="" aria-hidden="true" decoding="async">`;
 }
@@ -608,7 +608,7 @@ function listaPorDia(lista, ctx) {
     html += `<div class="fran-dia"><span>${ui.esc(fechaLinda(dia, ctx))}</span><span>${g ? `G: <b class="numero">${dinero.formatear(g)}</b> ` : ''}${i ? `I: <b class="numero">${dinero.formatear(i)}</b>` : ''}</span></div>`;
     for (const a of filas) {
       const signo = a.tipo === 'ingreso' ? '+' : (a.tipo === 'gasto' ? '−' : '');
-      html += fila({ ui, ver: a.id, icono: LOGO_RED[norm(a.categoria)] ? a.categoria : iconoDe(a.categoria), titulo: a.categoria, sub: [a.propiedad, a.descripcion].filter(Boolean).join(' · '), derecha: `${signo}${dinero.formatear(a.valor)}`, clase: a.tipo === 'ingreso' ? 'fran-mas' : (a.tipo === 'gasto' ? 'fran-menos' : '') });
+      html += fila({ ui, ver: a.id, icono: Object.hasOwn(LOGO_RED, norm(a.categoria)) ? a.categoria : iconoDe(a.categoria), titulo: a.categoria, sub: [a.propiedad, a.descripcion].filter(Boolean).join(' · '), derecha: `${signo}${dinero.formatear(a.valor)}`, clase: a.tipo === 'ingreso' ? 'fran-mas' : (a.tipo === 'gasto' ? 'fran-menos' : '') });
     }
   }
   return html || `<p class="fran-vacio">No hay movimientos en este mes.</p>`;
@@ -3255,6 +3255,11 @@ function renderMoverPension(contenedor, accion, ctx) {
 export async function render(contenedor, params, ctx) {
   contenedor.innerHTML = '';
   const id = params.libro;
+  // Un enlace armado con un libro que no existe no llega a dibujarse.
+  if (id !== undefined && id !== null && id !== '' && !Object.hasOwn(LIBROS, id)) {
+    contenedor.append(ctx.ui.el('<div><p class="fran-vacio">Esa pantalla no existe.</p><a class="fran-enlace-suave" href="#/inicio">Volver al inicio</a></div>'));
+    return;
+  }
   switch (params.vista) {
     case 'principal': return renderPrincipal(contenedor, ctx);
     case 'otros': return renderOtros(contenedor, ctx);
