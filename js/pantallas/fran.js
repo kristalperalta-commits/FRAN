@@ -382,7 +382,7 @@ function titular(id, ctx, atras, texto, mes) {
   const l = LIBROS[id];
   return `<header class="fran-titulo fran-titulo--libro">
     ${atras ? `<a href="${ui.esc(atras)}" class="fran-titulo__atras" aria-label="Volver">‹</a>` : ''}
-    <h1>${ICONO_3D[id] ? icono3d(id, 'fran-3d--28') : `<span class="fran-cuadro fran-cuadro--28" aria-hidden="true">${ui.esc(l.icono)}</span>`}<span>${ui.esc(texto || l.corto)}</span></h1>
+    <h1>${ICONO_3D[id] ? icono3d(id, 'fran-3d--28') : `<span class="fran-cuadro fran-cuadro--28" aria-hidden="true">${ui.esc(l.icono)}</span>`}<span>${ui.esc(texto || (mes ? l.enInicio : l.corto))}</span></h1>
     ${mes ? `<button type="button" class="fran-pildora fran-titulo__mes" data-elegir-mes aria-label="Elegir mes">${ui.esc(MESES_CORTOS[Number(mes.slice(5, 7)) - 1])}${mes.slice(0, 4) !== ctx.hoy().slice(0, 4) ? ` ${mes.slice(2, 4)}` : ''} <i aria-hidden="true">▾</i></button>` : ''}
   </header>`;
 }
@@ -463,8 +463,8 @@ function saldoLibro(ctx, todos, id, mes = null) {
 function carteraDe(ctx) {
   const estado = ctx.datos.estado;
   const r = ctx.motor.resumenNegocio(estado, ctx.hoy());
-  const provisional = estado.prestamos.some((x) => x.porConfirmar);
-  return { r, provisional, valor: provisional ? 'por confirmar' : r.capitalEnCalle + r.interesesPendientes };
+  const faltan = estado.prestamos.filter((p) => p.porConfirmar && (p.porConfirmar.fecha || ((p.modalidad || 'interes_mensual') === 'interes_mensual' && p.porConfirmar.tasa))).length;
+  return { r, provisional: faltan > 0, faltan, valor: r.capitalEnCalle + r.interesesPendientes };
 }
 
 /** Lo invertido en el negocio tecnológico que sigue sin venderse. */
@@ -934,12 +934,12 @@ function renderPrestamos(contenedor, ctx, redibujar) {
   const pastilla = (t, n, clase) => `<a href="#/clientes" class="fran-pastilla ${clase}"><i></i>${ui.esc(t)} ${n}</a>`;
   const raiz = ui.el(`<div>
     ${titular('prestamos', ctx, '#/inicio', '', mes)}
-    ${heroe({ etiqueta: 'Cartera', valor: cartera.valor, ilustracion: 'documento', ayudaTexto: cartera.provisional ? 'La cartera sale "por confirmar" porque hay préstamos del Excel sin tasa o sin fecha. Cuando se confirmen, aquí sale el número.' : '', cajas: [
+    ${heroe({ etiqueta: cartera.provisional ? 'Cartera · capital que me deben' : 'Cartera', valor: cartera.valor, ilustracion: 'documento', ayudaTexto: cartera.provisional ? `Es el capital que le deben. Todavía no incluye los intereses de ${cartera.faltan} préstamos que vinieron del Excel sin fecha o sin tasa: cuando les ponga esos datos, Fran les suma los intereses.` : 'Es el capital que le deben más los intereses pendientes.', cajas: [
       ['Ganancia del mes', intereses, 'mas'],
       ['Presté', prestamos.reduce((s, p) => s + p.capital, 0), 'menos'],
       ['Cobré capital', estado.pagos.length || abonos.length ? capital : 'Sin datos', 'mas'],
     ] }, ctx)}
-    ${cartera.provisional ? `<div class="fran-renglon fran-renglon--dato">${icono3d('recibo', 'fran-3d--40')}<span class="fran-renglon__texto"><span>Capital anotado: <b>${dinero.formatear(cartera.r.capitalEnCalle)}</b></span></span></div>` : ''}
+    ${cartera.provisional ? `<a href="#/libro/prestamos/tabla" class="fran-renglon" data-ir-confirmar>${icono3d('recibo', 'fran-3d--40')}<span class="fran-renglon__texto"><span>Faltan ${cartera.faltan} préstamos por confirmar</span><small>Vinieron del Excel sin fecha o sin tasa. Toque aquí para ponérselas: sin eso Fran no les calcula intereses.</small></span><i class="fran-ajuste__flecha" aria-hidden="true"></i></a>` : ''}
     ${renglonSoloIntereses(ctx)}
     <div class="fran-pastillas">
       ${c.por_confirmar ? pastilla('Por confirmar', c.por_confirmar, 'gris') : ''}
@@ -959,6 +959,8 @@ function renderPrestamos(contenedor, ctx, redibujar) {
     <div class="fran-lista fran-lista--tarjetas">${movimientosOrden.map((x) => fila({ ui, icono: x.icono, icono3: x.valor < 0 ? 'billete' : 'recibo', titulo: x.titulo, sub: x.sub, derecha: `${x.valor < 0 ? '−' : '+'}${dinero.formatear(Math.abs(x.valor))}`, clase: x.valor < 0 ? 'fran-menos' : 'fran-mas', ruta: x.ruta })).join('') || vacioConSalto(lista, ctx, 'No hay movimientos en este mes.')}</div>
   </div>`);
   conectarMes(raiz, mes, ctx, redibujar);
+  const irConfirmar = raiz.querySelector('[data-ir-confirmar]');
+  if (irConfirmar) irConfirmar.addEventListener('click', () => { vista.tabla = 'confirmar'; });
   contenedor.append(raiz);
 }
 

@@ -774,3 +774,7 @@ html[data-modo="oscuro"] .fran-tabla-premium__cabeza { background: color-mix(in 
 .fran-tabla-premium--sin-gastos .fran-tabla-premium__cabeza, .fran-tabla-premium--sin-gastos .fran-tabla-premium__fila { grid-template-columns: 1.1fr 1.4fr 16px; }
 .fran-tabla-premium--sin-gastos .fran-tabla-premium__cabeza > span:nth-child(2), .fran-tabla-premium--sin-gastos .fran-tabla-premium__cabeza > span:nth-child(4),
 .fran-tabla-premium--sin-gastos .fran-tabla-premium__fila > span:nth-child(2), .fran-tabla-premium--sin-gastos .fran-tabla-premium__fila > span:nth-child(4) { display: none; }
+
+/* 3.56.0 · Los títulos de las cajitas se leen completos (no más "Ganancia…" ni "Cobré ca…") */
+html body .fran-heroe__cajas small { white-space: normal; overflow: visible; text-overflow: clip; line-height: 1.15; font-size: 12px; }
+html body .fran-heroe__cajas > span, html body .fran-heroe__cajas > a { justify-content: space-between; }
