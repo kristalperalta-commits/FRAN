@@ -463,7 +463,7 @@ function saldoLibro(ctx, todos, id, mes = null) {
 function carteraDe(ctx) {
   const estado = ctx.datos.estado;
   const r = ctx.motor.resumenNegocio(estado, ctx.hoy());
-  const faltan = estado.prestamos.filter((p) => !p.estadoManual && p.porConfirmar && (p.porConfirmar.fecha || ((p.modalidad || 'interes_mensual') === 'interes_mensual' && p.porConfirmar.tasa))).length;
+  const faltan = estado.prestamos.filter((p) => !p.estadoManual && p.porConfirmar && (p.modalidad || 'interes_mensual') === 'interes_mensual' && (p.porConfirmar.fecha || p.porConfirmar.tasa)).length;
   // Mientras falten préstamos por confirmar, la cartera es solo el capital: los intereses todavía no se pueden dar por ciertos.
   return { r, provisional: faltan > 0, faltan, valor: faltan > 0 ? r.capitalEnCalle : r.capitalEnCalle + r.interesesPendientes };
 }
@@ -2209,7 +2209,7 @@ function renderTablaPrestamos(contenedor, ctx) {
     </details>`).join('');
   }
   // Por confirmar: los que vinieron del Excel sin fecha o sin tasa. Al tocar uno se abre para corregirlo.
-  const porConfirmar = estado.prestamos.filter((p) => !p.estadoManual && p.porConfirmar && (p.porConfirmar.fecha || ((p.modalidad || 'interes_mensual') === 'interes_mensual' && p.porConfirmar.tasa))).map((p) => {
+  const porConfirmar = estado.prestamos.filter((p) => !p.estadoManual && p.porConfirmar && (p.modalidad || 'interes_mensual') === 'interes_mensual' && (p.porConfirmar.fecha || p.porConfirmar.tasa)).map((p) => {
     const c = estado.clientes.find((x) => x.id === p.clienteId);
     return { p, nombre: p.nombreExcel || (c ? c.nombre : ''), cliente: c ? c.nombre : '' };
   }).sort((a, b) => a.cliente.localeCompare(b.cliente, 'es'));
