@@ -11,7 +11,7 @@
 
 import * as ui from './ui.js';
 
-const VERSION_APP = '3.50.0';
+const VERSION_APP = '3.51.0';
 const contenedor = document.getElementById('pantalla');
 
 // ---------- Rutas (sección 7 de la especificación) ----------
@@ -562,7 +562,7 @@ async function arrancar() {
     const nube = await import('./nube.js');
     ctx.nube = nube;
     nube.iniciar(ctx.datos, { avisar: ui.toast });
-    // Aviso fijo cuando la sesión de la nube se cerró sola: lo anotado no está llegando al otro aparato (3.50.0).
+    // Aviso fijo cuando la sesión de la nube se cerró sola: lo anotado no está llegando al otro aparato (3.51.0).
     const avisoNube = () => {
       let barra = document.getElementById('aviso-nube');
       if (!nube.estado().desconectada) { if (barra) barra.remove(); return; }
@@ -575,7 +575,15 @@ async function arrancar() {
     };
     nube.suscribir(avisoNube);
     avisoNube();
-    // Avisos fijos de guardado: si no se pudo leer lo guardado o no se está pudiendo guardar, se dice arriba (3.50.0).
+    // Los avisos al teléfono: si este aparato ya dio permiso, se registra solo en la nube (al abrir y al entrar).
+    const registrarAvisos = () => import('./avisos.js').then((avisos) => avisos.registrarDeNuevo(nube)).catch(() => {});
+    let teniaSesion = !!nube.estado().sesion;
+    if (teniaSesion) setTimeout(registrarAvisos, 4000);
+    nube.suscribir((e) => { if (e.sesion && !teniaSesion) registrarAvisos(); teniaSesion = !!e.sesion; });
+    // Se le pide al teléfono que no borre lo guardado cuando le falte espacio.
+    if (navigator.storage && navigator.storage.persist) navigator.storage.persist().catch(() => {});
+
+    // Avisos fijos de guardado: si no se pudo leer lo guardado o no se está pudiendo guardar, se dice arriba (3.51.0).
     const avisoGuardado = () => {
       const alm = ctx.datos.almacenamiento || {};
       let barra = document.getElementById('aviso-guardado');

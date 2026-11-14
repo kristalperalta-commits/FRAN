@@ -34,6 +34,30 @@ export async function leerFoto(id) {
   });
 }
 
+/** Todas las fotos de este aparato: { clave: foto }. Para meterlas en la copia de seguridad. */
+export async function todasLasFotos() {
+  const db = await abrir();
+  return new Promise((resolver, rechazar) => {
+    const salida = {};
+    const cursor = db.transaction(ALMACEN).objectStore(ALMACEN).openCursor();
+    cursor.onsuccess = () => { const c = cursor.result; if (!c) { resolver(salida); return; } salida[c.key] = c.value; c.continue(); };
+    cursor.onerror = () => rechazar(cursor.error);
+  });
+}
+
+/** Guarda en este aparato las fotos que venían en una copia. No borra las que ya hay. */
+export async function restaurarFotos(fotos) {
+  if (!fotos || typeof fotos !== 'object') return 0;
+  const db = await abrir();
+  return new Promise((resolver, rechazar) => {
+    const t = db.transaction(ALMACEN, 'readwrite');
+    let n = 0;
+    for (const [clave, valor] of Object.entries(fotos)) { t.objectStore(ALMACEN).put(valor, clave); n += 1; }
+    t.oncomplete = () => resolver(n);
+    t.onerror = () => rechazar(t.error);
+  });
+}
+
 /** Devuelve la foto como texto JPEG, con el lado mayor de hasta `maximo` puntos. */
 export function reducirFoto(archivo, maximo = 1200) {
   return new Promise((resolver, rechazar) => {

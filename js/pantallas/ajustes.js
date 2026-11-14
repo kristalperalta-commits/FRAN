@@ -18,6 +18,7 @@ import { CATEGORIAS_BASE, INGRESOS_DE_OTRO_LIBRO, LIBROS, categoriasDe, iconoDe,
 import { calendarioIcs } from '../recordatorios.js';
 import { abrirApariencia } from '../apariencia.js';
 import * as avisos from '../avisos.js';
+import { todasLasFotos, restaurarFotos } from '../fotos.js';
 
 export const titulo = 'Yo';
 
@@ -56,6 +57,14 @@ function tipoDeTelefono() {
 function textoError(error) {
   if (error && error.message) return error.message;
   return String(error || 'Ocurrió un error desconocido.');
+}
+
+/** El texto de la copia de seguridad: los datos y, si las hay, las fotos de este aparato. */
+async function textoDeCopia(datos) {
+  let fotos = {};
+  try { fotos = await todasLasFotos(); } catch { fotos = {}; }
+  if (!Object.keys(fotos).length) return datos.exportarJSON();
+  return JSON.stringify({ ...JSON.parse(datos.exportarJSON()), _fotos: fotos });
 }
 
 /** Descarga un texto como archivo usando un enlace temporal. */
@@ -360,10 +369,10 @@ function seccionCopia(ctx) {
   `);
 
   // Exportar: descarga el archivo.
-  seccion.querySelector('#boton-exportar').addEventListener('click', () => {
+  seccion.querySelector('#boton-exportar').addEventListener('click', async () => {
     try {
-      descargarTexto(datos.exportarJSON(), nombreArchivo);
-      ui.toast('Copia lista. Revisa tus descargas o tus archivos.');
+      descargarTexto(await textoDeCopia(datos), nombreArchivo);
+      ui.toast('Copia lista, con las fotos de este aparato. Revise sus descargas o sus archivos.', 4000);
     } catch (error) {
       ui.toast(`No se pudo descargar la copia: ${textoError(error)}`, 5000);
     }
@@ -388,7 +397,7 @@ function seccionCopia(ctx) {
   if (botonCompartir) {
     botonCompartir.addEventListener('click', async () => {
       try {
-        const archivo = new File([datos.exportarJSON()], nombreArchivo, { type: 'application/json' });
+        const archivo = new File([await textoDeCopia(datos)], nombreArchivo, { type: 'application/json' });
         await window.navigator.share({ files: [archivo], title: 'Copia de Fran' });
         ui.toast('Copia compartida.');
       } catch (error) {
@@ -419,7 +428,9 @@ function seccionCopia(ctx) {
       const texto = await leerArchivoComoTexto(archivo);
       if (ctx.nube && ctx.nube.guardarCopiaLocal) await ctx.nube.guardarCopiaLocal('antes de importar una copia');
       const estado = await datos.importarJSON(texto);
-      ui.toast(`Copia importada: ${estado.clientes.length} clientes y ${estado.prestamos.length} préstamos.`, 4000);
+      let fotos = 0;
+      try { const copia = JSON.parse(texto); if (copia && copia._fotos) fotos = await restaurarFotos(copia._fotos); } catch { fotos = 0; }
+      ui.toast(`Copia importada: ${estado.clientes.length} clientes y ${estado.prestamos.length} préstamos${fotos ? `, y ${fotos} foto${fotos === 1 ? '' : 's'}` : ''}.`, 4000);
       ctx.navegar('#/inicio');
     } catch (error) {
       ui.toast(`No se pudo importar: ${textoError(error)}`, 6000);
@@ -592,7 +603,7 @@ function seccionAcerca(ctx) {
         <div class="ajustes-datos__fila"><dt>Versión</dt><dd class="numero">${ui.esc(version)}</dd></div>
         <div class="ajustes-datos__fila"><dt>Fecha de hoy</dt><dd class="numero">${ui.esc(ctx.hoy())}</dd></div>
         <div class="ajustes-datos__fila"><dt>Dónde se guarda</dt><dd>${ui.esc(dondeGuarda)}</dd></div>
-        <div class="ajustes-datos__fila"><dt>Internet</dt><dd>No usa internet ni manda datos a ningún lado.</dd></div>
+        <div class="ajustes-datos__fila"><dt>Internet</dt><dd>Funciona sin internet. Si entra a la nube, sus datos se guardan también allá, solo para verlos en su otro aparato.</dd></div>
       </dl>
       ${avisoError}
     </section>

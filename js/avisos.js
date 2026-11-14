@@ -66,6 +66,28 @@ export async function activar(nube) {
   return 'ok';
 }
 
+/**
+ * Si este aparato ya dio permiso y ya está suscrito, vuelve a anotar la suscripción en la nube, sin preguntar nada.
+ * Sirve para los aparatos que activaron los avisos cuando el registro fallaba: quedan funcionando solos (3.51.0).
+ */
+export async function registrarDeNuevo(nube) {
+  try {
+    if (!disponible() || Notification.permission !== 'granted') return false;
+    if (!nube || !nube.estado().sesion) return false;
+    const registro = await navigator.serviceWorker.ready;
+    const sub = await registro.pushManager.getSubscription();
+    if (!sub) return false;
+    const j = sub.toJSON();
+    const fila = { user_id: nube.usuario(), endpoint: j.endpoint, p256dh: j.keys.p256dh, auth: j.keys.auth, aparato: navigator.userAgent.slice(0, 120), actualizado_en: new Date().toISOString() };
+    await nube.pedir('/rest/v1/suscripciones_push?on_conflict=endpoint', { method: 'POST', headers: { Prefer: 'resolution=merge-duplicates,return=minimal' }, body: JSON.stringify(fila) });
+    try { window.localStorage.setItem('fran-avisos', 'si'); } catch { /* nada */ }
+    return true;
+  } catch (error) {
+    console.warn('No se pudo volver a registrar los avisos:', error);
+    return false;
+  }
+}
+
 /** Quita la suscripción de este aparato. */
 export async function desactivar(nube) {
   const registro = await navigator.serviceWorker.ready;
