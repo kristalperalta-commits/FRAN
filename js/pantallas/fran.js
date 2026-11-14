@@ -2306,7 +2306,10 @@ function renderFicha(contenedor, id, ctx) {
     <div class="fran-progreso"><span style="width:${pct}%"></span></div>
     <p class="fran-nota">${abonosPlan && !recuperado ? `Abono a capital anotado: ${dinero.formatear(abonosPlan)}.` : `Recuperado ${dinero.formatear(recuperado)} de ${dinero.formatear(r.capitalPrestado)} de capital.`}${capitalPrimero ? (r.capitalPendiente === 0 ? ' Ya recuperó todo el capital: lo que pague es ganancia.' : ' Cuando llegue a 100%, todo lo que pague es ganancia.') : ''}</p>
     ${interesesPagados.n ? `<p class="fran-nota fran-nota--pagado">Ha pagado <strong class="numero">${dinero.formatear(interesesPagados.total)}</strong> de intereses en ${interesesPagados.n} ${interesesPagados.n === 1 ? 'pago' : 'pagos'}, desde ${ui.esc(fechas.formatear(interesesPagados.desde))}.</p>` : ''}
-    <div class="fran-segmento fran-ficha-botones"><button type="button" data-ficha-ver="prestamos" class="${ver === 'prestamos' ? 'activo' : ''}">Préstamos (${propios.length})</button><button type="button" data-ficha-ver="historial" class="${ver === 'historial' ? 'activo' : ''}">Historial</button></div>
+    <div class="fran-ficha-dos">
+      <button type="button" data-ficha-ver="prestamos" class="${ver === 'prestamos' ? 'activo' : ''}" aria-expanded="${ver === 'prestamos'}">${icono3d('billete', 'fran-3d--40')}<span>Préstamos</span><small>${propios.length === 1 ? '1 préstamo' : `${propios.length} préstamos`} · ${ver === 'prestamos' ? 'tocar para cerrar' : 'tocar para ver'}</small></button>
+      <button type="button" data-ficha-ver="historial" class="${ver === 'historial' ? 'activo' : ''}" aria-expanded="${ver === 'historial'}">${icono3d('lista', 'fran-3d--40')}<span>Historial</span><small>${historial.length === 1 ? '1 movimiento' : `${historial.length} movimientos`} · ${ver === 'historial' ? 'tocar para cerrar' : 'tocar para ver'}</small></button>
+    </div>
     ${ver === 'prestamos' ? listaPrestamosCliente(propios, r, ctx) : ''}
     ${ver === 'historial' ? `<div class="fran-lista">${historial.map((h) => fila({ ui, icono: h.icono, titulo: h.t, sub: h.sinFecha ? `Fecha por confirmar (${h.sinFecha})` : (h.textoFecha || fechas.formatear(h.f)), derecha: h.v, clase: h.c, ruta: h.ruta, ver: h.ver })).join('') || '<p class="fran-vacio">Sin movimientos.</p>'}</div>` : ''}
     <div class="fran-tres">
