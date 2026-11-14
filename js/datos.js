@@ -835,6 +835,7 @@ function armarPrestamo(datosPrestamo, existente) {
 
   const fecha = datosPrestamo.fecha ?? existente?.fecha;
   exigirFecha(fecha, 'del préstamo');
+  if (!existente || fecha !== existente.fecha) exigir(fecha <= hoy(), 'La fecha del préstamo no puede ser de un día que todavía no llega. Revise el día, el mes y el año.');
   const capital = datosPrestamo.capital ?? existente?.capital;
   exigirMonto(capital, 'capital');
 
@@ -1053,6 +1054,7 @@ function armarPago(datosPago) {
   const prestamo = buscar('prestamos', limpiarTexto(datosPago.prestamoId));
   exigir(prestamo, 'El pago debe pertenecer a un préstamo existente.');
   exigirFecha(datosPago.fecha, 'del pago');
+  exigir(datosPago.fecha <= hoy(), 'La fecha del pago no puede ser de un día que todavía no llega. Revise el día, el mes y el año.');
   exigir(datosPago.fecha >= prestamo.fecha, `El pago no puede ser anterior a la fecha del préstamo (${prestamo.fecha}).`);
   const monto = datosPago.monto;
   exigirMonto(monto, 'monto del pago');
@@ -1458,6 +1460,7 @@ export const datos = {
   // Un movimiento de un libro de Fran: { libro, fecha, tipo, categoria, descripcion, valor, cuenta, destino }.
   async agregarAsiento(a) {
     exigirFecha(a.fecha, 'del movimiento');
+    exigir(a.fecha <= hoy(), 'La fecha no puede ser de un día que todavía no llega. Revise el día, el mes y el año.');
     exigirMonto(a.valor, 'valor del movimiento');
     const asiento = {
       id: generarId(), libro: a.libro, fecha: a.fecha, tipo: a.tipo,
@@ -1466,6 +1469,9 @@ export const datos = {
     };
     if (a.conFoto === true) asiento.conFoto = true;
     if (a.persona) asiento.persona = limpiarTexto(a.persona);
+    // De qué cliente y de qué préstamo es el cobro: así no depende de que el nombre esté escrito igual (3.47.0).
+    if (a.clienteId && buscar('clientes', a.clienteId)) asiento.clienteId = a.clienteId;
+    if (a.prestamoId && buscar('prestamos', a.prestamoId)) asiento.prestamoId = a.prestamoId;
     // Arriendos: a qué propiedad fue el gasto (la categoría dice de qué fue: obra, materiales…).
     if (a.propiedad) asiento.propiedad = limpiarTexto(a.propiedad);
     // Plata de un negocio compartido: se ve en su libro, pero no entra a sus cuentas ni a Finanzas.

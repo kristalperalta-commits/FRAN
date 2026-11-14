@@ -11,7 +11,7 @@
 
 import * as ui from './ui.js';
 
-const VERSION_APP = '3.46.0';
+const VERSION_APP = '3.47.0';
 const contenedor = document.getElementById('pantalla');
 
 // ---------- Rutas (sección 7 de la especificación) ----------
@@ -562,7 +562,7 @@ async function arrancar() {
     const nube = await import('./nube.js');
     ctx.nube = nube;
     nube.iniciar(ctx.datos, { avisar: ui.toast });
-    // Aviso fijo cuando la sesión de la nube se cerró sola: lo anotado no está llegando al otro aparato (3.46.0).
+    // Aviso fijo cuando la sesión de la nube se cerró sola: lo anotado no está llegando al otro aparato (3.47.0).
     const avisoNube = () => {
       let barra = document.getElementById('aviso-nube');
       if (!nube.estado().desconectada) { if (barra) barra.remove(); return; }
@@ -575,6 +575,33 @@ async function arrancar() {
     };
     nube.suscribir(avisoNube);
     avisoNube();
+    // Avisos fijos de guardado: si no se pudo leer lo guardado o no se está pudiendo guardar, se dice arriba (3.47.0).
+    const avisoGuardado = () => {
+      const alm = ctx.datos.almacenamiento || {};
+      let barra = document.getElementById('aviso-guardado');
+      const texto = alm.errorCarga
+        ? 'Fran no pudo leer lo guardado en este aparato. Toque aquí para bajar esa copia y no perderla.'
+        : (alm.ultimoError ? 'No se está pudiendo guardar en este aparato. No cierre Fran: revise el espacio del teléfono.' : '');
+      if (!texto) { if (barra) barra.remove(); return; }
+      if (!barra) {
+        barra = document.createElement('button');
+        barra.type = 'button';
+        barra.id = 'aviso-guardado';
+        barra.addEventListener('click', () => {
+          const copia = (ctx.datos.almacenamiento || {}).copiaNoUsable;
+          if (!copia) return;
+          const enlace = document.createElement('a');
+          enlace.href = URL.createObjectURL(new Blob([copia], { type: 'application/json' }));
+          enlace.download = `fran-copia-sin-leer-${ctx.hoy()}.json`;
+          enlace.click();
+          setTimeout(() => URL.revokeObjectURL(enlace.href), 5000);
+        });
+        document.body.prepend(barra);
+      }
+      barra.textContent = texto;
+    };
+    ctx.datos.suscribir(avisoGuardado);
+    avisoGuardado();
   } catch (error) {
     console.warn('La nube no arrancó:', error);
   }

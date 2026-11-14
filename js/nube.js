@@ -191,7 +191,8 @@ function cabeceras(conSesion = true) {
 }
 
 async function llamar(ruta, opciones = {}, reintentar = true) {
-  const respuesta = await fetch(`${NUBE.url}${ruta}`, { ...opciones, headers: { ...cabeceras(opciones.sinSesion !== true), ...(opciones.headers || {}) } });
+  const limite = typeof AbortSignal !== 'undefined' && AbortSignal.timeout ? { signal: AbortSignal.timeout(60000) } : {};
+  const respuesta = await fetch(`${NUBE.url}${ruta}`, { ...limite, ...opciones, headers: { ...cabeceras(opciones.sinSesion !== true), ...(opciones.headers || {}) } });
   if (respuesta.status === 401 && reintentar && estadoSync.sesion) {
     await refrescarSesion();
     return llamar(ruta, opciones, false);
@@ -288,11 +289,27 @@ async function bajarFila() {
   return Array.isArray(filas) && filas[0] ? filas[0] : null;
 }
 
-async function subirFila(texto, revision) {
+async function subirFila(texto, revision, base = 0) {
+  const cuerpo = { datos: JSON.parse(texto), revision, actualizado_en: new Date().toISOString() };
+  if (base > 0) {
+    // Ya hay datos en la nube: solo se escriben si la nube sigue en la revisión que este aparato vio.
+    // Si el otro aparato subió entre tanto, no se pisa: se vuelve a sincronizar y se juntan (3.47.0).
+    const filas = await llamar(`/rest/v1/${TABLA}?user_id=eq.${estadoSync.sesion.usuario}&revision=eq.${base}&select=revision`, {
+      method: 'PATCH',
+      headers: { Prefer: 'return=representation', Accept: 'application/json' },
+      body: JSON.stringify(cuerpo)
+    });
+    if (!Array.isArray(filas) || filas.length === 0) {
+      const error = new Error('La nube cambió mientras se subía.');
+      error.choque = true;
+      throw error;
+    }
+    return;
+  }
   await llamar(`/rest/v1/${TABLA}?on_conflict=user_id`, {
     method: 'POST',
     headers: { Prefer: 'resolution=merge-duplicates,return=minimal' },
-    body: JSON.stringify({ user_id: estadoSync.sesion.usuario, datos: JSON.parse(texto), revision, actualizado_en: new Date().toISOString() })
+    body: JSON.stringify({ user_id: estadoSync.sesion.usuario, ...cuerpo })
   });
 }
 
@@ -367,7 +384,15 @@ async function aplicarRemoto(fila) {
 /**
  * Compara con la nube y hace lo que toque. `motivo` solo sirve para los mensajes.
  */
-export async function sincronizar(motivo = 'manual') {
+let sincronizacionEnCurso = null;
+
+export function sincronizar(motivo = 'manual') {
+  if (sincronizacionEnCurso) return sincronizacionEnCurso;
+  sincronizacionEnCurso = sincronizarUnaVez(motivo).finally(() => { sincronizacionEnCurso = null; });
+  return sincronizacionEnCurso;
+}
+
+async function sincronizarUnaVez(motivo) {
   if (!configurada() || !estadoSync.sesion || !datos) return 'apagada';
   if (subiendo) await subiendo;
   cambiar({ sincronizando: true });
@@ -405,7 +430,7 @@ export async function sincronizar(motivo = 'manual') {
     cambiar({ enLinea: true, error: null, ultimaVez: new Date().toISOString() });
     return accion;
   } catch (error) {
-    const sinRed = /Failed to fetch|NetworkError|Load failed/i.test(String(error && error.message));
+    const sinRed = /Failed to fetch|NetworkError|Load failed|timed out|TimeoutError|aborted/i.test(String(error && error.message));
     cambiar({ enLinea: !sinRed, error: sinRed ? null : (error && error.message) || String(error) });
     if (!sinRed && motivo === 'entrada') throw error;
     return 'error';
@@ -422,14 +447,23 @@ async function subirAhora(revisionBase = null) {
   const marca = cambiosLocales;
   subiendo = (async () => {
     try {
-      await subirFila(texto, revision);
+      await subirFila(texto, revision, base);
       escribirLocal(CLAVE_REVISION, revision);
       const cambioMientras = cambiosLocales !== marca;
       escribirLocal(CLAVE_PENDIENTE, cambioMientras);
       cambiar({ pendiente: cambioMientras, enLinea: true, error: null, ultimaVez: new Date().toISOString() });
       if (cambioMientras) { clearTimeout(temporizador); temporizador = setTimeout(() => sincronizar('guardado'), 1500); }
     } catch (error) {
-      const sinRed = /Failed to fetch|NetworkError|Load failed/i.test(String(error && error.message));
+      if (error && error.choque) {
+        // El otro aparato subió primero: queda pendiente y se vuelve a sincronizar para juntar.
+        escribirLocal(CLAVE_PENDIENTE, true);
+        cambiar({ pendiente: true });
+        clearTimeout(temporizador);
+        temporizador = setTimeout(() => sincronizar('guardado'), 800);
+        return;
+      }
+      const sinRed = /Failed to fetch|NetworkError|Load failed|timed out|TimeoutError|aborted/i.test(String(error && error.message));
+      escribirLocal(CLAVE_PENDIENTE, true);
       cambiar({ pendiente: true, enLinea: !sinRed, error: sinRed ? null : (error && error.message) || String(error) });
     } finally {
       subiendo = null;

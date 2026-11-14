@@ -5,7 +5,7 @@
   Al cambiar VERSION se crea un caché nuevo y se borran los viejos al activar.
 */
 
-const VERSION = '3.46.0';
+const VERSION = '3.47.0';
 const NOMBRE_CACHE = `mis-prestamos-v${VERSION}`;
 
 // Lista fija de todo lo que compone la app (incluye archivos de pantallas aunque
@@ -19,6 +19,7 @@ const ARCHIVOS = [
   './iconos/icono-192.png',
   './iconos/icono-512.png',
   './iconos/icono-maskable-512.png',
+  './iconos/3d/gota.png',
   './iconos/3d/billetera.png',
   './iconos/3d/banco.png',
   './iconos/3d/alcancia.png',
@@ -139,20 +140,29 @@ const ARCHIVOS = [
   './iconos/icono-maskable.svg'
 ];
 
-// Instalación: guarda cada archivo por separado para que uno faltante no rompa todo.
+// Instalación: el código (html, css, js) tiene que bajar completo; si falta uno, esta versión no se
+// instala y sigue la anterior entera, para no quedar con archivos viejos y nuevos mezclados (3.47.0).
+// Las imágenes sí pueden faltar: se bajan después.
 self.addEventListener('install', (evento) => {
   evento.waitUntil(
     caches.open(NOMBRE_CACHE).then(async (cache) => {
-      await Promise.allSettled(
+      const esCodigo = (ruta) => ruta === './' || /\.(html|css|js|webmanifest)$/.test(ruta);
+      const resultados = await Promise.all(
         ARCHIVOS.map(async (ruta) => {
           try {
-            const respuesta = await fetch(ruta, { cache: 'no-cache' });
-            if (respuesta.ok) await cache.put(ruta, respuesta);
+            const respuesta = await fetch(ruta, { cache: 'reload' });
+            if (!respuesta.ok) return !esCodigo(ruta);
+            await cache.put(ruta, respuesta);
+            return true;
           } catch (_error) {
-            // Sin red o archivo inexistente: se omite y se intentará después.
+            return !esCodigo(ruta);
           }
         })
       );
+      if (resultados.includes(false)) {
+        await caches.delete(NOMBRE_CACHE);
+        throw new Error('No se pudo bajar la versión completa; se intenta después.');
+      }
       await self.skipWaiting();
     })
   );
@@ -179,6 +189,8 @@ self.addEventListener('fetch', (evento) => {
 
   const url = new URL(peticion.url);
   if (url.origin !== self.location.origin) return; // nunca se piden cosas de fuera
+  // La consulta de "¿hay versión nueva?" va siempre a internet, nunca a lo guardado.
+  if (url.pathname.endsWith('/sw.js') || peticion.cache === 'no-store') return;
 
   evento.respondWith(
     caches.match(peticion, { ignoreSearch: true }).then(async (enCache) => {
