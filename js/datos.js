@@ -215,6 +215,9 @@ export function estadoVacio() {
     movimientos: [],
     config: { nombreNegocio: 'Fran' },
     fran: franVacio(),
+    // Lo que se borró aquí, con su momento ("coleccion:id" → ISO). Viaja a la nube para que
+    // el otro aparato no lo reviva al juntar los datos (3.45.0).
+    borrados: {},
   };
 }
 
@@ -336,6 +339,12 @@ function completarEstado(estado) {
   }
   emparejarTraslados(resultado.movimientos);
   resultado.fran = completarFran(estado.fran);
+  resultado.borrados = {};
+  if (estado.borrados && typeof estado.borrados === 'object' && !Array.isArray(estado.borrados)) {
+    for (const [clave, cuando] of Object.entries(estado.borrados)) {
+      if (typeof clave === 'string' && clave.includes(':') && typeof cuando === 'string' && cuando) resultado.borrados[clave] = cuando;
+    }
+  }
   return resultado;
 }
 
@@ -667,6 +676,33 @@ async function conservarNoUsable(texto, error) {
   }
 }
 
+// Ids de todo lo que tiene id: las cuatro colecciones y las listas de fran.
+function idsDe(estado) {
+  const ids = new Set();
+  for (const c of COLECCIONES) for (const x of estado[c] || []) if (x && x.id) ids.add(`${c}:${x.id}`);
+  const fran = estado.fran || {};
+  for (const k of Object.keys(fran)) {
+    if (!Array.isArray(fran[k])) continue;
+    for (const x of fran[k]) if (x && typeof x === 'object' && x.id) ids.add(`fran.${k}:${x.id}`);
+  }
+  return ids;
+}
+
+// Ids que había la última vez que se cargó o guardó. null = el estado se reemplazó entero
+// (importar, bajar de la nube, borrar todo): ahí lo que falta no es un borrado de ella.
+let idsBase = null;
+
+function anotarBorrados() {
+  const ahora = idsDe(estadoActual);
+  if (!estadoActual.borrados || typeof estadoActual.borrados !== 'object') estadoActual.borrados = {};
+  if (idsBase) {
+    const cuando = new Date().toISOString();
+    for (const clave of idsBase) if (!ahora.has(clave)) estadoActual.borrados[clave] = cuando;
+  }
+  for (const clave of Object.keys(estadoActual.borrados)) if (ahora.has(clave)) delete estadoActual.borrados[clave];
+  idsBase = ahora;
+}
+
 function avisarSuscriptores() {
   for (const fn of suscriptores) {
     try { fn(); } catch (error) { console.error('Error en un suscriptor de datos:', error); }
@@ -677,6 +713,7 @@ function avisarSuscriptores() {
 // escriba uno viejo encima de uno nuevo. Un fallo de almacenamiento no lanza: se anota
 // en `ultimoErrorGuardado` y la app sigue con lo que tiene en memoria.
 function guardar() {
+  anotarBorrados();
   const texto = JSON.stringify(estadoActual);
   colaGuardado = colaGuardado.then(async () => {
     try {
@@ -1193,6 +1230,7 @@ function prepararEstadoImportado(objeto) {
 function cargarListaDeCasos(lista) {
   exigir(lista && typeof lista === 'object', 'No hay casos de prueba para cargar.');
   estadoActual = estadoVacio();
+  idsBase = null;
   const casos = Array.isArray(lista) ? lista : [lista];
   const pendientesPago = [];
 
@@ -1255,16 +1293,19 @@ export const datos = {
         const completo = completarEstado(migrado);
         validarEstado(completo);
         estadoActual = completo;
+        idsBase = idsDe(estadoActual);
         if (!Number.isInteger(objeto.version) || objeto.version < VERSION_ACTUAL) {
           await guardar(); // deja guardada la versión migrada
         }
       } catch (error) {
         console.error('El estado guardado no se pudo usar; se arranca vacío. La copia queda conservada en Ajustes.', error);
         estadoActual = estadoVacio();
+        idsBase = null;
         await conservarNoUsable(texto, error);
       }
     } else {
       estadoActual = estadoVacio();
+      idsBase = idsDe(estadoActual);
     }
     return estadoActual;
   },
@@ -1354,6 +1395,18 @@ export const datos = {
   // todavía no tiene pagos (y entonces se rehacen sus movimientos de caja).
   async actualizarPrestamo(p) {
     const prestamo = cambiarPrestamo(p);
+    await guardar();
+    return prestamo;
+  },
+
+  // Borra el préstamo con sus pagos y sus movimientos de caja (3.45.0).
+  async eliminarPrestamo(id) {
+    const prestamo = buscar('prestamos', id);
+    exigir(prestamo, 'No se encontró el préstamo que quieres eliminar.');
+    const pagos = new Set(estadoActual.pagos.filter((g) => g.prestamoId === id).map((g) => g.id));
+    estadoActual.pagos = estadoActual.pagos.filter((g) => g.prestamoId !== id);
+    estadoActual.movimientos = estadoActual.movimientos.filter((m) => m.prestamoId !== id && !(m.pagoId && pagos.has(m.pagoId)));
+    estadoActual.prestamos = estadoActual.prestamos.filter((x) => x.id !== id);
     await guardar();
     return prestamo;
   },
@@ -1602,7 +1655,8 @@ export const datos = {
   },
 
   // Valida la versión, migra si hace falta y reemplaza todo.
-  async importarJSON(texto) {
+  // Con { registrarBorrados: true } lo que estaba y ya no viene queda anotado como borrado.
+  async importarJSON(texto, opciones = {}) {
     exigir(typeof texto === 'string' && texto.trim() !== '', 'El archivo está vacío.');
     let objeto;
     try {
@@ -1610,7 +1664,10 @@ export const datos = {
     } catch {
       throw new Error('El archivo no es un JSON válido.');
     }
+    const anteriores = estadoActual.borrados || {};
     estadoActual = prepararEstadoImportado(objeto);
+    if (opciones.registrarBorrados) estadoActual.borrados = { ...anteriores, ...estadoActual.borrados };
+    else idsBase = null;
     await guardar();
     return estadoActual;
   },
@@ -1618,6 +1675,7 @@ export const datos = {
   // Borra el estado y también la copia conservada de un estado que no se pudo usar.
   async borrarTodo() {
     estadoActual = estadoVacio();
+    idsBase = null;
     try {
       const almacen = obtenerAlmacenamiento();
       if (typeof almacen.borrar === 'function') await almacen.borrar();
@@ -1638,6 +1696,7 @@ export const datos = {
       cargarListaDeCasos(lista);
     } catch (error) {
       estadoActual = respaldo; // si un caso está mal, no se pierde lo que había
+      idsBase = null;
       throw error;
     }
     await guardar();

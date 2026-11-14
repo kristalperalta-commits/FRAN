@@ -845,7 +845,7 @@ function seccionHistoricos(ctx) {
 export async function render(contenedor, params, ctx) {
   const { ui } = ctx;
   contenedor.innerHTML = '';
-  const irA = { categorias: 'Categorías', recordatorios: 'Recordatorios', recurrentes: 'Transacciones recurrentes' }[params && params.seccion];
+  const irA = { categorias: 'Categorías', recordatorios: 'Recordatorios', recurrentes: 'Transacciones recurrentes', nube: 'Nube' }[params && params.seccion];
   const saltar = irA && irA !== ultimoSalto;
   ultimoSalto = irA || '';
   // Tres grupos con símbolo; al tocar uno se despliegan sus cuadros (icono grande, dos por fila).

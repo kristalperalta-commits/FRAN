@@ -29,6 +29,7 @@ let avisar = () => {};     // (mensaje) → toast
 let aplicandoRemoto = false;
 let temporizador = null;
 let subiendo = null;
+let cambiosLocales = 0;    // cuenta los guardados locales, para saber si hubo alguno durante una subida
 const oyentes = new Set();
 const estadoSync = { activa: false, sesion: null, ultimaVez: null, pendiente: false, enLinea: true, error: null, sincronizando: false };
 
@@ -59,7 +60,9 @@ export function configurada() {
 }
 
 export function estado() {
-  return { ...estadoSync, sesion: estadoSync.sesion ? { correo: estadoSync.sesion.correo } : null };
+  // desconectada: este aparato ya estuvo en la nube y ahora no tiene sesión (se cerró sola).
+  const desconectada = estadoSync.activa && !estadoSync.sesion && leerLocal(CLAVE_REVISION, null) != null;
+  return { ...estadoSync, desconectada, sesion: estadoSync.sesion ? { correo: estadoSync.sesion.correo } : null };
 }
 
 export function suscribir(fn) {
@@ -94,24 +97,72 @@ export function decidir({ revisionVista, remota, pendiente }) {
 /**
  * Junta dos estados cuando cambiaron los dos aparatos a la vez. Se queda con lo local y
  * agrega lo que el otro aparato creó (por id) en clientes, préstamos, pagos, movimientos
- * y asientos de los libros. Si los dos editaron el mismo registro, queda el local.
- * Lo borrado en un aparato puede volver si el otro todavía lo tenía.
+ * y en todas las listas de fran que llevan id (asientos, agenda, notas, créditos, conteos…).
+ * Si los dos editaron el mismo registro, queda el local.
+ * Lo borrado en cualquiera de los dos (estado.borrados) no vuelve (3.45.0).
  */
 export function fusionar(local, remoto) {
   const resultado = JSON.parse(JSON.stringify(local));
+  const otro = remoto || {};
+  const conId = (lista) => Array.isArray(lista) && lista.some((x) => x && typeof x === 'object' && x.id);
   const unir = (lista, otra) => {
-    const ids = new Set((lista || []).map((x) => x.id));
+    const ids = new Set((lista || []).map((x) => x && x.id));
     for (const x of otra || []) if (x && x.id && !ids.has(x.id)) lista.push(x);
   };
-  for (const c of ['clientes', 'prestamos', 'pagos', 'movimientos']) {
+  const COLECCIONES = ['clientes', 'prestamos', 'pagos', 'movimientos'];
+  for (const c of COLECCIONES) {
     if (!Array.isArray(resultado[c])) resultado[c] = [];
-    unir(resultado[c], remoto[c]);
+    unir(resultado[c], otro[c]);
   }
   if (!resultado.fran) resultado.fran = {};
-  if (!Array.isArray(resultado.fran.asientos)) resultado.fran.asientos = [];
-  unir(resultado.fran.asientos, remoto.fran && remoto.fran.asientos);
-  if (!Array.isArray(resultado.fran.virtualMov)) resultado.fran.virtualMov = [];
-  unir(resultado.fran.virtualMov, remoto.fran && remoto.fran.virtualMov);
+  const franOtro = otro.fran || {};
+  for (const k of ['asientos', 'virtualMov']) if (!Array.isArray(resultado.fran[k])) resultado.fran[k] = [];
+  for (const k of new Set([...Object.keys(resultado.fran), ...Object.keys(franOtro)])) {
+    const mia = resultado.fran[k];
+    const suya = franOtro[k];
+    if (!conId(mia) && !conId(suya)) continue;
+    if (mia != null && !Array.isArray(mia)) continue;
+    if (!Array.isArray(mia)) resultado.fran[k] = [];
+    unir(resultado.fran[k], suya);
+  }
+  // Categorías y cuentas que ella agregó en cualquiera de los dos aparatos.
+  const extra = resultado.fran.categoriasExtra;
+  const extraOtro = franOtro.categoriasExtra;
+  if (extraOtro && typeof extraOtro === 'object') {
+    if (!extra || typeof extra !== 'object') resultado.fran.categoriasExtra = { ...extraOtro };
+    else for (const [llave, nombres] of Object.entries(extraOtro)) {
+      if (!Array.isArray(nombres)) continue;
+      const mios = Array.isArray(extra[llave]) ? extra[llave] : [];
+      extra[llave] = [...mios, ...nombres.filter((n) => !mios.includes(n))];
+    }
+  }
+
+  // Lo borrado: se juntan las dos listas (queda la fecha más reciente) y se quita de todo.
+  const borrados = {};
+  for (const origen of [otro.borrados, local.borrados]) {
+    if (!origen || typeof origen !== 'object') continue;
+    for (const [clave, cuando] of Object.entries(origen)) {
+      if (typeof cuando === 'string' && (!borrados[clave] || cuando > borrados[clave])) borrados[clave] = cuando;
+    }
+  }
+  const fue = (clave) => Object.prototype.hasOwnProperty.call(borrados, clave);
+  // Un cliente borrado en un aparato al que el otro le hizo un préstamo: el cliente se queda.
+  for (const p of resultado.prestamos) {
+    if (p && p.clienteId && !fue(`prestamos:${p.id}`)) delete borrados[`clientes:${p.clienteId}`];
+  }
+  for (const c of COLECCIONES) resultado[c] = resultado[c].filter((x) => !(x && x.id && fue(`${c}:${x.id}`)));
+  for (const k of Object.keys(resultado.fran)) {
+    if (Array.isArray(resultado.fran[k])) resultado.fran[k] = resultado.fran[k].filter((x) => !(x && typeof x === 'object' && x.id && fue(`fran.${k}:${x.id}`)));
+  }
+  // En cascada: pagos y movimientos de caja de préstamos o pagos que ya no están.
+  const prestamosVivos = new Set(resultado.prestamos.map((x) => x.id));
+  const pagosAntes = resultado.pagos;
+  resultado.pagos = pagosAntes.filter((g) => !g.prestamoId || prestamosVivos.has(g.prestamoId) || !fue(`prestamos:${g.prestamoId}`));
+  const pagosVivos = new Set(resultado.pagos.map((x) => x.id));
+  const pagosIdos = new Set(pagosAntes.filter((g) => !pagosVivos.has(g.id)).map((g) => g.id));
+  resultado.movimientos = resultado.movimientos.filter((m) => !(m.prestamoId && fue(`prestamos:${m.prestamoId}`))
+    && !(m.pagoId && (fue(`pagos:${m.pagoId}`) || pagosIdos.has(m.pagoId))));
+  resultado.borrados = borrados;
   return resultado;
 }
 
@@ -132,7 +183,9 @@ async function llamar(ruta, opciones = {}, reintentar = true) {
   if (!respuesta.ok) {
     let detalle = '';
     try { const j = await respuesta.json(); detalle = j.msg || j.message || j.error_description || j.error || JSON.stringify(j); } catch { /* sin cuerpo */ }
-    throw new Error(traducir(detalle) || `La nube respondió ${respuesta.status}.`);
+    const error = new Error(traducir(detalle) || `La nube respondió ${respuesta.status}.`);
+    error.estado = respuesta.status;
+    throw error;
   }
   if (respuesta.status === 204) return null;
   const texto = await respuesta.text();
@@ -178,9 +231,21 @@ async function refrescarSesion() {
     const r = await llamar('/auth/v1/token?grant_type=refresh_token', { method: 'POST', sinSesion: true, body: JSON.stringify({ refresh_token: s.refresco }) }, false);
     guardarSesion(r, s.correo);
   } catch (error) {
-    salir();
-    throw new Error('La sesión venció. Entra de nuevo.');
+    // Otra pestaña o la app instalada pudo renovar la sesión antes: se usa esa.
+    const guardada = leerLocal(CLAVE_SESION, null);
+    if (guardada && guardada.refresco && guardada.refresco !== s.refresco) { cambiar({ sesion: guardada }); return; }
+    // Sin internet o con la nube caída la sesión se conserva; solo se cierra si de verdad venció.
+    if (![400, 401, 403].includes(error && error.estado)) throw error;
+    cerrarSesionSola();
+    throw new Error('La sesión de la nube se cerró. Entra de nuevo en Yo.');
   }
+}
+
+/** La sesión venció sin que ella saliera: se quita, pero queda anotado qué había visto y qué falta subir. */
+function cerrarSesionSola() {
+  escribirLocal(CLAVE_SESION, null);
+  if (leerLocal(CLAVE_REVISION, null) == null) escribirLocal(CLAVE_REVISION, 0);
+  cambiar({ sesion: null, ultimaVez: null, error: null });
 }
 
 export async function registrar(correo, contrasena) {
@@ -199,8 +264,7 @@ export async function entrar(correo, contrasena) {
 export function salir() {
   escribirLocal(CLAVE_SESION, null);
   escribirLocal(CLAVE_REVISION, null);
-  escribirLocal(CLAVE_PENDIENTE, null);
-  cambiar({ sesion: null, ultimaVez: null, pendiente: false, error: null });
+  cambiar({ sesion: null, ultimaVez: null, error: null });
 }
 
 async function bajarFila() {
@@ -213,6 +277,52 @@ async function subirFila(texto, revision) {
     method: 'POST',
     headers: { Prefer: 'resolution=merge-duplicates,return=minimal' },
     body: JSON.stringify({ user_id: estadoSync.sesion.usuario, datos: JSON.parse(texto), revision, actualizado_en: new Date().toISOString() })
+  });
+}
+
+/* ---------- Copias de seguridad de este aparato ---------- */
+
+const BASE_COPIAS = 'fran-copias';
+
+function abrirCopias() {
+  return new Promise((resolver, rechazar) => {
+    const pedido = indexedDB.open(BASE_COPIAS, 1);
+    pedido.onupgradeneeded = () => pedido.result.createObjectStore('copias');
+    pedido.onsuccess = () => resolver(pedido.result);
+    pedido.onerror = () => rechazar(pedido.error);
+  });
+}
+
+/** Guarda lo que hay en este aparato antes de que la nube lo cambie. Quedan las últimas 5. */
+async function guardarCopiaLocal(motivo) {
+  if (typeof indexedDB === 'undefined') return;
+  try {
+    const texto = datos.exportarJSON();
+    const db = await abrirCopias();
+    await new Promise((resolver, rechazar) => {
+      const t = db.transaction('copias', 'readwrite');
+      const almacen = t.objectStore('copias');
+      almacen.put({ motivo, texto }, new Date().toISOString());
+      const claves = almacen.getAllKeys();
+      claves.onsuccess = () => { for (const vieja of claves.result.sort().slice(0, -5)) almacen.delete(vieja); };
+      t.oncomplete = () => resolver();
+      t.onerror = () => rechazar(t.error);
+    });
+  } catch (error) {
+    console.error('No se pudo guardar la copia de seguridad:', error);
+  }
+}
+
+/** Las copias guardadas en este aparato: [{ cuando, motivo, texto }], la más nueva primero. */
+export async function copiasLocales() {
+  if (typeof indexedDB === 'undefined') return [];
+  const db = await abrirCopias();
+  return new Promise((resolver, rechazar) => {
+    const almacen = db.transaction('copias').objectStore('copias');
+    const salida = [];
+    const cursor = almacen.openCursor(null, 'prev');
+    cursor.onsuccess = () => { const c = cursor.result; if (!c) { resolver(salida); return; } salida.push({ cuando: c.key, ...c.value }); c.continue(); };
+    cursor.onerror = () => rechazar(cursor.error);
   });
 }
 
@@ -243,16 +353,23 @@ export async function sincronizar(motivo = 'manual') {
     const revisionVista = leerLocal(CLAVE_REVISION, 0);
     const pendiente = leerLocal(CLAVE_PENDIENTE, false);
     const hayDatosLocales = datos.estado.clientes.length + datos.estado.prestamos.length + ((datos.estado.fran && datos.estado.fran.asientos.length) || 0) > 0;
+    const hayDatosNube = !!(fila && fila.datos && ((fila.datos.clientes || []).length + (fila.datos.prestamos || []).length + (((fila.datos.fran || {}).asientos || []).length) > 0));
     let accion = decidir({ revisionVista, remota, pendiente });
     // Primera entrada en un aparato con datos y nube vacía: se suben. Nube con datos y aparato vacío: se bajan.
     if (accion === 'nada' && !fila && hayDatosLocales) accion = 'subir';
     if (accion === 'choque' && !hayDatosLocales) accion = 'bajar';
+    // Este aparato no sabe qué vio de la nube (entrada nueva o sesión que se cerró sola) y tiene datos: se juntan, nunca se pisan.
+    if (accion === 'bajar' && !revisionVista && hayDatosLocales) accion = 'choque';
+    // Un aparato vacío nunca sube su vacío encima de una nube con datos.
+    if (accion === 'subir' && !hayDatosLocales && hayDatosNube) accion = 'bajar';
 
     if (accion === 'bajar') {
+      if (hayDatosLocales) await guardarCopiaLocal('antes de bajar de la nube');
       await aplicarRemoto(fila);
       if (motivo !== 'entrada') avisar('Datos actualizados desde la nube.');
     } else if (accion === 'subir' || accion === 'choque') {
       if (accion === 'choque') {
+        await guardarCopiaLocal('antes de juntar con la nube');
         escribirLocal(CLAVE_RESPALDO, { guardadoEn: new Date().toISOString(), revision: remota, datos: fila.datos });
         const junto = fusionar(JSON.parse(datos.exportarJSON()), fila.datos);
         aplicandoRemoto = true;
@@ -278,12 +395,15 @@ async function subirAhora(revisionBase = null) {
   const texto = datos.exportarJSON();
   const base = revisionBase == null ? leerLocal(CLAVE_REVISION, 0) : revisionBase;
   const revision = base + 1;
+  const marca = cambiosLocales;
   subiendo = (async () => {
     try {
       await subirFila(texto, revision);
       escribirLocal(CLAVE_REVISION, revision);
-      escribirLocal(CLAVE_PENDIENTE, false);
-      cambiar({ pendiente: false, enLinea: true, error: null, ultimaVez: new Date().toISOString() });
+      const cambioMientras = cambiosLocales !== marca;
+      escribirLocal(CLAVE_PENDIENTE, cambioMientras);
+      cambiar({ pendiente: cambioMientras, enLinea: true, error: null, ultimaVez: new Date().toISOString() });
+      if (cambioMientras) { clearTimeout(temporizador); temporizador = setTimeout(() => sincronizar('guardado'), 1500); }
     } catch (error) {
       const sinRed = /Failed to fetch|NetworkError|Load failed/i.test(String(error && error.message));
       cambiar({ pendiente: true, enLinea: !sinRed, error: sinRed ? null : (error && error.message) || String(error) });
@@ -295,8 +415,11 @@ async function subirAhora(revisionBase = null) {
 }
 
 function programarSubida() {
-  if (aplicandoRemoto || !estadoSync.sesion) return;
+  if (aplicandoRemoto) return;
+  // Sin sesión también queda anotado que hay cambios sin subir: al volver a entrar se juntan, no se pisan.
+  cambiosLocales += 1;
   escribirLocal(CLAVE_PENDIENTE, true);
+  if (!estadoSync.sesion) { if (!estadoSync.pendiente) cambiar({ pendiente: true }); return; }
   cambiar({ pendiente: true });
   clearTimeout(temporizador);
   temporizador = setTimeout(() => sincronizar('guardado'), 1500);
@@ -332,6 +455,11 @@ export function iniciar(moduloDatos, opciones = {}) {
   cambiar({ activa: true, sesion, pendiente: leerLocal(CLAVE_PENDIENTE, false), enLinea: typeof navigator === 'undefined' ? true : navigator.onLine !== false });
   datos.suscribir(programarSubida);
   window.addEventListener('online', () => sincronizar('conexion'));
+  window.addEventListener('storage', (evento) => {
+    if (evento.key !== CLAVE_SESION) return;
+    const nueva = leerLocal(CLAVE_SESION, null);
+    if (nueva && (!estadoSync.sesion || nueva.refresco !== estadoSync.sesion.refresco)) cambiar({ sesion: nueva });
+  });
   document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') sincronizar('vuelta'); });
   if (sesion) sincronizar('arranque');
 }

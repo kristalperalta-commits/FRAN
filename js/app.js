@@ -11,7 +11,7 @@
 
 import * as ui from './ui.js';
 
-const VERSION_APP = '3.44.0';
+const VERSION_APP = '3.45.0';
 const contenedor = document.getElementById('pantalla');
 
 // ---------- Rutas (sección 7 de la especificación) ----------
@@ -521,6 +521,19 @@ async function arrancar() {
     const nube = await import('./nube.js');
     ctx.nube = nube;
     nube.iniciar(ctx.datos, { avisar: ui.toast });
+    // Aviso fijo cuando la sesión de la nube se cerró sola: lo anotado no está llegando al otro aparato (3.45.0).
+    const avisoNube = () => {
+      let barra = document.getElementById('aviso-nube');
+      if (!nube.estado().desconectada) { if (barra) barra.remove(); return; }
+      if (barra) return;
+      barra = document.createElement('a');
+      barra.id = 'aviso-nube';
+      barra.href = '#/ajustes/nube';
+      barra.textContent = 'La nube está desconectada: lo que anote queda solo en este aparato. Toque aquí y entre de nuevo.';
+      document.body.prepend(barra);
+    };
+    nube.suscribir(avisoNube);
+    avisoNube();
   } catch (error) {
     console.warn('La nube no arrancó:', error);
   }
