@@ -1075,9 +1075,11 @@ function dona(grupos, total, centro = null, colores = COLORES) {
     giro += largo;
     return arco;
   }).join('');
-  const m = (total / 1000000).toFixed(2).replace('.', ',');
-  const [arriba, abajo] = centro || [m, 'millones'];
-  return `<svg viewBox="0 0 120 120" class="fran-dona" role="img" aria-label="Reparto por categoría">${arcos}<text x="60" y="58" text-anchor="middle" class="fran-dona__n">${arriba}</text><text x="60" y="71" text-anchor="middle" class="fran-dona__t">${abajo}</text></svg>`;
+  // En el centro va el total en pesos completos (694.000), no en millones (3.54.0). Si es muy largo, la letra se achica.
+  const pesos = String(Math.round(total)).replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+  const [arriba, abajo] = centro || [pesos, 'pesos'];
+  const letra = String(arriba).length > 11 ? 8 : (String(arriba).length > 9 ? 9.5 : (String(arriba).length > 7 ? 11 : 12));
+  return `<svg viewBox="0 0 120 120" class="fran-dona" role="img" aria-label="Reparto por categoría">${arcos}<text x="60" y="58" text-anchor="middle" class="fran-dona__n" style="font-size:${letra}px">${arriba}</text><text x="60" y="71" text-anchor="middle" class="fran-dona__t">${abajo}</text></svg>`;
 }
 
 /** Tarjeta de Finanzas con la dona de gastos del mes: 4 categorías como máximo y las demás en "Otros". */
