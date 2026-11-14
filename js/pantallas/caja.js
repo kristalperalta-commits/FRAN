@@ -8,6 +8,8 @@
   pantallas: solo navega a sus rutas.
 */
 
+import { miPlata } from './fran.js';
+
 // ---------- Textos ----------
 
 const TEXTO_CAJA = { efectivo: 'Efectivo', virtual: 'Virtual' };
@@ -241,8 +243,10 @@ function renderLista(contenedor, ctx) {
 
   if (!filtros.mes) filtros.mes = fechas.mesDe(hoy);
 
-  const saldoEfectivo = motor.saldoCaja(movimientos, 'efectivo');
-  const saldoVirtual = motor.saldoCaja(movimientos, 'virtual');
+  // El mismo efectivo y virtual que muestra Mi plata: caja de préstamos más lo anotado en los libros (3.48.0).
+  const plataHoy = miPlata(ctx);
+  const saldoEfectivo = plataHoy.efectivo;
+  const saldoVirtual = plataHoy.virtual;
   const resumen = motor.resumenNegocio(estado, hoy);
 
   // Meses disponibles para el filtro: los que tienen movimientos más el mes de hoy.
@@ -480,8 +484,8 @@ function renderMovimiento(contenedor, params, ctx) {
   const hoy = ctx.hoy();
   const movimientos = estado.movimientos || [];
   const saldos = {
-    efectivo: motor.saldoCaja(movimientos, 'efectivo'),
-    virtual: motor.saldoCaja(movimientos, 'virtual')
+    efectivo: miPlata(ctx).efectivo,
+    virtual: miPlata(ctx).virtual
   };
   const gananciaDisponible = def.esGanancia ? motor.resumenNegocio(estado, hoy).gananciaDisponible : null;
 

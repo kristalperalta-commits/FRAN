@@ -168,7 +168,10 @@ const NEGOCIOS = ['prestamos', 'arriendos', 'productos', 'redes'];
 /** Lo que entró como ganancia en los negocios y lo que ella sacó para sí. */
 export function gananciasDe(lista) {
   return {
-    entradas: lista.filter((a) => a.tipo === 'ingreso' && !a.soloLibro && NEGOCIOS.includes(a.libro)),
+    // En tecnología la ganancia de una venta es lo vendido menos lo que costó el producto (3.48.0).
+    entradas: lista.filter((a) => a.tipo === 'ingreso' && !a.soloLibro && NEGOCIOS.includes(a.libro))
+      .map((a) => (a.libro === 'productos' && Number(a.costo) > 0 ? { ...a, valor: a.valor - Number(a.costo), ventaCompleta: a.valor } : a))
+      .filter((a) => a.valor !== 0),
     retiros: lista.filter((a) => a.libro === 'ganancias' && a.tipo === 'retiro'),
   };
 }
@@ -240,6 +243,13 @@ export function tipoDeCuenta(cuenta, tarjetas) {
   return 'virtual';
 }
 
+/** ¿Ese movimiento ya iba dentro del último extracto de la tarjeta? El mismo día cuenta lo anotado después de actualizarla. */
+function dentroDelExtracto(tarjeta, a) {
+  if (!tarjeta.fecha) return false;
+  if (a.fecha !== tarjeta.fecha) return a.fecha < tarjeta.fecha;
+  return !(tarjeta.actualizadoEn && typeof a.creadoEn === 'string' && a.creadoEn.length > 10 && a.creadoEn > tarjeta.actualizadoEn);
+}
+
 /** Cada tarjeta: lo que se debía en su último extracto (o lo anotado al empezar) más lo de después. */
 export function estadoTarjetas(fran, hasta = null) {
   const tarjetas = (fran.tarjetas || []).map((t) => ({ ...t, base: t.deuda || 0, deudaHoy: t.deuda || 0, movimientos: [] }));
@@ -249,7 +259,7 @@ export function estadoTarjetas(fran, hasta = null) {
     const cargar = (cuenta, valor) => {
       const i = tarjetaDeCuenta(tarjetas, cuenta);
       if (i < 0) return;
-      if (tarjetas[i].fecha && a.fecha <= tarjetas[i].fecha) return;
+      if (dentroDelExtracto(tarjetas[i], a)) return;
       tarjetas[i].deudaHoy += valor;
       tarjetas[i].movimientos.push({ ...a, efecto: valor });
     };
@@ -308,10 +318,10 @@ export function cuentaMiPlata(ctx) {
   }
   // Igual que miPlata: efectivo y virtual se mueven por la cuenta; las tarjetas por su deuda.
   const enCaja = (cuenta) => (['efectivo', 'virtual'].includes(tipoDeCuenta(cuenta, tarjetas)) ? 1 : 0);
-  const enTarjeta = (cuenta, fecha) => {
+  const enTarjeta = (cuenta, a) => {
     const i = tarjetaDeCuenta(tarjetas, cuenta || '');
     if (i < 0) return 0;
-    if (tarjetas[i].fecha && fecha <= tarjetas[i].fecha) return 0; // ya va dentro del extracto
+    if (dentroDelExtracto(tarjetas[i], a)) return 0; // ya va dentro del extracto
     return 1;
   };
   const nombreCuenta = (c) => ({ efectivo: 'Efectivo', virtual: 'Virtual', tarjeta: c }[tipoDeCuenta(c, tarjetas)] || '');
@@ -320,14 +330,14 @@ export function cuentaMiPlata(ctx) {
     const v = a.valor;
     const titulo = a.descripcion ? `${a.categoria} · ${a.descripcion}` : a.categoria;
     if (a.tipo === 'transferencia') {
-      const efecto = -v * enCaja(a.cuenta) + v * enCaja(a.destino) - v * enTarjeta(a.cuenta, a.fecha) + v * enTarjeta(a.destino, a.fecha);
-      if (!enCaja(a.cuenta) && !enCaja(a.destino) && !enTarjeta(a.cuenta, a.fecha) && !enTarjeta(a.destino, a.fecha)) continue;
+      const efecto = -v * enCaja(a.cuenta) + v * enCaja(a.destino) - v * enTarjeta(a.cuenta, a) + v * enTarjeta(a.destino, a);
+      if (!enCaja(a.cuenta) && !enCaja(a.destino) && !enTarjeta(a.cuenta, a) && !enTarjeta(a.destino, a)) continue;
       eventos.push({ fecha: a.fecha, titulo, donde: `${nombreCuenta(a.cuenta) || '¿?'} → ${nombreCuenta(a.destino) || '¿?'} · ${dineroTexto(v)}`, efecto, grupo: 'pases', icono: a.categoria });
       continue;
     }
     const signo = a.tipo === 'ingreso' ? 1 : -1;
     if (enCaja(a.cuenta)) eventos.push({ fecha: a.fecha, titulo, donde: nombreCuenta(a.cuenta), efecto: signo * v, grupo: signo > 0 ? 'entro' : 'salio', icono: a.categoria });
-    else if (enTarjeta(a.cuenta, a.fecha)) eventos.push({ fecha: a.fecha, titulo, donde: a.cuenta, efecto: signo * v, grupo: signo > 0 ? 'abonoTarjeta' : 'tarjeta', icono: a.categoria });
+    else if (enTarjeta(a.cuenta, a)) eventos.push({ fecha: a.fecha, titulo, donde: a.cuenta, efecto: signo * v, grupo: signo > 0 ? 'abonoTarjeta' : 'tarjeta', icono: a.categoria });
   }
   const debiaTarjetas = partida.tarjetas.reduce((s, t) => s + t.valor, 0);
   const arranque = partida.efectivo + partida.virtual - debiaTarjetas;
@@ -631,7 +641,7 @@ function detalleCategorias(lista) {
 
 function agendaDeHoy(ctx) {
   const hoy = ctx.hoy();
-  return (ctx.datos.estado.fran.agenda || []).filter((x) => !hecho(x, hoy) && (x.repite === 'diario' ? (!x.desde || x.desde <= hoy) : x.fecha && x.fecha <= hoy));
+  return (ctx.datos.estado.fran.agenda || []).filter((x) => !hecho(x, hoy) && (x.repite ? (!x.desde || x.desde <= hoy) : x.fecha && x.fecha <= hoy));
 }
 
 /**
@@ -1227,6 +1237,10 @@ function verAsiento(contenedor, visto, id, volver, ctx) {
 function renderDetalle(contenedor, id, tituloDetalle, lista, atras, ctx, conMes = null) {
   const { ui, dinero, fechas } = ctx;
   const total = sumar(lista);
+  const entro = sumar(lista.filter((a) => a.tipo === 'ingreso'));
+  const salio = total - entro;
+  const mixta = entro > 0 && salio > 0;
+  const baseDe = (a) => (mixta ? (a.tipo === 'ingreso' ? entro : salio) : total);
   const meses = new Set(lista.map((a) => a.fecha.slice(0, 7)));
   const mesUnico = conMes ? conMes.mes : (meses.size === 1 ? [...meses][0] : '');
   const diasMes = mesUnico ? new Date(Number(mesUnico.slice(0, 4)), Number(mesUnico.slice(5, 7)), 0).getDate() : 0;
@@ -1236,7 +1250,7 @@ function renderDetalle(contenedor, id, tituloDetalle, lista, atras, ctx, conMes 
     const maximo = ordenada.reduce((m, a) => Math.max(m, a.valor), 1);
     const raiz = ui.el(`<div>
       ${titular(id, ctx, atras, tituloDetalle)}
-      <p class="fran-total"><strong class="numero">Total: ${dinero.formatear(total)}</strong>${mesUnico ? `<small class="numero">Promedio: ${dinero.formatear(Math.floor(total / diasMes))}${total % diasMes ? `,${((total / diasMes) % 1).toFixed(2).slice(2)}` : ''}</small>` : ''}</p>
+      <p class="fran-total">${mixta ? `<strong class="numero">Entró <span class="fran-mas">${dinero.formatear(entro)}</span> · Salió <span class="fran-menos">${dinero.formatear(salio)}</span></strong><small class="numero">Queda: ${dinero.formatear(entro - salio)}</small>` : `<strong class="numero">Total: ${dinero.formatear(total)}</strong>`}${mesUnico && !mixta ? `<small class="numero">Promedio: ${dinero.formatear(Math.floor(total / diasMes))}${total % diasMes ? `,${((total / diasMes) % 1).toFixed(2).slice(2)}` : ''}</small>` : ''}</p>
       ${conMes ? selectorMes(conMes.mes, ctx) : ''}
       ${mesUnico ? graficaDelMes(lista, mesUnico, ctx) : ''}
       ${avisoSinDetalle(lista)}
@@ -1248,7 +1262,7 @@ function renderDetalle(contenedor, id, tituloDetalle, lista, atras, ctx, conMes 
         ${icono3dDe(a.categoria)}
         <span class="fran-barra-fila__c">
           <span class="fran-barra-fila__l"><strong>${ui.esc(a.descripcion || a.categoria)}</strong><span class="numero ${a.tipo === 'gasto' ? 'fran-menos' : 'fran-mas'}">${dinero.formatear(a.valor)}</span></span>
-          <span class="fran-barra-fila__l"><span class="fran-barra" style="width:${Math.max(1.5, (a.valor / maximo) * 80)}%"></span><small>${(total ? (a.valor / total) * 100 : 0).toFixed(2).replace('.', ',')}%</small></span>
+          <span class="fran-barra-fila__l"><span class="fran-barra" style="width:${Math.max(1.5, (a.valor / maximo) * 80)}%"></span><small>${(baseDe(a) ? (a.valor / baseDe(a)) * 100 : 0).toFixed(2).replace('.', ',')}%</small></span>
           <span class="fran-barra-fila__l"><small>${ui.esc(a.textoFecha || fechas.formatear(a.fecha))}${a.conFoto ? ' · 📷' : ''}</small></span>
         </span>
       </div>`).join('') || '<p class="fran-vacio">Sin movimientos.</p>'}</div>
@@ -1947,7 +1961,10 @@ function verCobro(contenedor, m, cobros, cliente, volver, ctx) {
   raiz.querySelector('[data-editar]').addEventListener('click', () => {
     raiz.querySelector('dl').replaceWith(ui.el(`<form class="fran-campos" novalidate>
       <label><small>Nota: qué se pagó, qué préstamo se recogió</small><input name="nota" autocomplete="off" value="${ui.esc(m.nota)}"></label>
-      ${m.esPago ? '' : `<label><small>Forma de pago</small><select name="medio"><option value="">Por confirmar</option>${Object.entries(NOMBRE_MEDIO).map(([k, v]) => `<option value="${k}"${m.medioGuardado === k ? ' selected' : ''}>${v}</option>`).join('')}</select></label>
+      ${m.esPago ? '' : `<label><small>Cliente (si quedó a nombre de otra persona, cámbielo aquí)</small><select name="clienteId">${[...datos.estado.clientes].sort((a, b) => a.nombre.localeCompare(b.nombre, 'es')).map((c) => `<option value="${ui.esc(c.id)}"${c.id === cliente.id ? ' selected' : ''}>${ui.esc(c.nombre)}</option>`).join('')}</select></label>
+      <label><small>Fecha</small><input type="date" name="fecha" value="${ui.esc(m.fecha)}" max="${ui.esc(ctx.hoy())}"></label>
+      <label><small>Valor</small><input name="valor" inputmode="numeric" autocomplete="off" value="${ui.esc(dinero.formatear(m.valor))}"></label>
+      <label><small>Forma de pago</small><select name="medio"><option value="">Por confirmar</option>${Object.entries(NOMBRE_MEDIO).map(([k, v]) => `<option value="${k}"${m.medioGuardado === k ? ' selected' : ''}>${v}</option>`).join('')}</select></label>
       <label><small>Préstamo</small><select name="prestamoId"><option value="">Por confirmar</option>${propios.map((p) => `<option value="${ui.esc(p.id)}"${p.id === m.prestamoId ? ' selected' : ''}>${ui.esc(textoPrestamo(p, ctx))}</option>`).join('')}</select></label>`}
       <button class="boton boton--primario fran-guardar">Guardar</button>
     </form>`));
@@ -1956,8 +1973,16 @@ function verCobro(contenedor, m, cobros, cliente, volver, ctx) {
       e.preventDefault();
       const f = e.target.elements;
       try {
-        await datos.detallarCobro(m.id, { nota: f.nota.value, medio: f.medio ? f.medio.value : '', prestamoId: f.prestamoId ? f.prestamoId.value : '' });
-        ui.toast('Guardado.');
+        const cambios = { nota: f.nota.value, medio: f.medio ? f.medio.value : '', prestamoId: f.prestamoId ? f.prestamoId.value : '' };
+        if (f.clienteId) {
+          const valor = Number(f.valor.value.replace(/\D/g, ''));
+          if (!valor) { ui.toast('Escriba el valor.'); return; }
+          Object.assign(cambios, { clienteId: f.clienteId.value, fecha: f.fecha.value || m.fecha, valor });
+          if (f.clienteId.value !== cliente.id) cambios.prestamoId = '';
+        }
+        await datos.detallarCobro(m.id, cambios);
+        ui.toast(f.clienteId && f.clienteId.value !== cliente.id ? 'Guardado. El cobro pasó a la otra ficha.' : 'Guardado.');
+        if (f.clienteId && f.clienteId.value !== cliente.id) volver();
       } catch (error) { ui.toast(error.message); }
     });
   });
@@ -2042,7 +2067,8 @@ function renderSoloIntereses(contenedor, ctx) {
     if (!valor) { ui.toast('Escribe cuánto pagó.'); return; }
     try {
       const fecha = f.fecha.value || hoy;
-      await datos.agregarAsiento({ libro: 'prestamos', fecha, tipo: 'ingreso', categoria: 'Intereses cobrados', descripcion: elegido.nombre, persona: elegido.nombre, valor, cuenta: f.cuenta.value });
+      const tocayos = datos.estado.clientes.filter((c) => norm(c.nombre) === norm(elegido.nombre));
+      await datos.agregarAsiento({ libro: 'prestamos', fecha, tipo: 'ingreso', categoria: 'Intereses cobrados', descripcion: elegido.nombre, persona: elegido.nombre, valor, cuenta: f.cuenta.value, sueltoId: elegido.id, clienteId: tocayos.length === 1 ? tocayos[0].id : '' });
       const lista = datos.estado.fran.interesesSueltos.map((x) => (x.id === elegido.id ? { ...x, pagado: (x.pagado || 0) + valor, pagos: [...(x.pagos || []), { fecha, valor }] } : x));
       await datos.actualizarFran({ interesesSueltos: lista });
       ui.toast('Pago guardado como ganancia.');
@@ -2245,8 +2271,19 @@ function renderFicha(contenedor, id, ctx) {
 
 // ---------- Agenda de cobros (boceto 10) ----------
 
+/** Cuándo vuelve a tocar un acuerdo que se repite, contando desde la última vez que se tachó. */
+function vuelveATocar(item) {
+  const base = Date.parse(item.hechoEn);
+  if (Number.isNaN(base)) return '';
+  if (item.repite === 'mensual') { const d = new Date(base); d.setUTCMonth(d.getUTCMonth() + 1); return d.toISOString().slice(0, 10); }
+  const dias = { semanal: 7, quincenal: 15 }[item.repite] || 1;
+  return new Date(base + dias * 86400000).toISOString().slice(0, 10);
+}
+
 function hecho(item, hoy) {
-  return item.repite ? item.hechoEn === hoy : !!item.hecho;
+  if (!item.repite) return !!item.hecho;
+  // Tachado hoy, o tachado hace poco y todavía no le vuelve a tocar (semanal, quincenal, mensual).
+  return !!item.hechoEn && hoy < vuelveATocar(item);
 }
 
 // ---------- Propiedades ----------
@@ -2700,7 +2737,7 @@ function renderTarjetas(contenedor, ctx) {
     const texto = f.valor.value.trim();
     const valor = Number(texto.replace(/\D/g, ''));
     if (!texto || !Number.isInteger(valor)) { ui.toast('Escribe cuánto se debe.'); return; }
-    const lista = (fran.tarjetas || []).map((t, j) => { if (j !== i) return t; const { nota, ...resto } = t; return { ...resto, deuda: valor, fecha: f.fecha.value || hoy, ...(f.pagoHasta.value ? { pagoHasta: f.pagoHasta.value } : {}) }; });
+    const lista = (fran.tarjetas || []).map((t, j) => { if (j !== i) return t; const { nota, ...resto } = t; return { ...resto, deuda: valor, fecha: f.fecha.value || hoy, actualizadoEn: new Date().toISOString(), ...(f.pagoHasta.value ? { pagoHasta: f.pagoHasta.value } : {}) }; });
     await datos.actualizarFran({ tarjetas: lista });
     ui.toast('Tarjeta actualizada.');
     dibujar();
@@ -2725,7 +2762,7 @@ function filasEfectivo(ctx) {
     const quien = m.prestamoId ? clienteDe(m.prestamoId) : '';
     const icono = m.tipo === 'prestamo' ? '💵' : (m.tipo === 'pago' ? '↩️' : (m.signo > 0 ? '⬇️' : '⬆️'));
     const grupo = m.tipo === 'prestamo' ? 'Préstamos' : (m.tipo === 'pago' ? 'Pagos recibidos' : (m.signo > 0 ? 'Entró (anotado a mano)' : 'Salió (anotado a mano)'));
-    filas.push({ id: m.id, creadoEn: m.creadoEn, grupo, manual: ['aporte', 'retiro'].includes(m.tipo), fecha: m.fecha, icono, titulo: quien || m.nota || QUE[m.tipo] || m.tipo, sub: quien ? QUE[m.tipo] : (m.nota && QUE[m.tipo] ? QUE[m.tipo] : ''), valor: m.monto * m.signo });
+    filas.push({ id: m.id, creadoEn: m.creadoHora || m.creadoEn, grupo, manual: ['aporte', 'retiro'].includes(m.tipo), fecha: m.fecha, icono, titulo: quien || m.nota || QUE[m.tipo] || m.tipo, sub: quien ? QUE[m.tipo] : (m.nota && QUE[m.tipo] ? QUE[m.tipo] : ''), valor: m.monto * m.signo });
   }
   for (const a of estado.fran.asientos) {
     if (a.libro === 'terceros') continue;

@@ -337,6 +337,7 @@ function completarEstado(estado) {
       parId: textoONulo(m.parId),
       nota: limpiarTexto(m.nota),
       creadoEn: esFechaValida(m.creadoEn) ? m.creadoEn : hoy(),
+      ...(typeof m.creadoHora === 'string' && m.creadoHora.length > 10 ? { creadoHora: m.creadoHora } : {}),
     });
   }
   emparejarTraslados(resultado.movimientos);
@@ -947,6 +948,7 @@ function nuevoMovimiento(campos) {
     parId: campos.parId ?? null,
     nota: limpiarTexto(campos.nota),
     creadoEn: campos.creadoEn ?? hoy(),
+    creadoHora: new Date().toISOString(),
   };
 }
 
@@ -1472,6 +1474,7 @@ export const datos = {
     // De qué cliente y de qué préstamo es el cobro: así no depende de que el nombre esté escrito igual (3.47.0).
     if (a.clienteId && buscar('clientes', a.clienteId)) asiento.clienteId = a.clienteId;
     if (a.prestamoId && buscar('prestamos', a.prestamoId)) asiento.prestamoId = a.prestamoId;
+    if (a.sueltoId) asiento.sueltoId = limpiarTexto(a.sueltoId);
     // Arriendos: a qué propiedad fue el gasto (la categoría dice de qué fue: obra, materiales…).
     if (a.propiedad) asiento.propiedad = limpiarTexto(a.propiedad);
     // Plata de un negocio compartido: se ve en su libro, pero no entra a sus cuentas ni a Finanzas.
@@ -1537,10 +1540,29 @@ export const datos = {
       const i = estadoActual.fran.asientos.findIndex((a) => a.id === id);
       exigir(i >= 0, 'No encontré ese movimiento.');
       const anterior = estadoActual.fran.asientos[i];
-      estadoActual.fran.asientos[i] = {
+      const nuevo = {
         ...anterior, ...(anterior.importado ? { huella: anterior.huella || huellaAsiento(anterior) } : {}),
         nota: limpiarTexto(cambios.nota), medio: limpiarTexto(cambios.medio), prestamoId: limpiarTexto(cambios.prestamoId),
       };
+      if (cambios.clienteId && cambios.clienteId !== anterior.clienteId) {
+        const cliente = buscar('clientes', cambios.clienteId);
+        exigir(cliente, 'No encontré ese cliente.');
+        nuevo.clienteId = cliente.id;
+        nuevo.persona = cliente.nombre;
+        if (nuevo.prestamoId && !estadoActual.prestamos.some((p) => p.id === nuevo.prestamoId && p.clienteId === cliente.id)) nuevo.prestamoId = '';
+      }
+      if (cambios.fecha && cambios.fecha !== anterior.fecha) {
+        exigirFecha(cambios.fecha, 'del cobro');
+        exigir(cambios.fecha <= hoy(), 'La fecha no puede ser de un día que todavía no llega.');
+        nuevo.fecha = cambios.fecha;
+        delete nuevo.textoFecha;
+      }
+      if (cambios.valor !== undefined && cambios.valor !== anterior.valor) {
+        exigirMonto(cambios.valor, 'valor del cobro');
+        if (anterior.sueltoId) estadoActual.fran.interesesSueltos = estadoActual.fran.interesesSueltos.map((x) => (x.id === anterior.sueltoId ? { ...x, pagado: Math.max(0, (x.pagado || 0) - anterior.valor + cambios.valor) } : x));
+        nuevo.valor = cambios.valor;
+      }
+      estadoActual.fran.asientos[i] = nuevo;
     }
     await guardar();
   },
@@ -1596,6 +1618,10 @@ export const datos = {
   async eliminarAsiento(id) {
     const borrado = estadoActual.fran.asientos.find((a) => a.id === id);
     if (borrado && borrado.importado) estadoActual.fran.historicosBorrados.push(borrado.huella || huellaAsiento(borrado));
+    if (borrado && borrado.sueltoId) {
+      // Era un abono de alguien que debe solo intereses: al borrarlo, esa plata vuelve a deberse.
+      estadoActual.fran.interesesSueltos = estadoActual.fran.interesesSueltos.map((x) => (x.id === borrado.sueltoId ? { ...x, pagado: Math.max(0, (x.pagado || 0) - borrado.valor) } : x));
+    }
     estadoActual.fran.asientos = estadoActual.fran.asientos.filter((a) => a.id !== id);
     await guardar();
   },

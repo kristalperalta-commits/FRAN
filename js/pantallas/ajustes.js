@@ -788,6 +788,7 @@ function seccionRecurrentes(ctx) {
       <label><small>Tipo</small><select name="tipo"><option value="gasto">Gasto</option><option value="ingreso">Ingreso</option></select></label>
       <label><small>Categoría</small><select name="categoria"></select></label>
       <label><small>Cada cuánto</small><select name="frecuencia">${Object.entries(NOMBRE_FRECUENCIA).map(([k, v]) => `<option value="${k}">${v}</option>`).join('')}</select></label>
+      <label><small>Pagado con / Entra por</small><select name="cuenta">${['Efectivo', 'Nequi propio', 'Nequi papá', 'Uno propio', 'Uno Garu', 'Bancolombia', 'Tarjeta comida', 'Tarjeta gasolina', 'Tarjeta Gold', ...((datos.estado.fran.categoriasExtra || {})['cuentas:propias'] || [])].map((c) => `<option>${ui.esc(c)}</option>`).join('')}</select></label>
       <label><small>Primera fecha</small><input type="date" name="proxima" value="${ui.esc(ctx.hoy())}"></label>
       <button class="boton boton--primario fran-guardar">Guardar</button>
     </form>
@@ -809,8 +810,14 @@ function seccionRecurrentes(ctx) {
     e.preventDefault();
     const valor = Number(f.valor.value.replace(/\D/g, ''));
     if (!valor) { ui.toast('Escribe el valor.'); return; }
+    if (f.proxima.value && f.proxima.value < ctx.hoy()) {
+      const dias = Math.round((Date.parse(ctx.hoy()) - Date.parse(f.proxima.value)) / 86400000);
+      const cada = { diario: 1, semanal: 7, quincenal: 15, mensual: 30 }[f.frecuencia.value] || 30;
+      const cuantas = Math.floor(dias / cada) + 1;
+      if (!(await ui.confirmar(`La primera fecha ya pasó. Fran va a anotar de una vez unas ${cuantas} ${cuantas === 1 ? 'vez' : 'veces'} atrasadas, desde ${fechas.formatear(f.proxima.value)}. ¿Es lo que quiere?`, { aceptar: 'Sí, anotarlas' }))) return;
+    }
     try {
-      await datos.agregarRecurrente({ libro: f.libro.value, tipo: f.tipo.value, categoria: f.categoria.value, descripcion: f.descripcion.value, valor, frecuencia: f.frecuencia.value, proxima: f.proxima.value });
+      await datos.agregarRecurrente({ libro: f.libro.value, tipo: f.tipo.value, categoria: f.categoria.value, descripcion: f.descripcion.value, valor, cuenta: f.cuenta.value, frecuencia: f.frecuencia.value, proxima: f.proxima.value });
       const n = await datos.aplicarRecurrentes(ctx.hoy());
       ui.toast(n ? `Guardada. Anoté ${n} que ya tocaba.` : 'Guardada.');
     } catch (error) { ui.toast(error.message); }
