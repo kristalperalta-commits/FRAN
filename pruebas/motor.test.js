@@ -1424,7 +1424,9 @@ describe('intereses de quien ya no debe capital', () => {
     const r = modMotor.resumenNegocio(estado, '2026-11-06');
     assert.equal(r.capitalEnCalle, 0);
     assert.equal(r.interesesPendientes, 0);
-    assert.equal(r.interesesSinCapital, 100000);
+    // Devolvió el capital a los 15 días: debe los intereses de esos 15 días (50.000), no el mes entero.
+    // Es la misma regla de "Si paga hoy, debe" (3.50.0).
+    assert.equal(r.interesesSinCapital, 50000);
   });
 });
 
@@ -1435,5 +1437,54 @@ describe('préstamo marcado pagado a mano', () => {
     assert.equal(r.capitalPendiente, 0);
     assert.equal(r.deudaCliente, 0);
     assert.equal(r.debeHoy, 0);
+  });
+});
+
+describe('liquidar a mitad de mes', () => {
+  const prestamo = { id: 'L', clienteId: 'c', fecha: '2026-11-03', capital: 1000000, tasa: 20, modalidad: 'interes_mensual' };
+  test('pagar lo que dice "debe hoy" cierra el préstamo y no reaparece deuda', () => {
+    const antes = modMotor.calcularPrestamo(prestamo, [], '2026-11-06');
+    assert.equal(antes.debeHoy, 1026667);
+    const pagos = [{ id: 'g', prestamoId: 'L', clienteId: 'c', fecha: '2026-11-06', monto: 1026667, interes: 26667, capital: 1000000, tipo: 'pago', medio: 'efectivo' }];
+    for (const dia of ['2026-11-06', '2026-12-04', '2027-03-01']) {
+      const r = modMotor.calcularPrestamo(prestamo, pagos, dia);
+      assert.equal(r.estado, 'pagado', dia);
+      assert.equal(r.debeHoy, 0, dia);
+      assert.equal(r.mesesAtrasados, 0, dia);
+    }
+  });
+  test('si no ha devuelto todo el capital, el mes sigue entero', () => {
+    const pagos = [{ id: 'g', prestamoId: 'L', clienteId: 'c', fecha: '2026-11-06', monto: 500000, interes: 0, capital: 500000, tipo: 'pago', medio: 'efectivo' }];
+    const r = modMotor.calcularPrestamo(prestamo, pagos, '2026-12-10');
+    assert.equal(r.periodos[0].causado, 200000);
+  });
+});
+
+describe('estados que antes salían mal', () => {
+  test('cliente con un préstamo pagado y otro por confirmar sale por confirmar', () => {
+    assert.equal(modMotor.peorEstado('pagado', 'por_confirmar'), 'por_confirmar');
+    assert.equal(modMotor.peorEstado('por_confirmar', 'al_dia'), 'por_confirmar');
+    assert.equal(modMotor.peorEstado('por_confirmar', 'atrasado'), 'atrasado');
+  });
+  test('capital primero: devolvió el capital pero no lo pactado, y ya venció', () => {
+    const p = { id: 'K', clienteId: 'c', fecha: '2025-01-01', capital: 600000, tasa: 0, modalidad: 'capital_primero', totalPactado: 1600000, plazoMeses: 6 };
+    const pagos = [{ id: 'g', prestamoId: 'K', clienteId: 'c', fecha: '2025-02-01', monto: 640000, interes: 0, capital: 640000, tipo: 'pago', medio: 'efectivo' }];
+    const r = modMotor.calcularPrestamo(p, pagos, '2026-11-14');
+    assert.equal(r.deudaCliente, 960000);
+    assert.equal(r.estado, 'vencido');
+  });
+  test('sin interés: pasa a pagado al devolver todo y respeta "perdido"', () => {
+    const p = { id: 'S', clienteId: 'c', fecha: '2026-01-01', capital: 100000, tasa: 0, modalidad: 'sin_interes' };
+    const pago = [{ id: 'g', prestamoId: 'S', clienteId: 'c', fecha: '2026-02-01', monto: 100000, interes: 0, capital: 100000, tipo: 'pago', medio: 'efectivo' }];
+    assert.equal(modMotor.calcularPrestamo(p, pago, '2026-11-14').estado, 'pagado');
+    assert.equal(modMotor.calcularPrestamo(p, [], '2026-11-14').estado, 'familia');
+    assert.equal(modMotor.calcularPrestamo({ ...p, estadoManual: 'perdido', fechaEstado: '2026-03-01' }, [], '2026-11-14').estado, 'perdido');
+  });
+  test('sin fecha confirmada no se inventan meses de interés', () => {
+    const p = { id: 'F', clienteId: 'c', fecha: '2000-01-01', capital: 1000000, tasa: 10, modalidad: 'interes_mensual', porConfirmar: { fecha: 'marzo, sin día' } };
+    const r = modMotor.calcularPrestamo(p, [], '2026-11-14');
+    assert.equal(r.interesPendiente, 0);
+    assert.equal(r.mesesAtrasados, 0);
+    assert.equal(r.capitalPendiente, 1000000);
   });
 });

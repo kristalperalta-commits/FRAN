@@ -2201,11 +2201,23 @@ function renderTablaPrestamos(contenedor, ctx) {
       ${lista.map((f) => renglon(f, false)).join('')}
     </details>`).join('');
   }
+  // Por confirmar: los que vinieron del Excel sin fecha o sin tasa. Al tocar uno se abre para corregirlo.
+  const porConfirmar = estado.prestamos.filter((p) => p.porConfirmar && (p.porConfirmar.fecha || ((p.modalidad || 'interes_mensual') === 'interes_mensual' && p.porConfirmar.tasa))).map((p) => {
+    const c = estado.clientes.find((x) => x.id === p.clienteId);
+    return { p, nombre: p.nombreExcel || (c ? c.nombre : ''), cliente: c ? c.nombre : '' };
+  }).sort((a, b) => a.cliente.localeCompare(b.cliente, 'es'));
+  if (vista.tabla === 'confirmar') {
+    cuerpo = porConfirmar.length ? `<p class="fran-nota">A estos préstamos les falta la fecha o la tasa, y por eso Fran no les puede calcular los intereses. Toque uno, póngale lo que falta y guarde. Abajo de cada uno está lo que decía el Excel.</p>
+      <div class="fran-lista">${porConfirmar.map(({ p, nombre, cliente }) => `<a class="fran-fila" href="#/prestamo/${encodeURIComponent(p.id)}?corregir=1">
+        <span class="fran-fila__texto"><strong>${ui.esc(nombre)}</strong><small>${ui.esc([mismo(nombre, cliente) ? '' : cliente, p.porConfirmar.fecha ? `Fecha: ${p.porConfirmar.fecha}` : '', p.porConfirmar.tasa && (p.modalidad || 'interes_mensual') === 'interes_mensual' ? `Tasa: ${p.porConfirmar.tasa}` : ''].filter(Boolean).join(' · '))}</small></span>
+        <span class="fran-fila__valor numero">${dinero.formatear(p.capital)}</span>
+      </a>`).join('')}</div>` : '<p class="fran-vacio">No queda ningún préstamo por confirmar.</p>';
+  }
 
   const raiz = ui.el(`<div class="fran-tabla-prestamos">
     ${titular('prestamos', ctx, '#/libro/prestamos', 'Tabla de préstamos')}
     ${heroe({ etiqueta: 'Total de la tabla', valor: sumar(filas.map((f) => ({ valor: f.capital }))), ayudaTexto: 'Es el capital anotado en tu Excel y lo que has prestado después en Fran, sin intereses. Los núcleos de familia muestran cada préstamo por dentro.', cajas: [['Préstamos', String(filas.length)], ['Clientes', String(new Set(filas.map((f) => f.clienteId)).size)], ['Sin fecha', String(filas.filter((f) => !f.fecha).length)]] }, ctx)}
-    <div class="fran-segmento"><button type="button" data-tabla="mes" class="${vista.tabla === 'mes' ? 'activo' : ''}">Por mes</button><button type="button" data-tabla="cliente" class="${vista.tabla === 'cliente' ? 'activo' : ''}">Por cliente</button></div>
+    <div class="fran-segmento"><button type="button" data-tabla="mes" class="${vista.tabla === 'mes' ? 'activo' : ''}">Por mes</button><button type="button" data-tabla="cliente" class="${vista.tabla === 'cliente' ? 'activo' : ''}">Por cliente</button><button type="button" data-tabla="confirmar" class="${vista.tabla === 'confirmar' ? 'activo' : ''}">Por confirmar (${porConfirmar.length})</button></div>
     ${filas.length ? cuerpo : '<p class="fran-vacio">Todavía no hay préstamos en este aparato.</p>'}
   </div>`);
   raiz.querySelectorAll('[data-tabla]').forEach((b) => b.addEventListener('click', () => { vista.tabla = b.dataset.tabla; dibujar(); }));

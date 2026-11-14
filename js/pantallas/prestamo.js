@@ -427,6 +427,7 @@ function renderFicha(contenedor, params, ctx) {
           ${ui.campo({ etiqueta: 'Fecha del préstamo', nombre: 'fecha', tipo: 'date', valor: prestamo.porConfirmar && prestamo.porConfirmar.fecha ? '' : prestamo.fecha, atributos: { max: hoy }, ayuda: prestamo.porConfirmar && prestamo.porConfirmar.fecha ? `Está por confirmar. En el Excel dice: ${prestamo.porConfirmar.fecha}` : '' })}
           ${ui.campo({ etiqueta: 'Capital prestado', nombre: 'capital', valor: ui.formatearDinero(prestamo.capital), atributos: { inputmode: 'numeric', autocomplete: 'off' } })}`}
           ${esMensual ? ui.campo({ etiqueta: 'Tasa (% mensual)', nombre: 'tasa', valor: prestamo.porConfirmar && prestamo.porConfirmar.tasa ? '' : String(prestamo.tasa).replace('.', ','), atributos: { inputmode: 'decimal', autocomplete: 'off', 'data-sin-puntos': '1' }, ayuda: prestamo.porConfirmar && prestamo.porConfirmar.tasa ? `Está por confirmar. En el Excel dice: ${prestamo.porConfirmar.tasa}` : 'Por ejemplo 10, 20 o 12,5' }) : ''}
+          ${esMensual ? ui.campo({ etiqueta: '¿Hasta qué día tiene pagos los intereses?', nombre: 'interesesPagadosHasta', tipo: 'date', valor: prestamo.interesesPagadosHasta || '', atributos: { max: hoy }, ayuda: 'Desde ese día Fran empieza a contar los meses de interés. Si lo deja vacío, cuenta desde la fecha del préstamo.' }) : ''}
           <button type="submit" class="boton boton--primario boton--grande">Guardar corrección</button>
         </form>
         <button type="button" class="boton boton--peligro boton--grande prestamo-borrar" data-borrar-prestamo>Borrar este préstamo</button>
@@ -463,6 +464,13 @@ function renderFicha(contenedor, params, ctx) {
     </div>
   `);
   contenedor.append(raiz);
+
+  // Desde la lista "Por confirmar" se llega con el panel de corregir ya abierto.
+  if (/[?&]corregir=1/.test(window.location.hash)) {
+    const panel = raiz.querySelector('#panel-corregir');
+    panel.classList.remove('oculto');
+    setTimeout(() => panel.scrollIntoView({ block: 'start' }), 50);
+  }
 
   // --- Fotos y documentos del préstamo (3.44.0): contrato firmado, prenda, comprobantes ---
   const claveFotos = `prestamo-fotos:${prestamo.id}`;
@@ -570,6 +578,11 @@ function renderFicha(contenedor, params, ctx) {
         const { tasa: _confirmada, ...resto } = prestamo.porConfirmar;
         cambios.porConfirmar = Object.keys(resto).length ? resto : null;
       }
+    }
+    if (esMensual && (valores.interesesPagadosHasta || '') !== (prestamo.interesesPagadosHasta || '')) {
+      const fechaBase = cambios.fecha || prestamo.fecha;
+      if (valores.interesesPagadosHasta && valores.interesesPagadosHasta < fechaBase) { ui.toast('Esa fecha no puede ser anterior a la del préstamo.', 4000); return; }
+      cambios.interesesPagadosHasta = valores.interesesPagadosHasta || null;
     }
     if (Object.keys(cambios).length === 1) { ui.toast('No cambió nada.'); return; }
     await guardarPrestamo(ctx, cambios, 'Préstamo corregido');

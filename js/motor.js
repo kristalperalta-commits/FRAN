@@ -12,6 +12,7 @@ const GRAVEDAD_ESTADO = {
   vencido: 5,
   atrasado: 4,
   congelado: 3,
+  por_confirmar: 2.5,
   al_dia: 2,
   familia: 1,
   pagado: 0,
@@ -214,14 +215,26 @@ function capitalAlInicio(capital, abonos, desde) {
  * - Un préstamo perdido, congelado o marcado pagado no causa después de `fechaEstado`.
  * - Con `topeInteres`, el último periodo se recorta y después no se generan más.
  */
+/** Día en que los abonos terminaron de cubrir todo el capital, o null si todavía debe capital. */
+function fechaCapitalEnCero(capital, abonos) {
+  let falta = capital;
+  for (const abono of abonos) {
+    falta -= abono.monto;
+    if (falta <= 0) return abono.fecha;
+  }
+  return null;
+}
+
 function crearFabricaPeriodos(prestamo, resultado, abonos, hoy) {
   const limiteCausacion = limiteCausacionDe(prestamo);
   const limitado = limiteCausacion != null;
   let limite = hoy;
   if (limitado && fechas.comparar(limiteCausacion, limite) < 0) limite = limiteCausacion;
 
-  const tasa = resultado.tasa;
+  // Sin fecha confirmada (viene del Excel "sin día") no se pueden contar los meses: no causa intereses todavía.
+  const tasa = prestamo.porConfirmar && prestamo.porConfirmar.fecha ? 0 : resultado.tasa;
   const tope = topeDe(prestamo);
+  const finCapital = fechaCapitalEnCero(resultado.capital, abonos);
   let acumulado = 0;
   let numero = 0;
 
@@ -246,6 +259,10 @@ function crearFabricaPeriodos(prestamo, resultado, abonos, hoy) {
 
       const capitalBase = capitalAlInicio(resultado.capital, abonos, desde);
       let causado = redondear((capitalBase * tasa) / 100);
+      if (causado > 0 && finCapital && fechas.comparar(finCapital, desde) > 0 && fechas.comparar(finCapital, hasta) < 0) {
+        const dias = Math.min(DIAS_MES, fechas.diferenciaDias(desde, finCapital) + 1);
+        causado = Math.min(causado, redondear((causado * dias) / DIAS_MES));
+      }
       if (tope != null && acumulado + causado > tope) causado = tope - acumulado;
       if (soloSiCausa && causado <= 0) return null;
 
@@ -469,7 +486,7 @@ function calcularCapitalPrimero(prestamo, pagos, hoy) {
     resultado.estado = prestamo.estadoManual;
   } else if (resultado.deudaCliente === 0 && hayPagos) {
     resultado.estado = 'pagado';
-  } else if (resultado.vencimiento && fechas.comparar(hoy, resultado.vencimiento) > 0 && resultado.capitalPendiente > 0) {
+  } else if (resultado.vencimiento && fechas.comparar(hoy, resultado.vencimiento) > 0 && resultado.deudaCliente > 0) {
     resultado.estado = 'vencido';
   } else {
     resultado.estado = 'al_dia';
@@ -499,7 +516,7 @@ function calcularSinInteres(prestamo, pagos) {
   resultado.deudaCliente = resultado.capitalPendiente;
   resultado.netoRecuperar = resultado.capital - totalRecibido;
   resultado.ganancia = 0;
-  resultado.estado = 'familia';
+  resultado.estado = prestamo.estadoManual || (resultado.deudaCliente === 0 && totalRecibido > 0 ? 'pagado' : 'familia');
 
   if (totalRecibido + perdonado > resultado.capital) {
     resultado.advertencias.push(
@@ -531,6 +548,8 @@ export function calcularPrestamo(prestamo, pagosDelPrestamo, hoy) {
       r.interesPendiente = 0;
       r.interesCorrido = 0;
       r.deudaCliente = 0;
+      r.mesesAtrasados = 0;
+      for (const periodo of r.periodos || []) { periodo.atrasado = false; periodo.pendiente = 0; }
     }
     r.debeHoy = r.deudaCliente + r.interesCorrido;
     return r;
@@ -874,7 +893,7 @@ export function agendaCobros(estado, hoy, dias = 7) {
     }
 
     // Capital que vence dentro del rango.
-    if (r.vencimiento && r.capitalPendiente > 0 && fechas.entre(r.vencimiento, hoy, limite)) {
+    if (r.vencimiento && (r.modalidad === 'interes_mensual' ? r.capitalPendiente : r.deudaCliente) > 0 && fechas.entre(r.vencimiento, hoy, limite)) {
       const monto = r.modalidad === 'interes_mensual' ? r.capitalPendiente : r.deudaCliente;
       proximos.push({ ...base, fecha: r.vencimiento, monto, motivo: 'capital' });
     }

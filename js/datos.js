@@ -296,7 +296,7 @@ function completarEstado(estado) {
       estadoManual: ESTADOS_MANUALES.includes(p.estadoManual) ? p.estadoManual : null,
       fechaEstado: esFechaValida(p.fechaEstado) ? p.fechaEstado : null,
       acuerdo: p.acuerdo && typeof p.acuerdo === 'object' && esFechaValida(p.acuerdo.fecha)
-        ? { fecha: p.acuerdo.fecha, texto: limpiarTexto(p.acuerdo.texto) }
+        ? { fecha: p.acuerdo.fecha, texto: limpiarTexto(p.acuerdo.texto), ...(Number.isInteger(p.acuerdo.monto) && p.acuerdo.monto > 0 ? { monto: p.acuerdo.monto } : {}) }
         : null,
       nota: limpiarTexto(p.nota),
       ...(p.porConfirmar && typeof p.porConfirmar === 'object' ? { porConfirmar: p.porConfirmar } : {}),
@@ -864,7 +864,7 @@ function armarPrestamo(datosPrestamo, existente) {
   if (totalPactado !== null) {
     exigir(totalPactado >= capital, 'El total pactado no puede ser menor que el capital.');
   }
-  const plazoMeses = enteroOpcional(datosPrestamo.plazoMeses ?? existente?.plazoMeses, 'plazo en meses');
+  const plazoMeses = enteroOpcional(datosPrestamo.plazoMeses !== undefined ? datosPrestamo.plazoMeses : existente?.plazoMeses, 'plazo en meses');
   const topeInteres = modalidad === 'interes_mensual'
     ? enteroOpcional(datosPrestamo.topeInteres ?? existente?.topeInteres, 'tope de intereses')
     : null;
@@ -882,7 +882,7 @@ function armarPrestamo(datosPrestamo, existente) {
   let acuerdo = datosPrestamo.acuerdo !== undefined ? datosPrestamo.acuerdo : (existente?.acuerdo ?? null);
   if (acuerdo && typeof acuerdo === 'object') {
     exigirFecha(acuerdo.fecha, 'del acuerdo de pago');
-    acuerdo = { fecha: acuerdo.fecha, texto: limpiarTexto(acuerdo.texto) };
+    acuerdo = { fecha: acuerdo.fecha, texto: limpiarTexto(acuerdo.texto), ...(Number.isInteger(acuerdo.monto) && acuerdo.monto > 0 ? { monto: acuerdo.monto } : {}) };
   } else {
     acuerdo = null;
   }
