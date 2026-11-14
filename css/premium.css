@@ -725,3 +725,10 @@ html body .fran-iconos button small, html body .fran-iconos a small { overflow-w
 .fran-conteo__aviso { padding: 12px; border-radius: 14px; background: color-mix(in srgb, var(--accent) 12%, transparent); display: grid; gap: 8px; }
 .fran-conteo__aviso p { margin: 0; }
 .fran-conteo__lista summary { cursor: pointer; padding: 6px 0; }
+
+/* 3.42.0 · Préstamos del cliente aparte, con su nota */
+.fran-prestamos-cliente { display: grid; gap: 10px; margin-bottom: 18px; }
+.fran-prestamo-cliente { display: grid; gap: 4px; padding: 14px 16px; text-decoration: none; color: inherit; }
+.fran-prestamo-cliente__cabeza { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; }
+.fran-prestamo-cliente small { color: var(--muted, inherit); opacity: .85; }
+.fran-prestamo-cliente__nota { margin: 6px 0 0; padding: 8px 10px; border-radius: 10px; background: color-mix(in srgb, var(--accent) 10%, transparent); font-size: .92em; line-height: 1.35; white-space: pre-wrap; }

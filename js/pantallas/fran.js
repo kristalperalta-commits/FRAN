@@ -2093,6 +2093,31 @@ function renderTablaPrestamos(contenedor, ctx) {
   contenedor.append(raiz);
 }
 
+// Préstamos del cliente aparte, cada uno con lo que debe y su nota (3.42.0, pedido el 13 nov 2026).
+function bloquePrestamosCliente(propios, r, ctx) {
+  const { ui, dinero, fechas } = ctx;
+  if (!propios.length) return '';
+  const porId = new Map((r.resultados || []).map((x) => [x.prestamoId, x]));
+  const lista = [...propios].sort((a, b) => String(b.fecha || '').localeCompare(String(a.fecha || '')));
+  return `${seccion(`Préstamos (${lista.length})`, 'grafica')}
+    <div class="fran-prestamos-cliente">${lista.map((p) => {
+      const x = porId.get(p.id) || {};
+      const pendiente = x.capitalPendiente ?? p.capital;
+      const nota = String(p.nota || '').replace(/^CLAUDE D\d+,?\s*/i, '').trim();
+      const datosFila = [
+        `Prestó ${dinero.formatear(p.capital)}`,
+        p.totalPactado ? `paga ${dinero.formatear(p.totalPactado)}` : '',
+        `debe de capital ${dinero.formatear(pendiente)}`,
+      ].filter(Boolean).join(' · ');
+      return `<a class="fran-prestamo-cliente fran-tarjeta" href="#/prestamo/${encodeURIComponent(p.id)}">
+        <span class="fran-prestamo-cliente__cabeza"><strong>${p.fecha ? `Préstamo del ${ui.esc(fechas.formatear(p.fecha))}` : 'Préstamo sin fecha'}</strong><b class="numero">${dinero.formatear(pendiente)}</b></span>
+        <small>${ui.esc(datosFila)}</small>
+        ${p.garantia ? `<small>Prenda: ${ui.esc(p.garantia)}</small>` : ''}
+        ${nota ? `<p class="fran-prestamo-cliente__nota">${ui.esc(nota)}</p>` : ''}
+      </a>`;
+    }).join('')}</div>`;
+}
+
 function renderFicha(contenedor, id, ctx) {
   const { ui, dinero, datos, motor, fechas } = ctx;
   const estado = datos.estado;
@@ -2138,6 +2163,7 @@ function renderFicha(contenedor, id, ctx) {
     <div class="fran-progreso"><span style="width:${pct}%"></span></div>
     <p class="fran-nota">${abonosPlan && !recuperado ? `Abono a capital anotado: ${dinero.formatear(abonosPlan)}.` : `Recuperado ${dinero.formatear(recuperado)} de ${dinero.formatear(r.capitalPrestado)} de capital.`}${capitalPrimero ? (r.capitalPendiente === 0 ? ' Ya recuperó todo el capital: lo que pague es ganancia.' : ' Cuando llegue a 100%, todo lo que pague es ganancia.') : ''}</p>
     ${interesesPagados.n ? `<p class="fran-nota fran-nota--pagado">Ha pagado <strong class="numero">${dinero.formatear(interesesPagados.total)}</strong> de intereses en ${interesesPagados.n} ${interesesPagados.n === 1 ? 'pago' : 'pagos'}, desde ${ui.esc(fechas.formatear(interesesPagados.desde))}.</p>` : ''}
+    ${bloquePrestamosCliente(propios, r, ctx)}
     ${seccion('Historial', 'lista')}
     <div class="fran-lista">${historial.map((h) => fila({ ui, icono: h.icono, titulo: h.t, sub: h.sinFecha ? `Fecha por confirmar (${h.sinFecha})` : (h.textoFecha || fechas.formatear(h.f)), derecha: h.v, clase: h.c, ruta: h.ruta, ver: h.ver })).join('') || '<p class="fran-vacio">Sin movimientos.</p>'}</div>
     <div class="fran-tres">
