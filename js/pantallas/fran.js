@@ -1359,7 +1359,7 @@ function renderInformes(contenedor, id, ctx) {
       <button type="button" data-anio="todo" class="${anio === 'todo' ? 'activo' : ''}">Todo</button>
       ${anios.map((a) => `<button type="button" data-anio="${a}" class="${a === anio ? 'activo' : ''}">${a}</button>`).join('')}
     </div>
-    <div class="fran-tabla-premium">
+    <div class="fran-tabla-premium${tg === 0 ? ' fran-tabla-premium--sin-gastos' : ''}">
       <div class="fran-tabla-premium__cabeza"><span>${icono3d('calendario', 'fran-3d--28')}${anio === 'todo' ? 'Año' : 'Mes'}</span><span>${icono3d('billetera', 'fran-3d--28')}Gastos</span><span>${icono3d('grafica', 'fran-3d--28')}Ingresos</span><span>${icono3d('tabla', 'fran-3d--28')}Saldo</span></div>
       ${claves.map((k) => { const m2 = totalLista.filter((a) => a.fecha.startsWith(k)); const g = sumar(deTipo(m2, 'gasto')); const i2 = sumar(deTipo(m2, 'ingreso')); if (!g && !i2) return ''; const nombre = anio === 'todo' ? k : fechas.nombreMes(Number(k.slice(5)), true); return `<button type="button" class="fran-tabla-premium__fila" data-fila="${ui.esc(k)}"><span class="fran-tabla-premium__mes">${ui.esc(nombre)} <i>›</i></span><span class="numero">${dinero.formatear(g)}</span><span class="numero">${dinero.formatear(i2)}</span><span class="numero ${i2 - g < 0 ? 'fran-menos' : ''}">${dinero.formatear(Math.abs(i2 - g))}</span><i class="fran-ajuste__flecha" aria-hidden="true"></i></button>`; }).join('')}
     </div>
@@ -1379,7 +1379,7 @@ function renderInformes(contenedor, id, ctx) {
   raiz.querySelectorAll('[data-fila]').forEach((f) => f.addEventListener('click', () => {
     if (anio === 'todo') { vista.anio = f.dataset.fila; redibujar(); return; }
     vista.mes = f.dataset.fila;
-    ctx.navegar(`/libro/${id}`);
+    ctx.navegar(`/libro/${id}/mes/${f.dataset.fila}`);
   }));
   conectarMes(raiz, mes, ctx, redibujar);
   const presu = raiz.querySelector('#fran-presu');
@@ -3272,6 +3272,14 @@ export async function render(contenedor, params, ctx) {
     case 'graficos': return renderGraficos(contenedor, id, ctx);
     case 'calendario': return renderCalendario(contenedor, id, ctx);
     case 'informes': return renderInformes(contenedor, id, ctx);
+    case 'mes': {
+      // Detalle de un mes desde Informes: todos los gastos e ingresos de ese mes en ese libro.
+      const mesPedido = /^\d{4}-\d{2}$/.test(params.mes || '') ? params.mes : ctx.hoy().slice(0, 7);
+      // Los mismos gastos e ingresos que suma la tabla de Informes (sin abonos a capital ni pases entre cuentas).
+      const delMesPedido = delLibro(asientos(ctx), id).filter((a) => a.fecha.startsWith(mesPedido) && (a.tipo === 'gasto' || a.tipo === 'ingreso'));
+      const nombreDelMes = ctx.fechas.formatearMes(`${mesPedido}-01`);
+      return renderDetalle(contenedor, id, nombreDelMes.charAt(0).toUpperCase() + nombreDelMes.slice(1), delMesPedido, `#/libro/${id}/informes`, ctx);
+    }
     case 'agregar': return renderAgregar(contenedor, id, params.tipo, ctx);
     case 'registrar': return renderRegistrar(contenedor, params, ctx);
     case 'ficha': return renderFicha(contenedor, params.id, ctx);

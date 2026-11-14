@@ -11,7 +11,7 @@
 
 import * as ui from './ui.js';
 
-const VERSION_APP = '3.54.0';
+const VERSION_APP = '3.55.0';
 const contenedor = document.getElementById('pantalla');
 
 // ---------- Rutas (sección 7 de la especificación) ----------
@@ -40,6 +40,7 @@ const RUTAS = [
   { patron: '/libro/:libro/graficos', pantalla: 'fran', vista: 'graficos', pestana: 'graficos' },
   { patron: '/libro/:libro/calendario', pantalla: 'fran', vista: 'calendario', pestana: 'graficos' },
   { patron: '/libro/:libro/informes', pantalla: 'fran', vista: 'informes', pestana: 'informes' },
+  { patron: '/libro/:libro/mes/:mes', pantalla: 'fran', vista: 'mes', pestana: 'informes' },
   { patron: '/libro/:libro/agregar/:tipo', pantalla: 'fran', vista: 'agregar', pestana: 'inicio', sinBarra: true },
   { patron: '/libro/:libro/categoria/:tipo/:categoria', pantalla: 'fran', vista: 'categoria', pestana: 'graficos' },
   { patron: '/clientes', pantalla: 'clientes', vista: 'lista', pestana: 'inicio', libro: 'prestamos' },
@@ -562,7 +563,7 @@ async function arrancar() {
     const nube = await import('./nube.js');
     ctx.nube = nube;
     nube.iniciar(ctx.datos, { avisar: ui.toast });
-    // Aviso fijo cuando la sesión de la nube se cerró sola: lo anotado no está llegando al otro aparato (3.54.0).
+    // Aviso fijo cuando la sesión de la nube se cerró sola: lo anotado no está llegando al otro aparato (3.55.0).
     const avisoNube = () => {
       let barra = document.getElementById('aviso-nube');
       if (!nube.estado().desconectada) { if (barra) barra.remove(); return; }
@@ -583,7 +584,7 @@ async function arrancar() {
     // Se le pide al teléfono que no borre lo guardado cuando le falte espacio.
     if (navigator.storage && navigator.storage.persist) navigator.storage.persist().catch(() => {});
 
-    // Avisos fijos de guardado: si no se pudo leer lo guardado o no se está pudiendo guardar, se dice arriba (3.54.0).
+    // Avisos fijos de guardado: si no se pudo leer lo guardado o no se está pudiendo guardar, se dice arriba (3.55.0).
     const avisoGuardado = () => {
       const alm = ctx.datos.almacenamiento || {};
       let barra = document.getElementById('aviso-guardado');
