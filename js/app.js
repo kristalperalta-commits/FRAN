@@ -11,7 +11,7 @@
 
 import * as ui from './ui.js';
 
-const VERSION_APP = '3.57.0';
+const VERSION_APP = '3.58.0';
 const contenedor = document.getElementById('pantalla');
 
 // ---------- Rutas (sección 7 de la especificación) ----------
@@ -563,7 +563,7 @@ async function arrancar() {
     const nube = await import('./nube.js');
     ctx.nube = nube;
     nube.iniciar(ctx.datos, { avisar: ui.toast });
-    // Aviso fijo cuando la sesión de la nube se cerró sola: lo anotado no está llegando al otro aparato (3.57.0).
+    // Aviso fijo cuando la sesión de la nube se cerró sola: lo anotado no está llegando al otro aparato (3.58.0).
     const avisoNube = () => {
       let barra = document.getElementById('aviso-nube');
       if (!nube.estado().desconectada) { if (barra) barra.remove(); return; }
@@ -584,7 +584,7 @@ async function arrancar() {
     // Se le pide al teléfono que no borre lo guardado cuando le falte espacio.
     if (navigator.storage && navigator.storage.persist) navigator.storage.persist().catch(() => {});
 
-    // Avisos fijos de guardado: si no se pudo leer lo guardado o no se está pudiendo guardar, se dice arriba (3.57.0).
+    // Avisos fijos de guardado: si no se pudo leer lo guardado o no se está pudiendo guardar, se dice arriba (3.58.0).
     const avisoGuardado = () => {
       const alm = ctx.datos.almacenamiento || {};
       let barra = document.getElementById('aviso-guardado');
@@ -615,6 +615,21 @@ async function arrancar() {
     console.warn('La nube no arrancó:', error);
   }
 
+  // La flecha de volver regresa a donde ella estaba (por ejemplo, a la lista de "Por confirmar"),
+  // no a una pantalla fija. Solo si la pantalla anterior es de Fran; si no, usa el enlace de siempre (3.58.0).
+  const recorrido = [window.location.hash];
+  window.addEventListener('hashchange', () => {
+    const ahora = window.location.hash;
+    if (recorrido.length > 1 && recorrido[recorrido.length - 2] === ahora) recorrido.pop();
+    else recorrido.push(ahora);
+    if (recorrido.length > 60) recorrido.shift();
+  });
+  document.addEventListener('click', (evento) => {
+    const flecha = evento.target.closest('a.fran-titulo__atras, a.encabezado__atras');
+    if (!flecha || recorrido.length < 2) return;
+    evento.preventDefault();
+    window.history.back();
+  }, true);
   window.addEventListener('hashchange', () => renderizar({ conservarScroll: false }));
   document.getElementById('boton-mas').addEventListener('click', async () => {
     const modulo = await import('./pantallas/fran.js');

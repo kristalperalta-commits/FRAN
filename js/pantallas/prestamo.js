@@ -300,6 +300,7 @@ function renderFicha(contenedor, params, ctx) {
 
   const datosHtml = [
     filaDato('Cliente', `<a href="${rutaDelCliente}">${ui.esc(nombre)}</a>`),
+    prestamo.aNombreDe || (prestamo.nombreExcel && prestamo.nombreExcel.toLowerCase() !== nombre.toLowerCase()) ? filaDato('Se le entregó a', ui.esc(prestamo.aNombreDe || prestamo.nombreExcel)) : '',
     filaDato('Fecha', ui.esc(prestamo.porConfirmar && prestamo.porConfirmar.fecha ? `Por confirmar. En el Excel dice: ${prestamo.porConfirmar.fecha}` : fechas.formatear(prestamo.fecha))),
     filaDato('Capital prestado', ui.esc(pesos(ctx, prestamo.capital))),
     esMensual ? filaDato('Tasa', prestamo.porConfirmar && prestamo.porConfirmar.tasa ? ui.esc(prestamo.porConfirmar.tasa) : `${ui.esc(Math.round(prestamo.tasa * 100) / 100)} % mensual`) : '',
@@ -390,6 +391,7 @@ function renderFicha(contenedor, params, ctx) {
         <div class="botones prestamo-acciones">
           <button type="button" class="boton" data-estado="pagado">Marcar como pagado</button>
           <button type="button" class="boton" data-estado="perdido">Marcar como perdido (se voló)</button>
+          <button type="button" class="boton" data-estado="recuperar">Recuperar capital (ya no paga intereses)</button>
           <button type="button" class="boton" data-estado="congelado">Congelar</button>
           <button type="button" class="boton" data-estado="legal">En proceso legal</button>
           <button type="button" class="boton boton--secundario" data-estado="">Volver a activo</button>
@@ -628,6 +630,7 @@ const PREGUNTA_ESTADO = {
   pagado: '¿Marcar este préstamo como pagado? Dejará de causar intereses desde hoy.',
   perdido: '¿Marcar este préstamo como perdido (se voló)? Dejará de causar intereses desde hoy y su capital pasará a capital perdido.',
   congelado: '¿Congelar este préstamo? No causará intereses desde hoy.',
+  recuperar: '¿Pasar este préstamo a "Recuperar capital"? Ya no genera intereses: solo se cobra el capital que falta.',
   legal: '¿Marcar este préstamo en proceso legal? Sigue causando intereses.',
   '': '¿Volver a dejar el préstamo activo? El estado se calculará solo con los pagos.',
 };

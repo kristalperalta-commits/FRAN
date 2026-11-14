@@ -33,7 +33,8 @@ const MEDIOS_PAGO = ['efectivo', 'virtual', 'especie'];
 const CAJAS = ['efectivo', 'virtual'];
 const ORIGENES_FUENTE = ['caja_efectivo', 'caja_virtual', 'arriendo', 'esposo', 'pension', 'otro'];
 const ORIGENES_APORTE = ['arriendo', 'esposo', 'pension', 'propio', 'otro'];
-const ESTADOS_MANUALES = ['pagado', 'perdido', 'congelado', 'legal'];
+// recuperar (3.58.0): solo se cobra el capital; nunca genera intereses.
+const ESTADOS_MANUALES = ['pagado', 'perdido', 'congelado', 'legal', 'recuperar'];
 const TIPOS_MOVIMIENTO_MANUAL = ['aporte', 'retiro', 'traslado', 'ganancia_a_personal', 'saldo_inicial'];
 const TIPOS_MOVIMIENTO = ['prestamo', 'pago', ...TIPOS_MOVIMIENTO_MANUAL];
 
@@ -303,6 +304,7 @@ function completarEstado(estado) {
       ...(Array.isArray(p.detalle) ? { detalle: p.detalle } : {}),
       ...(p.acuerdoTexto ? { acuerdoTexto: limpiarTexto(p.acuerdoTexto) } : {}),
       ...(limpiarTexto(p.nombreExcel) ? { nombreExcel: limpiarTexto(p.nombreExcel) } : {}),
+      ...(limpiarTexto(p.aNombreDe) ? { aNombreDe: limpiarTexto(p.aNombreDe) } : {}),
       ...(esFechaValida(p.interesesPagadosHasta) ? { interesesPagadosHasta: p.interesesPagadosHasta } : {}),
       creadoEn: esFechaValida(p.creadoEn) ? p.creadoEn : hoy(),
     });
@@ -870,7 +872,7 @@ function armarPrestamo(datosPrestamo, existente) {
     : null;
 
   const estadoManual = datosPrestamo.estadoManual !== undefined ? datosPrestamo.estadoManual : (existente?.estadoManual ?? null);
-  exigir(estadoManual === null || ESTADOS_MANUALES.includes(estadoManual), 'El estado manual debe ser pagado, perdido, congelado, legal o ninguno.');
+  exigir(estadoManual === null || ESTADOS_MANUALES.includes(estadoManual), 'El estado manual debe ser pagado, perdido, congelado, legal, recuperar o ninguno.');
   let fechaEstado = datosPrestamo.fechaEstado !== undefined ? datosPrestamo.fechaEstado : (existente?.fechaEstado ?? null);
   if (estadoManual === null) {
     fechaEstado = null;
@@ -894,6 +896,8 @@ function armarPrestamo(datosPrestamo, existente) {
   const detalle = datosPrestamo.detalle ?? existente?.detalle;
   // El nombre que traía en el Excel se conserva. "Por confirmar" se quita: al corregirlo, ella lo confirma.
   const nombreExcel = limpiarTexto(datosPrestamo.nombreExcel ?? existente?.nombreExcel);
+  // A quién de la familia o del grupo se le entregó (3.58.0). Si no se dice, se ve el nombre del Excel.
+  const aNombreDe = limpiarTexto(datosPrestamo.aNombreDe !== undefined ? datosPrestamo.aNombreDe : existente?.aNombreDe);
   // "Pagó los intereses hasta tal día": desde ahí corren los meses de interés.
   const interesesPagadosHasta = datosPrestamo.interesesPagadosHasta !== undefined ? datosPrestamo.interesesPagadosHasta : (existente?.interesesPagadosHasta ?? null);
   if (interesesPagadosHasta) {
@@ -913,6 +917,7 @@ function armarPrestamo(datosPrestamo, existente) {
     ...(acuerdoTexto ? { acuerdoTexto } : {}),
     ...(Array.isArray(detalle) ? { detalle } : {}),
     ...(nombreExcel ? { nombreExcel } : {}),
+    ...(aNombreDe ? { aNombreDe } : {}),
     ...(interesesPagadosHasta ? { interesesPagadosHasta } : {}),
     id: limpiarTexto(datosPrestamo.id) || existente?.id || generarId(),
     clienteId,

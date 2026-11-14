@@ -61,6 +61,7 @@ const TEXTO_ESTADO = {
   perdido: 'Perdido',
   legal: 'Legal',
   congelado: 'Congelado',
+  recuperar: 'Recuperar capital',
   familia: 'Familia',
   por_confirmar: 'Por confirmar'
 };

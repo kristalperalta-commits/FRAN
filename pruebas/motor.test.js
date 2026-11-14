@@ -1488,3 +1488,15 @@ describe('estados que antes salían mal', () => {
     assert.equal(r.capitalPendiente, 1000000);
   });
 });
+
+describe('recuperar capital', () => {
+  test('no genera intereses y solo baja con lo que devuelve de capital', () => {
+    const p = { id: 'x', clienteId: 'c', fecha: '2025-01-10', capital: 300000, tasa: 20, modalidad: 'interes_mensual', estadoManual: 'recuperar', fechaEstado: '2026-11-14' };
+    const pagos = [{ id: 'g', prestamoId: 'x', clienteId: 'c', fecha: '2025-03-01', monto: 60000, interes: 60000, capital: 0, tipo: 'pago' }, { id: 'h', prestamoId: 'x', clienteId: 'c', fecha: '2026-01-01', monto: 100000, interes: 0, capital: 100000, tipo: 'pago' }];
+    const r = modMotor.calcularPrestamo(p, pagos, '2026-11-14');
+    assert.equal(r.estado, 'recuperar');
+    assert.equal(r.capitalPendiente, 200000);
+    assert.equal(r.interesPendiente, 0);
+    assert.equal(r.debeHoy, 200000);
+  });
+});

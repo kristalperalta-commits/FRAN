@@ -11,6 +11,7 @@ const GRAVEDAD_ESTADO = {
   legal: 6,
   vencido: 5,
   atrasado: 4,
+  recuperar: 3.5,
   congelado: 3,
   por_confirmar: 2.5,
   al_dia: 2,
@@ -554,6 +555,19 @@ export function calcularPrestamo(prestamo, pagosDelPrestamo, hoy) {
     r.debeHoy = r.deudaCliente + r.interesCorrido;
     return r;
   };
+  // Recuperar capital: se calcula como si nunca hubiera tenido interés; solo cuenta lo que se le devolvió de capital.
+  if (prestamo.estadoManual === 'recuperar') {
+    const sinInteres = { ...prestamo, tasa: 0, modalidad: 'interes_mensual', porConfirmar: null, estadoManual: null, totalPactado: null, plazoMeses: null, interesesPagadosHasta: null };
+    const r = calcularInteresMensual(sinInteres, pagos, hoy);
+    r.interesPendiente = 0;
+    r.interesCorrido = 0;
+    r.mesesAtrasados = 0;
+    r.deudaCliente = r.capitalPendiente;
+    r.estado = r.capitalPendiente === 0 && pagos.some((p) => p.tipo === 'pago') ? 'pagado' : 'recuperar';
+    r.advertencias = [];
+    r.proximoCobro = null;
+    return conDebeHoy(r);
+  }
   if (modalidad === 'capital_primero') return conDebeHoy(calcularCapitalPrimero(prestamo, pagos, hoy));
   if (modalidad === 'sin_interes') return conDebeHoy(calcularSinInteres(prestamo, pagos));
   const resultado = calcularInteresMensual(prestamo, pagos, hoy);
@@ -639,7 +653,7 @@ export function resumenCliente(cliente, prestamosDelCliente, pagos, hoy) {
   if (estado) resumen.estado = estado;
   // Ya devolvió todo el capital y solo le quedan intereses: pesa menos que quien debe capital.
   resumen.soloIntereses = resumen.prestamos > 0 && resumen.capitalPendiente === 0 && resumen.deudaCliente > 0
-    && !['perdido', 'legal', 'congelado', 'familia', 'pagado'].includes(resumen.estado);
+    && !['perdido', 'legal', 'congelado', 'recuperar', 'familia', 'pagado'].includes(resumen.estado);
   return resumen;
 }
 
@@ -804,6 +818,7 @@ export function resumenNegocio(estado, hoy) {
     else resumen.interesesPendientes += r.interesPendiente;
     if (r.estado === 'legal') resumen.capitalLegal += r.capitalPendiente;
     if (r.estado === 'congelado') resumen.capitalCongelado += r.capitalPendiente;
+    if (r.estado === 'recuperar') resumen.capitalRecuperar = (resumen.capitalRecuperar || 0) + r.capitalPendiente;
     if (r.estado === 'atrasado' || r.estado === 'vencido') {
       resumen.capitalEnRiesgo += r.capitalPendiente;
       resumen.prestamosAtrasados++;

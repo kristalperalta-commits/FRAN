@@ -356,7 +356,7 @@ function dineroTexto(v) {
 function clientesPorEstado(ctx) {
   const { datos, motor } = ctx;
   const estado = datos.estado;
-  const conteo = { al_dia: 0, por_confirmar: 0, atrasado: 0, congelado: 0, legal: 0, perdido: 0, solo_intereses: 0 };
+  const conteo = { al_dia: 0, por_confirmar: 0, atrasado: 0, recuperar: 0, congelado: 0, legal: 0, perdido: 0, solo_intereses: 0 };
   for (const c of estado.clientes) {
     if (c.tipo === 'familia') continue;
     const propios = estado.prestamos.filter((p) => p.clienteId === c.id);
@@ -463,7 +463,7 @@ function saldoLibro(ctx, todos, id, mes = null) {
 function carteraDe(ctx) {
   const estado = ctx.datos.estado;
   const r = ctx.motor.resumenNegocio(estado, ctx.hoy());
-  const faltan = estado.prestamos.filter((p) => p.porConfirmar && (p.porConfirmar.fecha || ((p.modalidad || 'interes_mensual') === 'interes_mensual' && p.porConfirmar.tasa))).length;
+  const faltan = estado.prestamos.filter((p) => !p.estadoManual && p.porConfirmar && (p.porConfirmar.fecha || ((p.modalidad || 'interes_mensual') === 'interes_mensual' && p.porConfirmar.tasa))).length;
   // Mientras falten préstamos por confirmar, la cartera es solo el capital: los intereses todavía no se pueden dar por ciertos.
   return { r, provisional: faltan > 0, faltan, valor: faltan > 0 ? r.capitalEnCalle : r.capitalEnCalle + r.interesesPendientes };
 }
@@ -946,7 +946,9 @@ function renderPrestamos(contenedor, ctx, redibujar) {
       ${c.por_confirmar ? pastilla('Por confirmar', c.por_confirmar, 'gris') : ''}
       ${pastilla('Al día', c.al_dia, 'verde')}
       ${pastilla('Atrasados', c.atrasado, 'amarillo')}
+      ${c.recuperar ? pastilla('Recuperar capital', c.recuperar, 'amarillo') : ''}
       ${pastilla('Congelados', c.congelado, 'gris')}
+      ${c.perdido ? pastilla('Perdidos', c.perdido, 'rojo') : ''}
       ${pastilla('Legal', c.legal, 'rojo')}
       ${c.solo_intereses ? pastilla('Solo intereses', c.solo_intereses, 'gris') : ''}
     </div>
@@ -2143,7 +2145,7 @@ function renderSoloIntereses(contenedor, ctx) {
 
 // ---------- Tabla de préstamos, como en su Excel ----------
 
-const NOMBRE_ESTADO = { al_dia: 'Al día', atrasado: 'Atrasado', vencido: 'Atrasado', pagado: 'Pagado', perdido: 'Perdido', legal: 'Legal', congelado: 'Congelado', familia: 'Familia', por_confirmar: 'Por confirmar' };
+const NOMBRE_ESTADO = { al_dia: 'Al día', atrasado: 'Atrasado', vencido: 'Atrasado', pagado: 'Pagado', perdido: 'Perdido', legal: 'Legal', congelado: 'Congelado', recuperar: 'Recuperar capital', familia: 'Familia', por_confirmar: 'Por confirmar' };
 
 /** Un renglón por cada préstamo del Excel o anotado después. Los núcleos de familia muestran cada préstamo por dentro. */
 export function renglonesPrestamos(estado, estadoDe = () => '') {
@@ -2207,7 +2209,7 @@ function renderTablaPrestamos(contenedor, ctx) {
     </details>`).join('');
   }
   // Por confirmar: los que vinieron del Excel sin fecha o sin tasa. Al tocar uno se abre para corregirlo.
-  const porConfirmar = estado.prestamos.filter((p) => p.porConfirmar && (p.porConfirmar.fecha || ((p.modalidad || 'interes_mensual') === 'interes_mensual' && p.porConfirmar.tasa))).map((p) => {
+  const porConfirmar = estado.prestamos.filter((p) => !p.estadoManual && p.porConfirmar && (p.porConfirmar.fecha || ((p.modalidad || 'interes_mensual') === 'interes_mensual' && p.porConfirmar.tasa))).map((p) => {
     const c = estado.clientes.find((x) => x.id === p.clienteId);
     return { p, nombre: p.nombreExcel || (c ? c.nombre : ''), cliente: c ? c.nombre : '' };
   }).sort((a, b) => a.cliente.localeCompare(b.cliente, 'es'));
@@ -2257,9 +2259,12 @@ function listaPrestamosCliente(propios, r, ctx) {
     const x = porId.get(p.id) || {};
     const pendiente = x.capitalPendiente ?? p.capital;
     const sinFecha = p.porConfirmar && p.porConfirmar.fecha;
+    const quien = p.aNombreDe || p.nombreExcel || '';
+    const otro = quien && norm(quien) !== norm((ctx.datos.estado.clientes.find((c) => c.id === p.clienteId) || {}).nombre);
+    const estadoTexto = { recuperar: 'Recuperar capital', perdido: 'Perdido', pagado: 'Pagado', congelado: 'Congelado', legal: 'Legal' }[p.estadoManual] || '';
     return fila({
-      ui, icono: '💵', titulo: sinFecha ? 'Fecha por confirmar' : fechas.formatear(p.fecha),
-      sub: pendiente !== p.capital ? (pendiente > 0 ? `Le falta ${dinero.formatear(pendiente)}` : 'Capital recuperado') : '',
+      ui, icono: '💵', titulo: `${otro ? `${quien} · ` : ''}${sinFecha ? 'fecha por confirmar' : fechas.formatear(p.fecha)}`,
+      sub: [estadoTexto, pendiente !== p.capital ? (pendiente > 0 ? `Le falta ${dinero.formatear(pendiente)}` : 'Capital recuperado') : ''].filter(Boolean).join(' · '),
       derecha: dinero.formatear(p.capital), clase: '', ruta: `#/prestamo/${encodeURIComponent(p.id)}`,
     });
   }).join('')}</div>`;
