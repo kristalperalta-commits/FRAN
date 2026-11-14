@@ -1609,18 +1609,32 @@ function renderAgregar(contenedor, id, clave, ctx) {
     } catch { conTeclado(); }
   });
 
-  // «Otra cuenta…»: pide el nombre, la deja elegida y queda guardada para la próxima vez.
+  // «Otra cuenta…»: aparece un campo para el nombre; al guardar queda en la lista para la próxima vez.
   const selCuenta = raiz.querySelector('select[name="cuenta"]');
-  if (selCuenta) selCuenta.addEventListener('change', () => {
-    if (selCuenta.value !== OTRA_CUENTA) return;
-    const nombre = String(window.prompt('¿Cómo se llama la cuenta o el método de pago?') || '').trim().slice(0, 40);
-    if (!nombre) { selCuenta.value = 'Efectivo'; return; }
-    const ya = [...selCuenta.options].find((o) => o.value.toLowerCase() === nombre.toLowerCase() && o.value !== OTRA_CUENTA);
-    if (ya) { selCuenta.value = ya.value; return; }
-    const op = document.createElement('option'); op.textContent = nombre;
-    selCuenta.insertBefore(op, selCuenta.options[selCuenta.options.length - 1]);
-    selCuenta.value = nombre;
-  });
+  if (selCuenta) {
+    let anterior = selCuenta.value;
+    const campo = ui.el('<input type="text" class="fran-entrada fran-cuenta-nueva oculto" data-cuenta-nueva placeholder="Nombre de la cuenta: Daviplata, Nu…" autocomplete="off" maxlength="40" aria-label="Nombre de la cuenta nueva">');
+    (selCuenta.closest('.fran-teclado__valor') || selCuenta.closest('label')).after(campo);
+    const aceptar = () => {
+      const nombre = campo.value.trim();
+      campo.classList.add('oculto');
+      campo.value = '';
+      if (!nombre) { selCuenta.value = anterior; return; }
+      const ya = [...selCuenta.options].find((o) => o.value.toLowerCase() === nombre.toLowerCase() && o.value !== OTRA_CUENTA);
+      if (ya) { selCuenta.value = ya.value; anterior = ya.value; return; }
+      const op = document.createElement('option'); op.textContent = nombre;
+      selCuenta.insertBefore(op, selCuenta.options[selCuenta.options.length - 1]);
+      selCuenta.value = nombre;
+      anterior = nombre;
+    };
+    selCuenta.addEventListener('change', () => {
+      if (selCuenta.value !== OTRA_CUENTA) { anterior = selCuenta.value; campo.classList.add('oculto'); return; }
+      campo.classList.remove('oculto');
+      campo.focus();
+    });
+    campo.addEventListener('blur', aceptar);
+    campo.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); campo.blur(); } });
+  }
 
   let guardandoMovimiento = false;
   const guardarMovimiento = async () => {
@@ -1804,7 +1818,11 @@ function renderRegistrar(contenedor, params, ctx) {
       </div>
       <label class="oculto" id="campo-prestamo"><small>¿De cuál préstamo?</small><select name="prestamo"></select></label>
       <label class="fran-campo-valor"><small>Valor${tipo === 'acuerdo' ? ' (si ya lo sabes)' : ''}</small><input name="valor" inputmode="numeric" autocomplete="off" placeholder="0"></label>
-      ${tipo === 'nuevo' ? `<div><small>Tasa mensual</small>${chips('tasa', [['5', '5%'], ['10', '10%'], ['12', '12%'], ['15', '15%'], ['20', '20%'], ['0', 'Sin interés']], '', ui)}</div>` : ''}
+      ${tipo === 'nuevo' ? `<div data-tasas><small>Tasa mensual</small>${chips('tasa', [['5', '5%'], ['10', '10%'], ['12', '12%'], ['15', '15%'], ['20', '20%'], ['0', 'Sin interés'], ['otra', 'Otra']], '', ui)}
+        <input name="tasaOtra" class="oculto fran-tasa-otra" inputmode="decimal" autocomplete="off" data-sin-puntos placeholder="¿Cuál? Por ejemplo 8 o 12,5" aria-label="Otra tasa"></div>
+      <label><small>O devuelve en total (si pactaron una suma fija, como 1.100.000)</small><input name="totalPactado" inputmode="numeric" autocomplete="off" placeholder="Déjelo vacío si es por tasa"></label>
+      <label><small>Prenda o garantía (si dejó algo)</small><input name="garantia" autocomplete="off" placeholder="Moto, papel firmado…"></label>
+      <label><small>¿De quién es la plata?</small><select name="duena"><option value="mia">Mía (sale de mi efectivo o de mi virtual)</option><option value="otro">No es mía (de un negocio o de otra persona): no se resta de mi plata</option></select></label>` : ''}
       ${tipo === 'acuerdo' ? `<div><small>Cada cuánto</small>${chips('repite', [['', 'Fecha fija'], ['diario', 'Diario'], ['semanal', 'Semanal'], ['quincenal', 'Quincenal'], ['mensual', 'Mensual']], '', ui)}</div>` : `<label><small>${tipo === 'nuevo' ? 'Sale por' : 'Entra por'}</small><select name="medio"><option value="efectivo">Efectivo</option><option value="virtual">Virtual</option></select></label>`}
       <label><small>${tipo === 'acuerdo' ? 'Fecha del cobro' : 'Fecha'}</small><input type="date" name="fecha" value="${ui.esc(ctx.hoy())}"></label>
       <label><small>Nota</small><input name="nota" autocomplete="off" placeholder="Escribe o dicta con el teclado"></label>
@@ -1813,6 +1831,14 @@ function renderRegistrar(contenedor, params, ctx) {
   </div>`);
   conectarChips(raiz);
   const form = raiz.querySelector('form');
+  const cajaTasas = raiz.querySelector('[data-tasas]');
+  if (cajaTasas) cajaTasas.addEventListener('click', (e) => {
+    const chip = e.target.closest('[data-valor]');
+    if (!chip) return;
+    const otra = chip.dataset.valor === 'otra';
+    form.elements.tasaOtra.classList.toggle('oculto', !otra);
+    if (otra) form.elements.tasaOtra.focus();
+  });
   const campoNombre = raiz.querySelector('#campo-nombre');
   const campoPrestamo = raiz.querySelector('#campo-prestamo');
   function alCambiarCliente() {
@@ -1837,7 +1863,14 @@ function renderRegistrar(contenedor, params, ctx) {
       const fecha = el.fecha.value || ctx.hoy();
       const nota = el.nota.value.trim();
       if (tipo !== 'acuerdo' && !(valor > 0)) { ui.toast('Escribe el valor.'); return; }
-      if (tipo === 'nuevo' && el.tasa.value === '') { ui.toast('Elige la tasa.'); return; }
+      const totalPactado = tipo === 'nuevo' && el.totalPactado.value.trim() ? ctx.dinero.leer(el.totalPactado.value) : null;
+      if (tipo === 'nuevo' && totalPactado !== null && !(totalPactado > valor)) { ui.toast('Lo que devuelve en total debe ser más que lo prestado.', 4000); return; }
+      if (tipo === 'nuevo' && !totalPactado && el.tasa.value === '') { ui.toast('Elige la tasa, o escribe cuánto devuelve en total.', 4000); return; }
+      let tasaElegida = tipo === 'nuevo' ? Number(el.tasa.value) : 0;
+      if (tipo === 'nuevo' && !totalPactado && el.tasa.value === 'otra') {
+        tasaElegida = Number(String(el.tasaOtra.value).replace(',', '.'));
+        if (el.tasaOtra.value.trim() === '' || !Number.isFinite(tasaElegida) || tasaElegida < 0 || tasaElegida > 100) { ui.toast('Escriba la tasa: un número entre 0 y 100.', 4000); return; }
+      }
       if ((tipo === 'abono' || tipo === 'interes') && !el.prestamo.value) { ui.toast(el.prestamo.options.length ? 'Elige de cuál préstamo.' : 'Este cliente no tiene préstamos activos.'); return; }
       if (clienteId === '__nuevo') {
         const nombre = el.nombre.value.trim();
@@ -1848,9 +1881,13 @@ function renderRegistrar(contenedor, params, ctx) {
       }
       const cliente = datos.estado.clientes.find((c) => c.id === clienteId);
       if (tipo === 'nuevo') {
-        const tasa = Number(el.tasa.value);
+        const tasa = tasaElegida;
         const familia = cliente && cliente.tipo === 'familia';
-        await datos.crearPrestamo({ clienteId, fecha, capital: valor, tasa: familia ? 0 : tasa, modalidad: familia || tasa === 0 ? 'sin_interes' : 'interes_mensual', medio: el.medio.value, nota });
+        const extra = { garantia: el.garantia.value.trim() };
+        // Plata que no es de ella: entra y sale el mismo día, así su efectivo o su virtual no cambian.
+        if (el.duena.value === 'otro') extra.fuentes = [{ origen: 'otro', monto: valor, nota: 'No es plata mía' }];
+        if (totalPactado) await datos.crearPrestamo({ clienteId, fecha, capital: valor, tasa: 0, modalidad: 'capital_primero', totalPactado, medio: el.medio.value, nota, ...extra });
+        else await datos.crearPrestamo({ clienteId, fecha, capital: valor, tasa: familia ? 0 : tasa, modalidad: familia || tasa === 0 ? 'sin_interes' : 'interes_mensual', medio: el.medio.value, nota, ...extra });
       } else if (tipo === 'acuerdo') {
         const fran = datos.estado.fran;
         const repite = el.repite.value || null;
@@ -1961,6 +1998,9 @@ function verCobro(contenedor, m, cobros, cliente, volver, ctx) {
   raiz.querySelector('[data-editar]').addEventListener('click', () => {
     raiz.querySelector('dl').replaceWith(ui.el(`<form class="fran-campos" novalidate>
       <label><small>Nota: qué se pagó, qué préstamo se recogió</small><input name="nota" autocomplete="off" value="${ui.esc(m.nota)}"></label>
+      ${m.esPago && !m.perdon ? `<label><small>Fecha</small><input type="date" name="pagoFecha" value="${ui.esc(m.fecha)}" max="${ui.esc(ctx.hoy())}"></label>
+      <label><small>A capital</small><input name="pagoCapital" inputmode="numeric" autocomplete="off" value="${ui.esc(dinero.formatear(m.capital || 0))}"></label>
+      <label><small>${nombreInteres}</small><input name="pagoInteres" inputmode="numeric" autocomplete="off" value="${ui.esc(dinero.formatear(m.interes || 0))}"></label>` : ''}
       ${m.esPago ? '' : `<label><small>Cliente (si quedó a nombre de otra persona, cámbielo aquí)</small><select name="clienteId">${[...datos.estado.clientes].sort((a, b) => a.nombre.localeCompare(b.nombre, 'es')).map((c) => `<option value="${ui.esc(c.id)}"${c.id === cliente.id ? ' selected' : ''}>${ui.esc(c.nombre)}</option>`).join('')}</select></label>
       <label><small>Fecha</small><input type="date" name="fecha" value="${ui.esc(m.fecha)}" max="${ui.esc(ctx.hoy())}"></label>
       <label><small>Valor</small><input name="valor" inputmode="numeric" autocomplete="off" value="${ui.esc(dinero.formatear(m.valor))}"></label>
@@ -1973,6 +2013,14 @@ function verCobro(contenedor, m, cobros, cliente, volver, ctx) {
       e.preventDefault();
       const f = e.target.elements;
       try {
+        if (f.pagoFecha) {
+          const capital = Number(f.pagoCapital.value.replace(/\D/g, '')) || 0;
+          const interes = Number(f.pagoInteres.value.replace(/\D/g, '')) || 0;
+          if (!(capital + interes > 0)) { ui.toast('El pago debe ser mayor que cero.'); return; }
+          await datos.corregirPago(m.id, { fecha: f.pagoFecha.value || m.fecha, capital, interes, nota: f.nota.value });
+          ui.toast('Pago corregido.');
+          return;
+        }
         const cambios = { nota: f.nota.value, medio: f.medio ? f.medio.value : '', prestamoId: f.prestamoId ? f.prestamoId.value : '' };
         if (f.clienteId) {
           const valor = Number(f.valor.value.replace(/\D/g, ''));

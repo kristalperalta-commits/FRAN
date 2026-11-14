@@ -535,7 +535,7 @@ function renderFormulario(contenedor, cliente, ctx) {
     <form class="formulario" novalidate>
       ${ui.campo({ etiqueta: 'Nombre', nombre: 'nombre', valor: valores.nombre, requerido: true, placeholder: 'Nombre completo', atributos: { autocomplete: 'off', autocapitalize: 'words' } })}
       ${ui.campo({ etiqueta: 'Otros nombres con que lo conoces', nombre: 'alias', valor: valores.alias, ayuda: 'Por ejemplo: "Ernesto Empresa", "el de la moto"', atributos: { autocomplete: 'off' } })}
-      ${ui.campo({ etiqueta: 'Cédula', nombre: 'cedula', valor: valores.cedula || '', atributos: { inputmode: 'numeric', autocomplete: 'off' } })}
+      ${ui.campo({ etiqueta: 'Cédula', nombre: 'cedula', valor: valores.cedula || '', atributos: { inputmode: 'numeric', autocomplete: 'off', 'data-sin-puntos': '1' } })}
       ${ui.campo({ etiqueta: 'Teléfono', nombre: 'telefono', tipo: 'tel', valor: valores.telefono, ayuda: 'Con él puedes llamar o escribir por WhatsApp desde la ficha', placeholder: '300 123 4567' })}
       ${ui.campo({ etiqueta: 'Dirección', nombre: 'direccion', valor: valores.direccion, atributos: { autocomplete: 'off' } })}
       ${ui.campo({
@@ -557,7 +557,42 @@ function renderFormulario(contenedor, cliente, ctx) {
         <a href="${rutaAtras}" class="boton boton--secundario boton--grande">Cancelar</a>
       </div>
     </form>
+    ${esNuevo ? '' : `<section class="tarjeta cliente-unir">
+      <h2>¿Esta persona está repetida?</h2>
+      <p class="suave">Si tiene dos fichas de la misma persona, elija aquí la otra. Sus préstamos, pagos y cobros pasan a esta ficha y la repetida se borra.</p>
+      ${ui.campo({ etiqueta: 'La otra ficha', nombre: 'otraFicha', tipo: 'select', valor: '', opciones: [{ valor: '', texto: 'Elija…' }, ...datos.listar('clientes').filter((c) => c.id !== cliente.id).sort((a, b) => a.nombre.localeCompare(b.nombre, 'es')).map((c) => ({ valor: c.id, texto: c.nombre }))] })}
+      <button type="button" class="boton boton--secundario boton--grande" data-unir>Unir con esta ficha</button>
+    </section>
+    <section class="tarjeta cliente-unir">
+      <h2>Eliminar esta ficha</h2>
+      <p class="suave">Solo se puede si no tiene préstamos. Si los tiene, bórrelos o páselos a otro cliente primero.</p>
+      <button type="button" class="boton boton--peligro boton--grande" data-eliminar-cliente>Eliminar cliente</button>
+    </section>`}
   </div>`);
+
+  if (!esNuevo) {
+    raiz.querySelector('[data-unir]').addEventListener('click', async () => {
+      const otraId = raiz.querySelector('[name="otraFicha"]').value;
+      if (!otraId) { ui.toast('Elija la otra ficha.'); return; }
+      const otra = datos.listar('clientes').find((c) => c.id === otraId);
+      const cuantos = datos.listar('prestamos', { clienteId: otraId }).length;
+      if (!(await ui.confirmar(`¿Unir "${otra.nombre}" con "${cliente.nombre}"? ${cuantos ? `${cuantos === 1 ? 'Su préstamo pasa' : `Sus ${cuantos} préstamos pasan`} a "${cliente.nombre}" y` : 'Lo anotado pasa y'} la ficha "${otra.nombre}" se borra. Antes queda una copia guardada en este aparato.`, { aceptar: 'Sí, unir', peligro: true }))) return;
+      try {
+        if (ctx.nube && ctx.nube.guardarCopiaLocal) await ctx.nube.guardarCopiaLocal('antes de unir dos clientes');
+        await datos.unirClientes(otraId, cliente.id);
+        ui.toast('Listo: quedó una sola ficha.', 4000);
+        ctx.navegar(`/cliente/${encodeURIComponent(cliente.id)}`);
+      } catch (error) { ui.toast(error && error.message ? error.message : 'No se pudo unir.', 6000); }
+    });
+    raiz.querySelector('[data-eliminar-cliente]').addEventListener('click', async () => {
+      if (!(await ui.confirmar(`¿Eliminar la ficha de "${cliente.nombre}"? No se puede deshacer.`, { aceptar: 'Sí, eliminar', peligro: true }))) return;
+      try {
+        await datos.eliminarCliente(cliente.id);
+        ui.toast('Cliente eliminado');
+        ctx.navegar('/clientes');
+      } catch (error) { ui.toast(error && error.message ? error.message : 'No se pudo eliminar.', 6000); }
+    });
+  }
 
   const form = raiz.querySelector('form');
   const botonGuardar = form.querySelector('button[type="submit"]');
@@ -587,6 +622,9 @@ function renderFormulario(contenedor, cliente, ctx) {
     try {
       let guardado;
       if (esNuevo) {
+        const limpio = (t) => String(t || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim();
+        const repetido = datos.listar('clientes').find((c) => limpio(c.nombre) === limpio(datosCliente.nombre));
+        if (repetido) { botonGuardar.disabled = false; ui.toast(`${repetido.nombre} ya tiene ficha. Búsquelo en la lista de clientes.`, 5000); return; }
         guardado = await datos.agregarCliente(datosCliente);
         ui.toast('Cliente guardado');
       } else {

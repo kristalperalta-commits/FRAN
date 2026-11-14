@@ -1417,6 +1417,55 @@ export const datos = {
     return prestamo;
   },
 
+  // Junta dos fichas de la misma persona: todo lo de `origenId` pasa a `destinoId` y la ficha repetida se borra (3.49.0).
+  async unirClientes(origenId, destinoId) {
+    exigir(origenId && destinoId && origenId !== destinoId, 'Elige dos clientes distintos.');
+    const origen = buscar('clientes', origenId);
+    const destino = buscar('clientes', destinoId);
+    exigir(origen && destino, 'No encontré uno de los dos clientes.');
+    for (const p of estadoActual.prestamos) if (p.clienteId === origenId) p.clienteId = destinoId;
+    for (const g of estadoActual.pagos) if (g.clienteId === origenId) g.clienteId = destinoId;
+    const fran = estadoActual.fran;
+    const delOrigen = (a) => a.clienteId === origenId || (!a.clienteId && a.persona && limpiarTexto(a.persona).toLowerCase() === origen.nombre.toLowerCase());
+    fran.asientos = fran.asientos.map((a) => (delOrigen(a) ? { ...a, clienteId: destinoId, persona: destino.nombre } : a));
+    fran.agenda = fran.agenda.map((x) => (x.clienteId === origenId ? { ...x, clienteId: destinoId } : x));
+    // Lo que la ficha repetida sabía y la otra no, se conserva.
+    const i = estadoActual.clientes.findIndex((c) => c.id === destinoId);
+    const junto = { ...destino };
+    for (const campo of ['cedula', 'telefono', 'direccion', 'grupo']) if (!junto[campo] && origen[campo]) junto[campo] = origen[campo];
+    const otros = [destino.alias, origen.nombre !== destino.nombre ? origen.nombre : '', origen.alias].map((x) => limpiarTexto(x)).filter(Boolean);
+    junto.alias = [...new Set(otros)].join(', ');
+    junto.nota = [destino.nota, origen.nota].map((x) => limpiarTexto(x)).filter(Boolean).join(' · ');
+    estadoActual.clientes[i] = junto;
+    estadoActual.clientes = estadoActual.clientes.filter((c) => c.id !== origenId);
+    await guardar();
+    return junto;
+  },
+
+  // Corrige un pago ya registrado: fecha, valor y cuánto fue a capital y a intereses. La caja se rehace sola.
+  async corregirPago(id, cambios) {
+    const anterior = buscar('pagos', id);
+    exigir(anterior, 'No encontré ese pago.');
+    exigir(anterior.tipo !== 'perdon', 'Un perdón no se corrige: bórrelo y hágalo de nuevo.');
+    const respaldo = JSON.stringify({ pagos: estadoActual.pagos, movimientos: estadoActual.movimientos });
+    try {
+      quitarPago(id);
+      const capital = cambios.capital ?? anterior.capital;
+      const interes = cambios.interes ?? anterior.interes;
+      insertarPago({
+        id, prestamoId: anterior.prestamoId, fecha: cambios.fecha || anterior.fecha, monto: capital + interes, interes, capital,
+        medio: cambios.medio || anterior.medio, descripcion: anterior.descripcion, nota: cambios.nota ?? anterior.nota, creadoEn: anterior.creadoEn,
+      });
+    } catch (error) {
+      const antes = JSON.parse(respaldo);
+      estadoActual.pagos = antes.pagos;
+      estadoActual.movimientos = antes.movimientos;
+      throw error;
+    }
+    await guardar();
+    return buscar('pagos', id);
+  },
+
   // Borra el préstamo con sus pagos y sus movimientos de caja (3.45.0).
   async eliminarPrestamo(id) {
     const prestamo = buscar('prestamos', id);
