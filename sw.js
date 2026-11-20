@@ -5,7 +5,7 @@
   Al cambiar VERSION se crea un caché nuevo y se borran los viejos al activar.
 */
 
-const VERSION = '3.59.0';
+const VERSION = '3.60.0';
 const NOMBRE_CACHE = `mis-prestamos-v${VERSION}`;
 
 // Lista fija de todo lo que compone la app (incluye archivos de pantallas aunque
@@ -122,6 +122,7 @@ const ARCHIVOS = [
   './js/nube.js',
   './js/nube-config.js',
   './js/ui.js',
+  './js/comprobante.js',
   './js/datos.js',
   './js/motor.js',
   './js/fechas.js',

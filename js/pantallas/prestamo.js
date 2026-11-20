@@ -14,6 +14,7 @@
 */
 
 import { guardarFoto, leerFoto, reducirFoto } from '../fotos.js';
+import { armarComprobante, compartirComprobante } from '../comprobante.js';
 
 const TEXTO_MODALIDAD = {
   interes_mensual: 'Interés mensual',
@@ -264,6 +265,7 @@ function htmlListaPagos(ctx, pagos) {
       </div>
       <div class="fila__lateral">
         <div class="fila__monto">${ui.esc(dinero.formatear(pago.monto))}</div>
+        ${esPerdon ? '' : `<button type="button" class="boton boton--pequeno boton--secundario" data-comprobante="${ui.esc(pago.clienteId)}|${ui.esc(pago.fecha)}">Ficha</button>`}
         <button type="button" class="boton boton--pequeno boton--secundario" data-borrar-pago="${ui.esc(pago.id)}">Borrar</button>
       </div>
     </li>`;
@@ -531,6 +533,13 @@ function renderFicha(contenedor, params, ctx) {
       return;
     }
 
+    const botonFicha = evento.target.closest('[data-comprobante]');
+    if (botonFicha) {
+      const [clienteId, fechaPago] = botonFicha.dataset.comprobante.split('|');
+      await hacerComprobante(ctx, clienteId, fechaPago);
+      return;
+    }
+
     const botonBorrar = evento.target.closest('[data-borrar-pago]');
     if (botonBorrar) {
       await borrarPago(ctx, prestamo, botonBorrar.dataset.borrarPago);
@@ -648,6 +657,27 @@ async function cambiarEstado(ctx, prestamo, estado) {
     estadoManual: estado || null,
     fechaEstado: estado ? hoy : null,
   }, estado ? `Estado cambiado a ${ui.textoEstado(estado).toLowerCase()}` : 'El préstamo vuelve a estar activo');
+}
+
+/** La fichita del pago (imagen para enviar al cliente): se junta todo lo que pagó ese día. */
+async function hacerComprobante(ctx, clienteId, fecha) {
+  const { ui } = ctx;
+  try {
+    const c = armarComprobante(ctx.datos.estado, ctx.motor, clienteId, fecha, ctx.hoy());
+    if (!c) return ui.toast('No hay pagos de ese día para hacer la ficha.');
+    const que = await compartirComprobante(c);
+    if (que === 'descargado') ui.toast('Ficha guardada como imagen.');
+  } catch (error) {
+    if (error && error.name === 'AbortError') return; // cerró la hoja de compartir
+    ui.toast(error && error.message ? error.message : 'No se pudo hacer la ficha.');
+  }
+}
+
+/** Después de guardar un pago: ofrece la ficha para enviarla. */
+async function ofrecerComprobante(ctx, clienteId, fecha) {
+  if (await ctx.ui.confirmar('Pago guardado. ¿Hacer la ficha para enviarla al cliente?', { aceptar: 'Sí, hacer ficha' })) {
+    await hacerComprobante(ctx, clienteId, fecha);
+  }
 }
 
 async function borrarPago(ctx, prestamo, pagoId) {
@@ -1138,8 +1168,8 @@ function renderPago(contenedor, params, ctx) {
     botonGuardar.disabled = true;
     try {
       await ctx.datos.registrarPago(pago);
-      ui.toast('Pago guardado');
       ctx.navegar(`/prestamo/${encodeURIComponent(prestamo.id)}`);
+      await ofrecerComprobante(ctx, prestamo.clienteId, pago.fecha);
     } catch (error) {
       botonGuardar.disabled = false;
       ui.toast(error && error.message ? error.message : 'No se pudo guardar el pago.');
@@ -1482,8 +1512,8 @@ function renderPagoCliente(contenedor, params, ctx) {
         });
         guardados++;
       }
-      ui.toast(guardados === 1 ? 'Pago guardado' : `${guardados} pagos guardados`);
       ctx.navegar(`/cliente/${encodeURIComponent(cliente.id)}`);
+      await ofrecerComprobante(ctx, cliente.id, valores.fecha);
     } catch (error) {
       botonGuardar.disabled = false;
       const mensaje = error && error.message ? error.message : 'No se pudo guardar el pago.';
