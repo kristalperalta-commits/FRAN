@@ -779,6 +779,7 @@ function renderPrincipal(contenedor, ctx) {
       ${metrica('ganancia', 'Ganancia hoy', ganadoHoy, ganadoHoy ? 'mas' : '', '#/ganancias', 4, `En ${fechas.nombreMes(Number(mesHoy.slice(5, 7))).toLowerCase()}: ${dinero.formatear(gananciaMes)}`)}
     </div>
     ${sinDatos ? `<a href="#/ajustes" class="fran-aviso">Todavía no están tus datos en este aparato. Toca aquí y entra a la nube con tu correo.</a>` : ''}
+    ${dudasInicio(ctx)}
     ${avisoAnotar ? renglon({ ruta: '#/libro/personal/agregar/gasto', icono: '📝', texto: 'Hoy no has anotado nada' }, ui) : ''}
     <p class="fran-tablero__titulo">Mis libros</p>
     <div class="fran-libros">${['personal', 'prestamos', 'pension', 'productos'].map((id, n) => tarjetaLibro(id, false, n + 5)).join('')}</div>
@@ -2731,6 +2732,68 @@ function renderLibreta(contenedor, ctx) {
   contenedor.append(raiz);
 }
 
+// ---------- Preguntas para Fran (3.62.0) ----------
+// La asistente deja aquí lo que no sabe con certeza (de quién es un pago, un nombre, un monto, una fecha).
+// Ella responde Sí, No o escribe; la asistente lee las respuestas y corrige. Nada se inventa.
+
+function dudasPendientes(ctx) {
+  return (ctx.datos.estado.fran.dudas || []).filter((d) => !d.respuesta);
+}
+
+function dudasInicio(ctx) {
+  const n = dudasPendientes(ctx).length;
+  if (!n) return '';
+  return `<a href="#/dudas" class="fran-aviso fran-aviso--dudas fran-entra" style="--i:4">❓ Tengo ${n} ${n === 1 ? 'pregunta' : 'preguntas'} para usted. Toque aquí para responder.</a>`;
+}
+
+const TEMA_DUDA = { cliente: 'Cliente', monto: 'Monto', fecha: 'Fecha', plata: 'De quién es la plata', otro: 'Duda' };
+
+function renderDudas(contenedor, ctx) {
+  const { ui, fechas } = ctx;
+  const dudas = ctx.datos.estado.fran.dudas || [];
+  const pendientes = dudas.filter((d) => !d.respuesta).sort((a, b) => String(a.creadoEn).localeCompare(String(b.creadoEn)));
+  const respondidas = dudas.filter((d) => d.respuesta).sort((a, b) => String(b.respondidaEn || '').localeCompare(String(a.respondidaEn || '')));
+  const dibujar = () => { contenedor.innerHTML = ''; renderDudas(contenedor, ctx); };
+  const tarjeta = (d) => `<div class="fran-libreta__item fran-duda" data-duda="${ui.esc(d.id)}">
+    <small class="fran-duda__tema">${ui.esc(TEMA_DUDA[d.tema] || 'Duda')}${d.fecha ? ` · ${ui.esc(fechas.formatear(d.fecha))}` : ''}</small>
+    <p class="fran-duda__pregunta">${ui.esc(d.pregunta)}</p>
+    ${d.detalle ? `<p class="fran-duda__detalle">${ui.esc(d.detalle)}</p>` : ''}
+    ${d.respuesta ? `<p class="fran-duda__respuesta">Su respuesta: <b>${ui.esc(d.respuesta === 'si' ? 'Sí' : d.respuesta === 'no' ? 'No' : d.respuesta)}</b>${d.aplicada ? ' · ya corregido' : ' · falta aplicarla'}</p>
+      ${d.aplicada ? '' : `<span class="fran-libreta__botones"><button type="button" class="fran-boton-secundario fran-boton--44" data-reabrir="${ui.esc(d.id)}">Cambiar respuesta</button></span>`}`
+    : `<span class="fran-libreta__botones">
+        <button type="button" class="fran-boton-principal fran-boton--44" data-responder="${ui.esc(d.id)}" data-valor="si">Sí</button>
+        <button type="button" class="fran-boton-secundario fran-boton--44" data-responder="${ui.esc(d.id)}" data-valor="no">No</button>
+      </span>
+      <form class="fran-libreta__escribir" data-escribir="${ui.esc(d.id)}" novalidate><input name="texto" autocomplete="off" placeholder="O escriba o dicte la respuesta" aria-label="Respuesta"><button class="fran-boton-principal" aria-label="Guardar respuesta">✓</button></form>`}
+  </div>`;
+  const raiz = ui.el(`<div>
+    ${titular('personal', ctx, '#/inicio', 'Preguntas para usted')}
+    <p class="fran-nota">Aquí le dejo lo que no sé con seguridad: de quién es un pago, un nombre, un monto o una fecha. Respóndame con Sí, No o escribiendo, y yo lo corrijo.</p>
+    ${seccion(`Por responder (${pendientes.length})`, 'lapiz')}
+    ${pendientes.map(tarjeta).join('') || '<p class="fran-vacio">No hay preguntas por responder.</p>'}
+    ${respondidas.length ? `<details class="fran-tachados"><summary>Ya respondidas (${respondidas.length})</summary>${respondidas.map(tarjeta).join('')}</details>` : ''}
+  </div>`);
+  const guardar = async (id, respuesta) => {
+    const lista = ctx.datos.estado.fran.dudas || [];
+    await ctx.datos.actualizarFran({ dudas: lista.map((d) => (d.id === id ? { ...d, respuesta, respondidaEn: new Date().toISOString(), aplicada: false } : d)) });
+    ui.toast('Respuesta guardada.');
+    dibujar();
+  };
+  raiz.querySelectorAll('[data-responder]').forEach((b) => b.addEventListener('click', () => guardar(b.dataset.responder, b.dataset.valor)));
+  raiz.querySelectorAll('[data-escribir]').forEach((f) => f.addEventListener('submit', (e) => {
+    e.preventDefault();
+    const texto = f.elements.texto.value.trim();
+    if (!texto) { ui.toast('Escriba la respuesta.'); return; }
+    guardar(f.dataset.escribir, texto);
+  }));
+  raiz.querySelectorAll('[data-reabrir]').forEach((b) => b.addEventListener('click', async () => {
+    const lista = ctx.datos.estado.fran.dudas || [];
+    await ctx.datos.actualizarFran({ dudas: lista.map((d) => (d.id === b.dataset.reabrir ? { ...d, respuesta: null, respondidaEn: null } : d)) });
+    dibujar();
+  }));
+  contenedor.append(raiz);
+}
+
 // ---------- Mi plata hoy: por qué da lo que da ----------
 
 function renderMiPlata(contenedor, ctx) {
@@ -3302,6 +3365,7 @@ export async function render(contenedor, params, ctx) {
     case 'liquidez': return renderLiquidez(contenedor, ctx);
     case 'miplata': return renderMiPlata(contenedor, ctx);
     case 'libreta': return renderLibreta(contenedor, ctx);
+    case 'dudas': return renderDudas(contenedor, ctx);
     case 'credito': return renderCredito(contenedor, params.id, ctx);
     case 'soloIntereses': return renderSoloIntereses(contenedor, ctx);
     case 'propiedad': {

@@ -143,6 +143,7 @@ function franVacio() {
     creditos: [],
     notas: [],
     conteos: [],
+    dudas: [],
   };
 }
 
@@ -204,6 +205,8 @@ function completarFran(fran) {
     notas: lista(f.notas).filter((n) => n && n.id && typeof n.texto === 'string' && n.texto.trim()),
     // Las veces que ella contó la plata en la mano (3.40.0): fecha, lo contado y lo que Fran decía.
     conteos: lista(f.conteos).filter((x) => x && x.id && esFechaValida(x.fecha) && Number.isInteger(x.contado) && x.contado >= 0 && Number.isInteger(x.debia)),
+    // Preguntas que le deja la asistente (3.62.0): nada se da por cierto hasta que ella responda.
+    dudas: lista(f.dudas).filter((x) => x && x.id && typeof x.pregunta === 'string' && x.pregunta.trim()),
   };
 }
 

@@ -782,3 +782,11 @@ html body .fran-heroe__cajas > span, html body .fran-heroe__cajas > a { justify-
 /* 3.58.0 · Recuperar capital */
 .fran-punto--recuperar, .chip-estado--recuperar { background: var(--alert, #d98a00); }
 .texto-estado--recuperar { color: var(--alert, #d98a00); }
+
+/* 3.62.0 · Preguntas para Fran */
+.fran-aviso--dudas { display:block; background: color-mix(in srgb, var(--accent) 14%, var(--card, #fff)); color: inherit; font-weight: 600; }
+.fran-duda__tema { display:block; opacity:.75; margin-bottom:4px; }
+.fran-duda__pregunta { font-weight:600; margin:0 0 4px; }
+.fran-duda__detalle { opacity:.8; margin:0 0 8px; font-size:.95em; }
+.fran-duda__respuesta { margin:6px 0; }
+.fran-duda .fran-libreta__escribir { margin-top:8px; }
