@@ -4,6 +4,8 @@
   También: registrar en Préstamos, ficha del cliente, agenda y movimientos de pensión.
 */
 
+import { buscarEn, puntaje } from '../buscar.js';
+
 import { leerTexto } from '../texto.js';
 import { guardarFoto, leerFoto, reducirFoto } from '../fotos.js';
 import { abrirApariencia } from '../apariencia.js';
@@ -1748,7 +1750,6 @@ function conectarBuscaCliente(raiz, form, clientes, delHistorial, alCambiar, ui)
   const lista = raiz.querySelector('.fran-buscacliente__lista');
   const mas = raiz.querySelector('[data-nuevo]');
   const nuevo = raiz.querySelector('#campo-nombre');
-  const empieza = (texto, q) => palabrasDe(norm(texto)).some((w) => w.startsWith(q)) || norm(texto).startsWith(q);
   const elegir = (valor, nombre) => {
     oculto.value = valor;
     buscar.value = valor === '__nuevo' ? '' : nombre;
@@ -1759,8 +1760,8 @@ function conectarBuscaCliente(raiz, form, clientes, delHistorial, alCambiar, ui)
   const pintar = () => {
     const q = norm(buscar.value);
     if (!q) { lista.classList.add('oculto'); lista.innerHTML = ''; return; }
-    const propios = clientes.filter((c) => empieza(c.nombre, q) || empieza(c.alias || '', q)).slice(0, 12);
-    const viejos = delHistorial.filter((n) => empieza(n, q)).slice(0, 8);
+    const propios = buscarEn(clientes, buscar.value, (c) => `${c.nombre} ${c.alias || ''}`).slice(0, 12);
+    const viejos = buscarEn(delHistorial, buscar.value, (n) => n).slice(0, 8);
     lista.innerHTML = [
       ...propios.map((c) => `<button type="button" role="option" data-id="${ui.esc(c.id)}" data-nombre="${ui.esc(c.nombre)}"><span>${ui.esc(c.nombre)}</span>${c.alias ? `<small>${ui.esc(c.alias)}</small>` : ''}</button>`),
       ...viejos.map((n) => `<button type="button" role="option" data-id="__nuevo" data-nombre="${ui.esc(n)}"><span>${ui.esc(n)}</span><small>Del historial · toca para hacerle ficha</small></button>`),
@@ -2236,7 +2237,7 @@ function renderTablaPrestamos(contenedor, ctx) {
       vista.buscaTabla = buscador.value;
       let visibles = 0;
       raiz.querySelectorAll('.fran-tabla-cliente').forEach((d) => {
-        const coincide = !q || d.dataset.nombre.startsWith(q) || d.dataset.nombre.split(/\s+/).some((palabra) => palabra.startsWith(q));
+        const coincide = !q || puntaje(d.dataset.nombre, q) > 0; // 3.61.0: también si suena igual (s/z, y/i)
         d.classList.toggle('oculto', !coincide);
         if (coincide) visibles += 1;
       });

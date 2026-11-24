@@ -10,6 +10,8 @@
   archivos: para ir a préstamos o pagos solo navega a sus rutas con ctx.navegar.
 */
 
+import { buscarEn } from '../buscar.js';
+
 // ---------- Estado propio de la pantalla (vive mientras la app esté abierta) ----------
 let filtroActual = 'todos';
 let textoBusqueda = '';
@@ -138,10 +140,9 @@ function pasaFiltro(entrada, filtro) {
   }
 }
 
-function pasaBusqueda(cliente, texto) {
-  if (!texto) return true;
-  const objetivo = normalizar(`${cliente.nombre} ${cliente.alias} ${cliente.grupo} ${cliente.telefono}`);
-  return texto.split(/\s+/).every((palabra) => objetivo.includes(palabra));
+// 3.61.0: por las primeras letras, perdonando la ortografía (s/z, b/v, y/i…). Ver buscar.js.
+function textoDeBusqueda(cliente) {
+  return `${cliente.nombre || ''} ${cliente.alias || ''} ${cliente.grupo || ''} ${cliente.telefono || ''}`;
 }
 
 /** HTML de una fila de cliente para la lista y para el grupo. */
@@ -259,7 +260,7 @@ function renderLista(contenedor, ctx) {
 
   function pintarLista() {
     const texto = normalizar(textoBusqueda);
-    const visibles = entradas.filter((e) => pasaFiltro(e, filtroActual) && pasaBusqueda(e.cliente, texto));
+    const visibles = buscarEn(entradas.filter((e) => pasaFiltro(e, filtroActual)), textoBusqueda, (e) => textoDeBusqueda(e.cliente));
 
     if (entradas.length === 0) {
       zonaLista.innerHTML = `
