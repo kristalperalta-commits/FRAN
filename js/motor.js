@@ -323,7 +323,8 @@ function aplicarIntereses(resultado, periodos, pagos, fabrica, aplicadoPorPago =
     if (restante <= 0) continue;
     // 3.63.0: lo pagado hasta el día de corte (interesesPagadosHasta) saldó lo anterior: cuenta como
     // ganancia, pero no adelanta los meses nuevos que corren desde ese día.
-    if (corte && fechas.comparar(pago.fecha, corte) <= 0) {
+    const marca = pago.cubreHasta && fechas.esFechaValida(pago.cubreHasta) ? pago.cubreHasta : pago.fecha;
+    if (corte && fechas.comparar(marca, corte) <= 0) {
       if (esPerdon) resultado.interesPerdonado += restante;
       else resultado.interesPagado += restante;
       if (aplicadoPorPago) aplicadoPorPago.set(pago, restante);
@@ -1014,4 +1015,38 @@ export function repartirPagoCliente(resultadosPrestamos, monto, fechaPago = null
     sobrante: restante,
     aplicado: Math.max(0, entero(monto)) - restante,
   };
+}
+
+/* ----------------------------------------------------------------------- */
+/* Hasta cuándo tiene pagados los intereses (3.64.0)                        */
+/* ----------------------------------------------------------------------- */
+
+/** Día hasta el que el cliente tiene pagados los intereses de un préstamo mensual, o null si no aplica. */
+export function pagadoHastaDe(prestamo, pagosDelPrestamo, hoy) {
+  if (!prestamo || (prestamo.modalidad || 'interes_mensual') !== 'interes_mensual' || prestamo.estadoManual) return null;
+  if (!fechas.esFechaValida(prestamo.fecha)) return null;
+  const r = calcularPrestamo(prestamo, pagosDelPrestamo, hoy);
+  const periodos = r.periodos || [];
+  const pendiente = periodos.find((p) => p.pendiente > 0);
+  if (pendiente) return pendiente.desde;
+  const cubiertos = periodos.filter((p) => p.causado > 0 && p.pendiente === 0);
+  return cubiertos.length ? cubiertos[cubiertos.length - 1].hasta : inicioIntereses(prestamo);
+}
+
+/** Interés de un capital entre dos días: meses completos y los días que sobran (el mes es de 30 días). */
+export function interesEntre(capital, tasa, desde, hasta) {
+  if (!fechas.esFechaValida(desde) || !fechas.esFechaValida(hasta) || fechas.comparar(hasta, desde) <= 0) return 0;
+  let meses = 0;
+  while (meses < MAXIMO_PERIODOS && fechas.comparar(fechas.sumarMeses(desde, meses + 1), hasta) <= 0) meses += 1;
+  const dias = fechas.diferenciaDias(fechas.sumarMeses(desde, meses), hasta);
+  return redondear(capital * (Number(tasa) || 0) / 100 * (meses + dias / DIAS_MES));
+}
+
+/** Con lo que pagó de interés, hasta qué día le alcanza contando desde `desde`. */
+export function hastaConInteres(capital, tasa, desde, valor) {
+  const cuota = capital * (Number(tasa) || 0) / 100;
+  if (!(cuota > 0) || !fechas.esFechaValida(desde) || !(valor > 0)) return null;
+  const meses = Math.floor(valor / cuota + 1e-9);
+  const dias = Math.round(((valor - meses * cuota) / cuota) * DIAS_MES);
+  return fechas.sumarDias(fechas.sumarMeses(desde, meses), dias);
 }

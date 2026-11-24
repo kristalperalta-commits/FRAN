@@ -1826,6 +1826,14 @@ function renderRegistrar(contenedor, params, ctx) {
         <label><small>Dirección</small><input name="direccion" autocomplete="off"></label>
       </div>
       <label class="oculto" id="campo-prestamo"><small>¿De cuál préstamo?</small><select name="prestamo"></select></label>
+      ${tipo === 'interes' ? `<div class="oculto fran-cubre" id="campo-cubre">
+        <p class="fran-cubre__antes">Tenía pagados los intereses hasta el <b data-pagado-hasta></b></p>
+        <div class="fran-cubre__fechas">
+          <label><small>Paga intereses desde</small><input type="date" name="cubreDesde"></label>
+          <label><small>hasta</small><input type="date" name="cubreHasta"></label>
+        </div>
+        <p class="fran-nota" data-cubre-calculo></p>
+      </div>` : ''}
       <label class="fran-campo-valor"><small>Valor${tipo === 'acuerdo' ? ' (si ya lo sabes)' : ''}</small><input name="valor" inputmode="numeric" autocomplete="off" placeholder="0"></label>
       ${tipo === 'nuevo' ? `<div data-tasas><small>Tasa mensual</small>${chips('tasa', [['5', '5%'], ['10', '10%'], ['12', '12%'], ['15', '15%'], ['20', '20%'], ['0', 'Sin interés'], ['otra', 'Otra']], '', ui)}
         <input name="tasaOtra" class="oculto fran-tasa-otra" inputmode="decimal" autocomplete="off" data-sin-puntos placeholder="¿Cuál? Por ejemplo 8 o 12,5" aria-label="Otra tasa"></div>
@@ -1859,8 +1867,46 @@ function renderRegistrar(contenedor, params, ctx) {
     const nombreP = (p) => `${p.porConfirmar && p.porConfirmar.fecha ? p.porConfirmar.fecha : ctx.fechas.formatear(p.fecha)} · ${ctx.dinero.formatear(p.capital)}`;
     form.elements.prestamo.innerHTML = (activos.length > 1 ? '<option value="">Elige…</option>' : '') + activos.map((p) => `<option value="${ui.esc(p.id)}">${ui.esc(nombreP(p))}</option>`).join('');
     campoPrestamo.classList.toggle('oculto', activos.length < 2);
+    pintarCubre();
   }
   conectarBuscaCliente(raiz, form, clientes, delHistorial, alCambiarCliente, ui);
+  // 3.64.0: en el pago de intereses se ve hasta cuándo tenía pagado y hasta cuándo paga ahora.
+  const campoCubre = raiz.querySelector('#campo-cubre');
+  let hastaTocado = false;
+  const cubre = { prestamo: null, capital: 0 };
+  function pintarCubre() {
+    if (!campoCubre) return;
+    const p = estado.prestamos.find((x) => x.id === form.elements.prestamo.value);
+    const mensual = p && (p.modalidad || 'interes_mensual') === 'interes_mensual' && p.tasa > 0 && !p.estadoManual && !(p.porConfirmar && p.porConfirmar.fecha);
+    campoCubre.classList.toggle('oculto', !mensual);
+    if (!mensual) { cubre.prestamo = null; return; }
+    const pagosP = estado.pagos.filter((x) => x.prestamoId === p.id);
+    if (cubre.prestamo !== p.id) {
+      cubre.prestamo = p.id;
+      cubre.capital = ctx.motor.calcularPrestamo(p, pagosP, ctx.hoy()).capitalPendiente;
+      const antes = ctx.motor.pagadoHastaDe(p, pagosP, ctx.hoy());
+      campoCubre.querySelector('[data-pagado-hasta]').textContent = antes ? ctx.fechas.formatear(antes) : '—';
+      form.elements.cubreDesde.value = antes || p.fecha;
+      hastaTocado = false;
+    }
+    const desde = form.elements.cubreDesde.value;
+    const valor = form.elements.valor.value.trim() ? ctx.dinero.leer(form.elements.valor.value) : 0;
+    if (!hastaTocado) form.elements.cubreHasta.value = ctx.motor.hastaConInteres(cubre.capital, p.tasa, desde, valor) || '';
+    const hasta = form.elements.cubreHasta.value;
+    const texto = campoCubre.querySelector('[data-cubre-calculo]');
+    if (!desde || !hasta || hasta <= desde) { texto.textContent = `Interés de un mes: ${ctx.dinero.formatear(Math.round(cubre.capital * p.tasa / 100))}.`; return; }
+    const debe = ctx.motor.interesEntre(cubre.capital, p.tasa, desde, hasta);
+    const dif = valor - debe;
+    texto.textContent = `Del ${ctx.fechas.formatear(desde)} al ${ctx.fechas.formatear(hasta)} son ${ctx.dinero.formatear(debe)} de intereses.`
+      + (valor && Math.abs(dif) >= 1000 ? (dif > 0 ? ` Pagó ${ctx.dinero.formatear(dif)} de más.` : ` Le faltan ${ctx.dinero.formatear(-dif)}.`) : '')
+      + ' Desde el día "hasta" se empiezan a contar los meses nuevos.';
+  }
+  if (campoCubre) {
+    form.elements.prestamo.addEventListener('change', pintarCubre);
+    form.elements.valor.addEventListener('input', pintarCubre);
+    form.elements.cubreDesde.addEventListener('change', pintarCubre);
+    form.elements.cubreHasta.addEventListener('change', () => { hastaTocado = true; pintarCubre(); });
+  }
   alCambiarCliente();
   form.addEventListener('submit', async (e) => {
     e.preventDefault();
@@ -1903,7 +1949,9 @@ function renderRegistrar(contenedor, params, ctx) {
         await datos.actualizarFran({ agenda: [...(fran.agenda || []), { id: `ag-${Date.now()}`, nombre: cliente ? cliente.nombre : '', clienteId, fecha: repite ? null : fecha, desde: repite ? fecha : null, repite, monto: valor, nota }] });
       } else {
         const parte = tipo === 'interes' ? { interes: valor, capital: 0 } : { interes: 0, capital: valor };
-        await datos.registrarPago({ prestamoId: el.prestamo.value, fecha, monto: valor, medio: el.medio.value, nota, ...parte });
+        const periodo = tipo === 'interes' && campoCubre && !campoCubre.classList.contains('oculto') && el.cubreDesde.value && el.cubreHasta.value > el.cubreDesde.value
+          ? { cubreDesde: el.cubreDesde.value, cubreHasta: el.cubreHasta.value } : {};
+        await datos.registrarPago({ prestamoId: el.prestamo.value, fecha, monto: valor, medio: el.medio.value, nota, ...parte, ...periodo });
       }
       ui.toast('Guardado.');
       ctx.navegar(`/cliente/${encodeURIComponent(clienteId)}`);

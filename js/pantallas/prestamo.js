@@ -253,6 +253,7 @@ function htmlListaPagos(ctx, pagos) {
     } else {
       detalle.push(`Interés ${dinero.formatear(pago.interes)}`);
       detalle.push(`Capital ${dinero.formatear(pago.capital)}`);
+      if (pago.cubreDesde && pago.cubreHasta) detalle.push(`Intereses del ${fechas.formatear(pago.cubreDesde)} al ${fechas.formatear(pago.cubreHasta)}`);
       // Un perdón no tiene medio; en los pagos sí se muestra.
       detalle.push(TEXTO_MEDIO[pago.medio] || pago.medio || '');
     }
@@ -302,6 +303,7 @@ function renderFicha(contenedor, params, ctx) {
 
   const datosHtml = [
     filaDato('Cliente', `<a href="${rutaDelCliente}">${ui.esc(nombre)}</a>`),
+    esMensual && !prestamo.estadoManual && ctx.motor.pagadoHastaDe ? filaDato('Intereses pagados hasta', ui.esc(fechas.formatear(ctx.motor.pagadoHastaDe(prestamo, pagos, hoy) || prestamo.fecha))) : '',
     prestamo.aNombreDe || (prestamo.nombreExcel && prestamo.nombreExcel.toLowerCase() !== nombre.toLowerCase()) ? filaDato('Se le entregó a', ui.esc(prestamo.aNombreDe || prestamo.nombreExcel)) : '',
     filaDato('Fecha', ui.esc(prestamo.porConfirmar && prestamo.porConfirmar.fecha ? `Por confirmar. En el Excel dice: ${prestamo.porConfirmar.fecha}` : fechas.formatear(prestamo.fecha))),
     filaDato('Capital prestado', ui.esc(pesos(ctx, prestamo.capital))),

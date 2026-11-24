@@ -790,3 +790,8 @@ html body .fran-heroe__cajas > span, html body .fran-heroe__cajas > a { justify-
 .fran-duda__detalle { opacity:.8; margin:0 0 8px; font-size:.95em; }
 .fran-duda__respuesta { margin:6px 0; }
 .fran-duda .fran-libreta__escribir { margin-top:8px; }
+
+/* 3.64.0 · Pago de intereses: desde y hasta */
+.fran-cubre { display:grid; gap:8px; padding:12px; border-radius:14px; background: color-mix(in srgb, var(--accent) 8%, transparent); }
+.fran-cubre__antes { margin:0; }
+.fran-cubre__fechas { display:grid; grid-template-columns: 1fr 1fr; gap:8px; }

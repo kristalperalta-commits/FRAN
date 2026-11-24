@@ -325,6 +325,9 @@ function completarEstado(estado) {
       medio: g.tipo === 'perdon' ? null : (MEDIOS_PAGO.includes(g.medio) ? g.medio : 'efectivo'),
       descripcion: limpiarTexto(g.descripcion),
       nota: limpiarTexto(g.nota),
+      ...(esFechaValida(g.cubreDesde) ? { cubreDesde: g.cubreDesde } : {}),
+      ...(esFechaValida(g.cubreHasta) ? { cubreHasta: g.cubreHasta } : {}),
+      ...(g.corteAnterior !== undefined && (g.corteAnterior === null || esFechaValida(g.corteAnterior)) ? { corteAnterior: g.corteAnterior } : {}),
       creadoEn: esFechaValida(g.creadoEn) ? g.creadoEn : hoy(),
     });
   }
@@ -1109,6 +1112,9 @@ function armarPago(datosPago) {
     medio,
     descripcion: limpiarTexto(datosPago.descripcion),
     nota: limpiarTexto(datosPago.nota),
+    // 3.64.0: de qué día a qué día pagó los intereses (lo dice ella al registrar).
+    ...(esFechaValida(datosPago.cubreDesde) ? { cubreDesde: datosPago.cubreDesde } : {}),
+    ...(esFechaValida(datosPago.cubreHasta) ? { cubreHasta: datosPago.cubreHasta } : {}),
     creadoEn,
   };
 }
@@ -1116,6 +1122,12 @@ function armarPago(datosPago) {
 function insertarPago(datosPago) {
   const pago = armarPago(datosPago);
   exigir(!buscar('pagos', pago.id), `Ya existe un pago con el id ${pago.id}.`);
+  // 3.64.0: si dice hasta qué día pagó los intereses, desde ese día se cuentan los meses nuevos.
+  const prestamoDelPago = buscar('prestamos', pago.prestamoId);
+  if (pago.cubreHasta && prestamoDelPago && pago.cubreHasta > prestamoDelPago.fecha) {
+    pago.corteAnterior = prestamoDelPago.interesesPagadosHasta || null;
+    prestamoDelPago.interesesPagadosHasta = pago.cubreHasta;
+  }
   estadoActual.pagos.push(pago);
   if (pago.medio === 'efectivo' || pago.medio === 'virtual') {
     estadoActual.movimientos.push(nuevoMovimiento({
@@ -1165,6 +1177,12 @@ function insertarPerdon(datosPerdon) {
 function quitarPago(id) {
   const pago = buscar('pagos', id);
   exigir(pago, 'No se encontró el pago que quieres eliminar.');
+  // Si ese pago había movido el día de corte, vuelve el de antes.
+  const prestamoDelPago = buscar('prestamos', pago.prestamoId);
+  if (pago.cubreHasta && prestamoDelPago && prestamoDelPago.interesesPagadosHasta === pago.cubreHasta) {
+    if (pago.corteAnterior) prestamoDelPago.interesesPagadosHasta = pago.corteAnterior;
+    else delete prestamoDelPago.interesesPagadosHasta;
+  }
   estadoActual.pagos = estadoActual.pagos.filter((g) => g.id !== id);
   estadoActual.movimientos = estadoActual.movimientos.filter((m) => m.pagoId !== id);
   return pago;

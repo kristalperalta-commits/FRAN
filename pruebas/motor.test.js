@@ -1511,3 +1511,13 @@ test('3.63.0: al mover el corte al día del pago, ese pago no adelanta los meses
   assert.equal(dic.interesPendiente, 800000);
   assert.equal(dic.proximoCobro.fecha, '2026-12-20');
 });
+
+test('3.64.0: hasta cuándo tiene pagado, cuánto es entre dos días y hasta dónde alcanza un pago', () => {
+  const p = { id: 'ph', clienteId: 'c', fecha: '2026-09-10', capital: 1000000, tasa: 10, modalidad: 'interes_mensual' };
+  const pagos = [{ id: 'a', prestamoId: 'ph', fecha: '2026-10-10', tipo: 'pago', monto: 100000, interes: 100000, capital: 0, medio: 'efectivo' }];
+  assert.equal(motor.pagadoHastaDe(p, pagos, '2026-11-23'), '2026-10-10');
+  assert.equal(motor.interesEntre(1000000, 10, '2026-10-10', '2026-12-10'), 200000);
+  assert.equal(motor.interesEntre(1000000, 10, '2026-10-10', '2026-10-25'), 50000);
+  assert.equal(motor.hastaConInteres(1000000, 10, '2026-10-10', 150000), '2026-11-25');
+});
+
