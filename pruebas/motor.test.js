@@ -1500,3 +1500,14 @@ describe('recuperar capital', () => {
     assert.equal(r.debeHoy, 200000);
   });
 });
+
+test('3.63.0: al mover el corte al día del pago, ese pago no adelanta los meses nuevos', () => {
+  const p = { id: 'pc', clienteId: 'c', fecha: '2026-10-08', capital: 8000000, tasa: 10, modalidad: 'interes_mensual', interesesPagadosHasta: '2026-11-20' };
+  const pagos = [{ id: 'x', prestamoId: 'pc', fecha: '2026-11-20', tipo: 'pago', monto: 1146000, interes: 1146000, capital: 0, medio: 'efectivo' }];
+  const hoy = motor.calcularPrestamo(p, pagos, '2026-11-23');
+  assert.equal(hoy.interesPendiente, 0);
+  assert.equal(hoy.interesPagado, 1146000);
+  const dic = motor.calcularPrestamo(p, pagos, '2026-12-21');
+  assert.equal(dic.interesPendiente, 800000);
+  assert.equal(dic.proximoCobro.fecha, '2026-12-20');
+});

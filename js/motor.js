@@ -315,12 +315,20 @@ function generarPeriodos(fabrica, pagos, hoy) {
  * cada pago (clave: el objeto pago), para que la ganancia del negocio cuente
  * solo lo que de verdad se aplicó a un periodo.
  */
-function aplicarIntereses(resultado, periodos, pagos, fabrica, aplicadoPorPago = null) {
+function aplicarIntereses(resultado, periodos, pagos, fabrica, aplicadoPorPago = null, corte = null) {
   for (const pago of pagos) {
     const esPerdon = pago.tipo === 'perdon';
     let restante = esPerdon ? montoDePerdon(pago) : entero(pago.interes);
     if (aplicadoPorPago) aplicadoPorPago.set(pago, 0);
     if (restante <= 0) continue;
+    // 3.63.0: lo pagado hasta el día de corte (interesesPagadosHasta) saldó lo anterior: cuenta como
+    // ganancia, pero no adelanta los meses nuevos que corren desde ese día.
+    if (corte && fechas.comparar(pago.fecha, corte) <= 0) {
+      if (esPerdon) resultado.interesPerdonado += restante;
+      else resultado.interesPagado += restante;
+      if (aplicadoPorPago) aplicadoPorPago.set(pago, restante);
+      continue;
+    }
 
     const campo = esPerdon ? 'perdonado' : 'pagado';
     const aplicar = (periodo) => {
@@ -405,7 +413,8 @@ function calcularInteresMensual(prestamo, pagos, hoy, aplicadoPorPago = null) {
   if (fechas.esFechaValida(prestamo.fecha)) {
     const fabrica = crearFabricaPeriodos(prestamo, resultado, abonos, hoy);
     periodos = generarPeriodos(fabrica, pagos, hoy);
-    aplicarIntereses(resultado, periodos, pagos, fabrica, aplicadoPorPago);
+    const corte = inicioIntereses(prestamo) !== prestamo.fecha ? inicioIntereses(prestamo) : null;
+    aplicarIntereses(resultado, periodos, pagos, fabrica, aplicadoPorPago, corte);
   } else {
     resultado.advertencias.push('El préstamo no tiene una fecha válida; no se calcularon periodos.');
   }
