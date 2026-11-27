@@ -277,7 +277,8 @@ export function miPlata(ctx, hasta = null) {
   const estado = datos.estado;
   let efectivo = motor.saldoCaja(estado.movimientos, 'efectivo', hasta || undefined);
   let virtual = motor.saldoCaja(estado.movimientos, 'virtual', hasta || undefined);
-  const tarjetas = estadoTarjetas(estado.fran, hasta).reduce((s, t) => s + t.deudaHoy, 0);
+  // 3.66.0: la tarjeta de otra persona (deOtro, ej. la de Erick) se ve para control pero no es deuda mía.
+  const tarjetas = estadoTarjetas(estado.fran, hasta).filter((t) => !t.deOtro).reduce((s, t) => s + t.deudaHoy, 0);
   const mover = (cuenta, valor) => {
     const tipo = tipoDeCuenta(cuenta, estado.fran.tarjetas);
     if (tipo === 'efectivo') efectivo += valor;
@@ -306,7 +307,7 @@ export function cuentaMiPlata(ctx) {
   const fran = estado.fran;
   const tarjetas = fran.tarjetas || [];
   const QUE = { prestamo: 'Préstamo que hice', pago: 'Pago de un cliente', aporte: 'Entró', retiro: 'Salió', traslado: 'Pasé plata entre cajas', ganancia_a_personal: 'Ganancia a personal' };
-  const partida = { efectivo: 0, virtual: 0, fecha: null, tarjetas: tarjetas.map((t) => ({ nombre: t.nombre, valor: t.deuda || 0, fecha: t.fecha || '', nota: t.nota || '' })) };
+  const partida = { efectivo: 0, virtual: 0, fecha: null, tarjetas: tarjetas.filter((t) => !t.deOtro).map((t) => ({ nombre: t.nombre, valor: t.deuda || 0, fecha: t.fecha || '', nota: t.nota || '' })) };
   const eventos = [];
   for (const m of estado.movimientos || []) {
     if (m.caja !== 'efectivo' && m.caja !== 'virtual') continue;
@@ -324,6 +325,7 @@ export function cuentaMiPlata(ctx) {
     const i = tarjetaDeCuenta(tarjetas, cuenta || '');
     if (i < 0) return 0;
     if (dentroDelExtracto(tarjetas[i], a)) return 0; // ya va dentro del extracto
+    if (tarjetas[i].deOtro) return 0; // tarjeta de otra persona: no es deuda mía
     return 1;
   };
   const nombreCuenta = (c) => ({ efectivo: 'Efectivo', virtual: 'Virtual', tarjeta: c }[tipoDeCuenta(c, tarjetas)] || '');
@@ -2896,14 +2898,14 @@ function renderTarjetas(contenedor, ctx) {
   const hoy = ctx.hoy();
   const fran = datos.estado.fran;
   const tarjetas = estadoTarjetas(fran);
-  const total = tarjetas.reduce((s, t) => s + t.deudaHoy, 0);
+  const total = tarjetas.filter((t) => !t.deOtro).reduce((s, t) => s + t.deudaHoy, 0);
   const dibujar = () => { contenedor.innerHTML = ''; renderTarjetas(contenedor, ctx); };
   const ICONO = (n) => (/gasolina/i.test(n) ? '⛽' : (/comida/i.test(n) ? '🛒' : '💳'));
   const raiz = ui.el(`<div class="fran-virtual">
     ${titular('personal', ctx, '#/inicio', 'Tarjetas')}
     ${heroe({ etiqueta: 'Debo en tarjetas', valor: -total, ayudaTexto: 'Cada tarjeta parte de lo que se debía en su último extracto (o lo anotado al empezar Fran) y suma lo que pagaste con ella después. Lo que le abonas a la tarjeta lo resta.' }, ctx)}
     ${tarjetas.map((t, i) => `<section class="fran-tarjeta fran-tarjeta-credito">
-      <span class="fran-tarjeta-credito__cabeza">${icono3dDe(ICONO(t.nombre), 'fran-3d--48')}<span class="fran-renglon__texto"><span>${ui.esc(t.nombre)}</span><small>${t.nota ? `${ui.esc(t.nota)}: ${dinero.formatear(t.base)}` : (t.fecha ? `Extracto al ${ui.esc(fechas.formatear(t.fecha))}: ${dinero.formatear(t.base)}` : `Al empezar Fran: ${dinero.formatear(t.base)}`)}${t.pagoHasta ? ` · Pagar antes del ${ui.esc(fechas.formatear(t.pagoHasta))}` : ''}</small></span><b>${conSigno(-t.deudaHoy, dinero)}</b></span>
+      <span class="fran-tarjeta-credito__cabeza">${icono3dDe(ICONO(t.nombre), 'fran-3d--48')}<span class="fran-renglon__texto"><span>${ui.esc(t.nombre)}${t.deOtro ? ` · de ${ui.esc(t.deOtro)} (solo control, no es deuda mía)` : ''}</span><small>${t.nota ? `${ui.esc(t.nota)}: ${dinero.formatear(t.base)}` : (t.fecha ? `Extracto al ${ui.esc(fechas.formatear(t.fecha))}: ${dinero.formatear(t.base)}` : `Al empezar Fran: ${dinero.formatear(t.base)}`)}${t.pagoHasta ? ` · Pagar antes del ${ui.esc(fechas.formatear(t.pagoHasta))}` : ''}</small></span><b>${conSigno(-t.deudaHoy, dinero)}</b></span>
       ${t.movimientos.length ? `<div class="fran-lista">${nuevosPrimero(t.movimientos).map((a) => fila({ ui, icono: iconoDe(a.categoria), titulo: a.categoria, sub: `${fechas.formatear(a.fecha)}${a.descripcion ? ` · ${a.descripcion}` : ''}`, derecha: `${a.efecto > 0 ? '−' : '+'}${dinero.formatear(Math.abs(a.efecto))}`, clase: a.efecto > 0 ? 'fran-menos' : 'fran-mas' })).join('')}</div>` : '<p class="fran-nota">Sin compras anotadas después de esa fecha.</p>'}
       <button type="button" class="fran-boton-secundario fran-boton--44" data-extracto="${i}">Actualizar con el extracto</button>
       <form class="fran-campos fran-campos--grande oculto" data-form-extracto="${i}" novalidate>
