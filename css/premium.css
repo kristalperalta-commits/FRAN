@@ -795,3 +795,14 @@ html body .fran-heroe__cajas > span, html body .fran-heroe__cajas > a { justify-
 .fran-cubre { display:grid; gap:8px; padding:12px; border-radius:14px; background: color-mix(in srgb, var(--accent) 8%, transparent); }
 .fran-cubre__antes { margin:0; }
 .fran-cubre__fechas { display:grid; grid-template-columns: 1fr 1fr; gap:8px; }
+
+/* 3.65.0 · Extracto de los cierres */
+.fran-extracto { display:block; margin-bottom:12px; }
+.fran-extracto summary { display:flex; flex-direction:column; gap:2px; cursor:pointer; padding:4px 0 8px; }
+.fran-extracto__fila { display:grid; grid-template-columns: 52px 1fr auto; gap:8px; padding:6px 0; border-top:1px solid color-mix(in srgb, currentColor 10%, transparent); align-items:start; }
+.fran-extracto__fila small { opacity:.7; }
+.fran-extracto__fila b { white-space:nowrap; text-align:right; }
+.fran-extracto__total { font-weight:700; border-top:2px solid currentColor; }
+.fran-extracto__grupo { margin:12px 0 2px; font-weight:600; opacity:.75; font-size:.9em; }
+.fran-extracto__tabla { margin-bottom:12px; }
+.fran-extracto__cab { opacity:.7; font-size:.85em; }

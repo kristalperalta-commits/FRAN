@@ -2858,8 +2858,8 @@ function renderMiPlata(contenedor, ctx) {
   const filaCuenta = (texto, v, signo) => `<p><span>${ui.esc(texto)}</span><span class="numero${signo ? ` fran-${signo}` : (v < 0 ? ' fran-menos' : '')}">${dinero.formatear(Math.abs(v))}</span></p>`;
   const raiz = ui.el(`<div class="fran-virtual">
     ${titular('personal', ctx, '#/inicio', 'Mi plata hoy')}
-    ${heroe({ etiqueta: 'Lo que debo hoy', valor: -hoy.deuda, cajas: [['Tarjetas', -hoy.tarjetas, '', '#/tarjetas'], ['Virtual', Math.min(0, hoy.virtual), '', '#/virtual'], ['Efectivo (aparte)', hoy.efectivo, '', '#/efectivo']] }, ctx)}
-    <p class="fran-nota fran-miplata__cuenta">Tarjetas ${dinero.formatear(hoy.tarjetas)} + virtual ${dinero.formatear(Math.max(0, -hoy.virtual))} = <b>debo ${dinero.formatear(hoy.deuda)}</b>. El efectivo (${fmt(hoy.efectivo)}) va aparte: no se le resta.</p>
+    ${heroe({ etiqueta: 'Lo que debo hoy', valor: -hoy.deuda, cajas: [['Tarjetas', -hoy.tarjetas, '', '#/tarjetas'], [hoy.virtual > 0 ? 'Virtual a mi favor' : 'Virtual', hoy.virtual > 0 ? hoy.virtual : Math.min(0, hoy.virtual), '', '#/virtual'], ['Efectivo (aparte)', hoy.efectivo, '', '#/efectivo']] }, ctx)}
+    <p class="fran-nota fran-miplata__cuenta">Tarjetas ${dinero.formatear(hoy.tarjetas)} + virtual ${dinero.formatear(Math.max(0, -hoy.virtual))} = <b>debo ${dinero.formatear(hoy.deuda)}</b>.${hoy.virtual > 0 ? ` Plata mía virtual a favor: ${dinero.formatear(hoy.virtual)} (la tiene Erick).` : ''} <a href="#/cierres">Ver el extracto de los cierres</a>. El efectivo (${fmt(hoy.efectivo)}) va aparte: no se le resta.</p>
     ${seccion('Las cuentas del día a día: efectivo + virtual − tarjetas', 'grafica')}
     <div class="fran-virtual__cuadro">
       ${filaCuenta(arranqueTexto, c.arranque)}
@@ -3070,6 +3070,101 @@ function conectarConteo(raiz, ctx, filas, partida, dibujar) {
   });
 }
 
+// ---------- Extracto de los cierres (3.65.0, pedido el 27 nov 2026) ----------
+// Cada cierre se cierra solo: arranca de lo contado en el anterior, suma lo que entró, resta lo que salió,
+// y la diferencia con lo contado (descuadre o sobrante, anotado en la fecha del cierre) queda en ese cierre.
+
+const esAjusteCierre = (f) => f.grupo === 'Descuadre o Perdida' || (f.manual && /^Sobr[oó]/i.test(String(f.titulo || '')));
+
+/** Los cierres de efectivo con su detalle. Puro: sirve para pruebas. */
+export function cierresDeEfectivo(filas, conteos) {
+  const lista = (conteos || []).filter((x) => x.caja === 'efectivo')
+    .sort((a, b) => a.fecha.localeCompare(b.fecha) || String(a.creadoEn).localeCompare(String(b.creadoEn)));
+  const despues = (f, c) => f.fecha > c.fecha || (f.fecha === c.fecha && String(f.creadoEn || '') > String(c.creadoEn || ''));
+  const salida = [];
+  for (let i = 1; i < lista.length; i++) {
+    const antes = lista[i - 1];
+    const este = lista[i];
+    const mismoDiaDeOtro = (f) => lista.some((c, j) => j !== i && c.fecha === f.fecha);
+    const ajustes = filas.filter((f) => esAjusteCierre(f) && f.fecha === este.fecha);
+    const movs = filas.filter((f) => !esAjusteCierre(f) && despues(f, antes) && !despues(f, este));
+    const ajustesSueltos = filas.filter((f) => esAjusteCierre(f) && f.fecha !== este.fecha && !mismoDiaDeOtro(f) && despues(f, antes) && !despues(f, este));
+    const todos = [...movs, ...ajustesSueltos];
+    const entro = todos.filter((f) => f.valor > 0);
+    const salio = todos.filter((f) => f.valor < 0);
+    const debia = antes.contado + todos.reduce((t, f) => t + f.valor, 0);
+    salida.push({ desde: antes, hasta: este, entro, salio, debia, contado: este.contado, diferencia: este.contado - debia, ajustes });
+  }
+  return salida.reverse();
+}
+
+function grupoVirtual(ctx) {
+  const estado = ctx.datos.estado;
+  const tarjetas = estado.fran.tarjetas;
+  const nombreDe = (id) => { const p = estado.prestamos.find((x) => x.id === id); const c = p && estado.clientes.find((x) => x.id === p.clienteId); return c ? c.nombre : ''; };
+  const g = { entro: [], prestamos: [], gastos: [], otros: [] };
+  let partida = 0;
+  let desde = '';
+  for (const m of estado.movimientos) {
+    if (m.caja !== 'virtual') continue;
+    const v = m.monto * m.signo;
+    if (m.tipo === 'saldo_inicial') { partida += v; desde = desde && desde < m.fecha ? desde : m.fecha; continue; }
+    const fila = { fecha: m.fecha, texto: m.prestamoId ? `${nombreDe(m.prestamoId)}${m.nota ? ` · ${m.nota}` : ''}` : (m.nota || m.tipo), valor: v };
+    if (m.tipo === 'prestamo') g.prestamos.push(fila); else if (v > 0) g.entro.push(fila); else g.otros.push(fila);
+  }
+  const esV = (c) => tipoDeCuenta(c, tarjetas) === 'virtual';
+  for (const a of estado.fran.asientos) {
+    if (a.libro === 'terceros') continue;
+    const texto = a.descripcion || a.categoria;
+    if (a.tipo === 'transferencia') {
+      if (esV(a.cuenta)) g.gastos.push({ fecha: a.fecha, texto, valor: -a.valor });
+      if (esV(a.destino)) g.entro.push({ fecha: a.fecha, texto, valor: a.valor });
+    } else if (esV(a.cuenta)) (a.tipo === 'ingreso' ? g.entro : g.gastos).push({ fecha: a.fecha, texto, valor: a.tipo === 'ingreso' ? a.valor : -a.valor });
+  }
+  for (const m of estado.fran.virtualMov || []) (m.tipo === 'entra' ? g.entro : g.otros).push({ fecha: m.fecha, texto: m.concepto || '', valor: m.tipo === 'entra' ? m.valor : -m.valor });
+  for (const k of Object.keys(g)) g[k].sort((a, b) => a.fecha.localeCompare(b.fecha));
+  const suma = (l) => l.reduce((t, f) => t + f.valor, 0);
+  return { partida, desde, g, total: partida + suma(g.entro) + suma(g.prestamos) + suma(g.gastos) + suma(g.otros), suma };
+}
+
+function renderCierres(contenedor, ctx) {
+  const { ui, dinero, fechas } = ctx;
+  const n = (v) => `${v < 0 ? '−' : (v > 0 ? '+' : '')}${dinero.formatear(Math.abs(v))}`;
+  const fila = (texto, v, fecha = '', clase = '') => `<div class="fran-extracto__fila ${clase}">${fecha ? `<small>${ui.esc(fechas.formatear(fecha).replace(/ \d{4}$/, ''))}</small>` : '<small></small>'}<span>${ui.esc(texto)}</span><b class="numero ${v < 0 ? 'fran-menos' : (v > 0 ? 'fran-mas' : '')}">${n(v)}</b></div>`;
+  const cierres = cierresDeEfectivo(filasEfectivo(ctx), ctx.datos.estado.fran.conteos);
+  const corto = (c) => fechas.formatear(c.fecha).replace(/ \d{4}$/, '');
+  const resumen = cierres.length ? `<div class="fran-extracto__tabla"><div class="fran-extracto__fila fran-extracto__cab"><small></small><span>Cierre</span><b>Debía · Contó · Diferencia</b></div>
+    ${cierres.map((c) => `<div class="fran-extracto__fila"><small></small><span>${ui.esc(`${corto(c.desde)} al ${corto(c.hasta)}`)}</span><b class="numero">${dinero.formatear(c.debia)} · ${dinero.formatear(c.contado)} · <span class="${c.diferencia < 0 ? 'fran-menos' : (c.diferencia > 0 ? 'fran-mas' : '')}">${c.diferencia ? n(c.diferencia) : 'cuadró'}</span></b></div>`).join('')}</div>` : '<p class="fran-vacio">Todavía no hay dos conteos para armar un cierre.</p>';
+  const detalle = cierres.map((c, i) => `<details class="fran-tarjeta fran-extracto"${i === 0 ? ' open' : ''}><summary><strong>Cierre del ${ui.esc(corto(c.desde))} al ${ui.esc(corto(c.hasta))}</strong><small>${c.diferencia ? (c.diferencia < 0 ? `Faltaron ${dinero.formatear(-c.diferencia)}` : `Sobraron ${dinero.formatear(c.diferencia)}`) : 'Cuadró exacto'}</small></summary>
+    ${fila(`Arrancó: contado el ${corto(c.desde)}`, c.desde.contado)}
+    <p class="fran-extracto__grupo">Entró</p>${c.entro.map((f) => fila(f.titulo, f.valor, f.fecha)).join('') || '<p class="fran-vacio">Nada</p>'}
+    <p class="fran-extracto__grupo">Salió</p>${c.salio.map((f) => fila(f.titulo, f.valor, f.fecha)).join('') || '<p class="fran-vacio">Nada</p>'}
+    ${fila('Debía tener', c.debia, '', 'fran-extracto__total')}
+    ${fila('Contó', c.contado, '', 'fran-extracto__total')}
+    ${c.diferencia ? fila(c.diferencia < 0 ? 'Descuadre (faltaron)' : 'Sobrante (sobraron)', c.diferencia, c.hasta.fecha, 'fran-extracto__total') : ''}
+    ${c.diferencia && !c.ajustes.length ? '<p class="fran-nota">Esta diferencia todavía no está anotada en Fran.</p>' : ''}
+  </details>`).join('');
+  const v = grupoVirtual(ctx);
+  const bloqueV = (titulo, lista) => (lista.length ? `<p class="fran-extracto__grupo">${ui.esc(titulo)} · ${n(v.suma(lista))}</p>${lista.map((f) => fila(f.texto, f.valor, f.fecha)).join('')}` : '');
+  const raiz = ui.el(`<div class="fran-virtual">
+    ${titular('personal', ctx, '#/efectivo', 'Extracto de los cierres')}
+    <p class="fran-nota">Cada cierre se cierra solo: arranca de lo que usted contó, suma lo que entró, resta lo que salió y la diferencia queda en ese cierre.</p>
+    ${seccion('Efectivo', 'billete')}
+    ${resumen}
+    ${detalle}
+    ${seccion('Lo virtual (lo maneja Erick)', 'recibo')}
+    <div class="fran-tarjeta fran-extracto">
+      ${fila(v.total >= 0 ? 'Plata mía virtual a favor' : 'Le debo a lo virtual', v.total, '', 'fran-extracto__total')}
+      ${fila('Al cierre de octubre', v.partida, v.desde)}
+      ${bloqueV('Plata mía que entró', v.g.entro)}
+      ${bloqueV('Préstamos hechos con plata virtual (no son gastos)', v.g.prestamos)}
+      ${bloqueV('Gastos míos pagados con plata virtual', v.g.gastos)}
+      ${bloqueV('Plata de Erick que usé', v.g.otros)}
+    </div>
+  </div>`);
+  contenedor.append(raiz);
+}
+
 function renderEfectivo(contenedor, ctx) {
   const { ui, dinero, fechas, datos, motor } = ctx;
   const hoy = ctx.hoy();
@@ -3099,6 +3194,7 @@ function renderEfectivo(contenedor, ctx) {
     ${titular('personal', ctx, '#/inicio', 'Plata en efectivo', mes)}
     ${heroe({ etiqueta: 'Efectivo hoy', valor: total, ilustracion: 'billete', ayudaTexto: `Arranca con el cierre del mes pasado y suma o resta solo lo que entró o salió en efectivo.${apartado ? ` De eso, ${dinero.formatear(apartado)} está apartado y ${dinero.formatear(total - apartado)} es para gastar.` : ''}`, cajas: [[`Cierre de ${mesAntes}`, anterior], ['Entró', entro, entro ? 'mas' : ''], ['Salió', salio, salio ? 'menos' : '']] }, ctx)}
     ${bloqueConteo(ctx, filas, partida, total)}
+    <a class="fran-renglon" href="#/cierres">${icono3d('recibo', 'fran-3d--40')}<span class="fran-renglon__texto"><span>Extracto de los cierres</span><small>Cada conteo con lo que entró, salió y la diferencia</small></span><i class="fran-ajuste__flecha" aria-hidden="true"></i></a>
     ${apartados.length ? `<details class="fran-tachados fran-prestado-pension"><summary>${icono3d('bolsa', 'fran-3d--40')}<span class="fran-renglon__texto"><span>Apartado</span><small>Para gastar quedan ${dinero.formatear(total - apartado)}</small></span><b class="numero">${dinero.formatear(apartado)}</b></summary>
       <div class="fran-lista">${apartados.map((x) => `<div class="fran-fila"><span class="fran-fila__texto"><strong>${ui.esc(x.nombre)}</strong>${x.nota ? `<small>${ui.esc(x.nota)}</small>` : ''}</span><span class="fran-fila__valor numero">${dinero.formatear(x.valor)}</span><button type="button" class="fran-boton-secundario fran-boton--44" data-quitar-apartado="${ui.esc(x.id)}">Ya no</button></div>`).join('')}</div>
     </details>` : ''}
@@ -3213,7 +3309,8 @@ function renderVirtual(contenedor, ctx) {
   const cuentas = fran.virtualCuentas;
   const raiz = ui.el(`<div class="fran-virtual">
     ${titular('personal', ctx, '#/inicio', 'Plata virtual')}
-    ${heroe({ etiqueta: 'Mi cuenta virtual', valor: miSaldo, ayudaTexto: miSaldo < 0 ? 'Debo esto: ya usé plata de mi pareja.' : 'Esto me queda.' }, ctx)}
+    ${heroe({ etiqueta: miSaldo > 0 ? 'Plata mía virtual a favor' : 'Mi cuenta virtual', valor: miSaldo, ayudaTexto: miSaldo < 0 ? 'Debo esto: ya usé plata de mi pareja.' : 'Es plata mía que está en lo virtual que maneja Erick.' }, ctx)}
+    <a class="fran-renglon" href="#/cierres">${icono3d('recibo', 'fran-3d--40')}<span class="fran-renglon__texto"><span>Extracto de lo virtual y de los cierres</span><small>Qué entró, qué se prestó y qué se pagó, por grupos</small></span><i class="fran-ajuste__flecha" aria-hidden="true"></i></a>
     <div class="fran-tarjeta fran-virtual__cuentas"><span class="fran-tarjeta__cabeza"><small>Hay en las cuentas, entre los dos</small>${ayuda(`${cuentas ? `Al ${fechas.formatear(cuentas.fecha)}. ` : ''}No es mía. Es lo que mi pareja me puede prestar.`, ui)}</span><strong>${cuentas ? conSigno(cuentas.valor, dinero) : 'Sin anotar'}</strong>
       <button type="button" class="fran-boton-secundario fran-boton--44" data-cuentas>Actualizar</button>
       ${cuentas && cuentas.detalle && cuentas.detalle.length ? `<details class="fran-virtual__detalle"><summary>De dónde sale</summary>${cuentas.detalle.map((d) => `<p><span>${ui.esc(d.concepto)}</span><span class="numero">${dinero.formatear(d.valor)}</span></p>`).join('')}</details>` : ''}
@@ -3409,6 +3506,7 @@ export async function render(contenedor, params, ctx) {
     case 'propiedades': return renderPropiedades(contenedor, ctx);
     case 'tablaPrestamos': return renderTablaPrestamos(contenedor, ctx);
     case 'efectivo': return renderEfectivo(contenedor, ctx);
+    case 'cierres': return renderCierres(contenedor, ctx);
     case 'tarjetas': return renderTarjetas(contenedor, ctx);
     case 'liquidez': return renderLiquidez(contenedor, ctx);
     case 'miplata': return renderMiPlata(contenedor, ctx);

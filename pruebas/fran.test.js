@@ -130,3 +130,26 @@ test('crédito de banco: lo que hay en el banco, lo prestado y lo que se debe', 
   assert.equal(e.deboBanco, 2000000);
   assert.equal(e.ganado, 200000);
 });
+
+test('3.65.0: cada cierre se cierra solo, con su diferencia en su fecha', async () => {
+  const { cierresDeEfectivo } = await import('../js/pantallas/fran.js');
+  const conteos = [
+    { caja: 'efectivo', fecha: '2026-11-12', contado: 700000, creadoEn: '2026-11-12T19:00:00Z' },
+    { caja: 'efectivo', fecha: '2026-11-15', contado: 1400000, creadoEn: '2026-11-15T23:00:00Z' },
+    { caja: 'efectivo', fecha: '2026-11-26', contado: 1600000, creadoEn: '2026-11-26T20:00:00Z' },
+  ];
+  const filas = [
+    { fecha: '2026-11-12', creadoEn: '2026-11-12T10:00:00Z', titulo: 'antes del conteo', valor: -5000 },
+    { fecha: '2026-11-13', creadoEn: '2026-11-27T10:00:00Z', titulo: 'Pago', valor: 750000 },
+    { fecha: '2026-11-15', creadoEn: '2026-11-27T10:00:00Z', grupo: 'Descuadre o Perdida', titulo: 'Descuadre', valor: -50000 },
+    { fecha: '2026-11-20', creadoEn: '2026-11-20T10:00:00Z', titulo: 'Gasto', valor: -100000 },
+    { fecha: '2026-11-26', creadoEn: '2026-11-27T10:00:00Z', manual: true, titulo: 'Sobró en el cierre', valor: 300000 },
+    { fecha: '2026-11-26', creadoEn: '2026-11-27T11:00:00Z', titulo: 'Después del conteo', valor: -9000 },
+  ];
+  const [segundo, primero] = cierresDeEfectivo(filas, conteos);
+  assert.equal(primero.debia, 1450000);
+  assert.equal(primero.diferencia, -50000);
+  assert.equal(segundo.debia, 1300000);
+  assert.equal(segundo.diferencia, 300000);
+  assert.equal(segundo.salio.length, 1);
+});
