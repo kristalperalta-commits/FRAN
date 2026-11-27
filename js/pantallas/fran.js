@@ -3312,6 +3312,15 @@ function renderVirtual(contenedor, ctx) {
   const raiz = ui.el(`<div class="fran-virtual">
     ${titular('personal', ctx, '#/inicio', 'Plata virtual')}
     ${heroe({ etiqueta: miSaldo > 0 ? 'Plata mía virtual a favor' : 'Mi cuenta virtual', valor: miSaldo, ayudaTexto: miSaldo < 0 ? 'Debo esto: ya usé plata de mi pareja.' : 'Es plata mía que está en lo virtual que maneja Erick.' }, ctx)}
+    ${(() => {
+      // 3.67.0: plata de otras personas guardada en lo virtual (ej. los abuelos). No es mía ni es deuda: tiene que estar.
+      const guardada = (fran.terceros || []).filter((t) => t.valor > 0 && /virtual/i.test(t.nota || ''));
+      if (!guardada.length) return '';
+      const suma = guardada.reduce((t, x) => t + x.valor, 0);
+      return `<div class="fran-tarjeta fran-virtual__guardada"><small>Además, en lo virtual se guarda plata de otros (no es mía)</small>
+        ${guardada.map((t) => `<p><span>${ui.esc(t.nombre)}${t.nota ? ` · ${ui.esc(t.nota)}` : ''}</span><span class="numero">${dinero.formatear(t.valor)}</span></p>`).join('')}
+        <p class="fran-virtual__queda"><span>En las cuentas debe haber (lo mío + lo guardado)</span><span class="numero">${dinero.formatear(Math.max(0, miSaldo) + suma)}</span></p></div>`;
+    })()}
     <a class="fran-renglon" href="#/cierres">${icono3d('recibo', 'fran-3d--40')}<span class="fran-renglon__texto"><span>Extracto de lo virtual y de los cierres</span><small>Qué entró, qué se prestó y qué se pagó, por grupos</small></span><i class="fran-ajuste__flecha" aria-hidden="true"></i></a>
     <div class="fran-tarjeta fran-virtual__cuentas"><span class="fran-tarjeta__cabeza"><small>Hay en las cuentas, entre los dos</small>${ayuda(`${cuentas ? `Al ${fechas.formatear(cuentas.fecha)}. ` : ''}No es mía. Es lo que mi pareja me puede prestar.`, ui)}</span><strong>${cuentas ? conSigno(cuentas.valor, dinero) : 'Sin anotar'}</strong>
       <button type="button" class="fran-boton-secundario fran-boton--44" data-cuentas>Actualizar</button>
